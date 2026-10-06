@@ -2,7 +2,7 @@
 import sqlite3
 from pathlib import Path
 
-from . import base_data
+from . import base_data, orders
 from .schema import DDL
 
 
@@ -32,3 +32,20 @@ def load_base_data(conn: sqlite3.Connection, seed: int) -> dict[str, int]:
         conn.executemany("INSERT INTO addresses VALUES (?,?,?,?,?,?)", addresses)
         conn.executemany("INSERT INTO products VALUES (?,?,?,?,?)", products)
     return {"customers": len(customers), "addresses": len(addresses), "products": len(products)}
+
+
+def load_orders(conn: sqlite3.Connection, seed: int) -> dict[str, int]:
+    customers = conn.execute("SELECT * FROM customers ORDER BY customer_id").fetchall()
+    addresses = conn.execute("SELECT * FROM addresses ORDER BY address_id").fetchall()
+    products = conn.execute("SELECT * FROM products ORDER BY product_id").fetchall()
+    pool = orders.generate_order_pool(seed, customers, addresses, products)
+    with conn:
+        conn.executemany("INSERT INTO orders VALUES (?,?,?,?,?,?,?)", pool.orders)
+        conn.executemany("INSERT INTO order_items VALUES (?,?,?,?,?,?)", pool.order_items)
+        conn.executemany("INSERT INTO shipments VALUES (?,?,?,?,?,?,?)", pool.shipments)
+        conn.executemany("INSERT INTO payments VALUES (?,?,?,?,?,?)", pool.payments)
+        conn.executemany("INSERT INTO refunds VALUES (?,?,?,?,?)", pool.refunds)
+        conn.executemany("INSERT INTO returns VALUES (?,?,?,?,?)", pool.returns)
+    return {"orders": len(pool.orders), "order_items": len(pool.order_items),
+            "shipments": len(pool.shipments), "payments": len(pool.payments),
+            "refunds": len(pool.refunds), "returns": len(pool.returns)}

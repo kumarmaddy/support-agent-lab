@@ -55,3 +55,6 @@ SIZES = {
 }
 
 CARRIERS = ["SwiftShip", "TrailExpress", "MeridianPost"]
+
+
+CATEGORY_SIZING = {category: sizing for category, _t, _p, _n, sizing in CATALOGUE_SPEC}
