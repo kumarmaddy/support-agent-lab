@@ -6,7 +6,7 @@ import time
 import requests
 
 URL = "http://localhost:11434/api/chat"
-MODEL = "llama3.2:3b"
+MODEL = "qwen2.5:7b"
 
 CATEGORIES = ["order_status", "refund", "return", "account", "other"]
 PRIORITIES = ["low", "medium", "high"]
