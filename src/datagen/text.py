@@ -44,6 +44,29 @@ def weekday_name(d: date) -> str:
     return _WEEKDAYS[d.weekday()]
 
 
+_PLURAL_PRODUCT_WORDS = {"Pants", "Shorts", "Gloves", "Poles", "Socks"}
+
+
+def grammar_fields(product_name: str) -> dict[str, str]:
+    """Words that agree with the product name, so tickets say 'the Hiking Pants are' not 'is'."""
+    plural = any(w in _PLURAL_PRODUCT_WORDS for w in product_name.split())
+    return {
+        "be": "are" if plural else "is",
+        "was": "were" if plural else "was",
+        "has": "have" if plural else "has",
+        "doesnt": "don't" if plural else "doesn't",
+        "isnt": "aren't" if plural else "isn't",
+        "it": "they" if plural else "it",
+        "It": "They" if plural else "It",
+        "them": "them" if plural else "it",
+    }
+
+
+def fmt_money(cents: int) -> str:
+    """Format integer cents as dollars without floating-point arithmetic, e.g. 12999 -> '$129.99'."""
+    return f"${cents // 100:,}.{cents % 100:02d}"
+
+
 def add_typos(rng: random.Random, text: str, max_typos: int = 2) -> str:
     """Swap two adjacent letters inside up to max_typos words of 6+ letters.
 

@@ -44,6 +44,8 @@ class OrderSpec:
     days_since_delivery: int | None = None   # only for delivered / return_in_progress
     duplicate_charge: bool = False
     include_final_sale_item: bool = False
+    exclude_final_sale: bool = False         # keep final-sale products out of the order
+    require_sized_item: bool = False         # first item is apparel or footwear (has a size)
     n_items: int | None = None
     customer_id: str | None = None
 
@@ -195,12 +197,16 @@ def _pick_customer(ctx: OrderContext, spec: OrderSpec, tl: Timeline, rng: random
 
 
 def _pick_items(ctx: OrderContext, spec: OrderSpec, rng: random.Random) -> list[tuple]:
-    no_final_sale = spec.state in RETURN_STATES
+    no_final_sale = spec.state in RETURN_STATES or spec.exclude_final_sale
     pool = [p for p in ctx.products if not (no_final_sale and p[4] == 1)]
     n = spec.n_items or rng.choices([1, 2, 3], weights=[0.6, 0.3, 0.1])[0]
     chosen: list[tuple] = []
     if spec.include_final_sale_item:
         first = rng.choice([p for p in ctx.products if p[4] == 1])
+        chosen.append(first)
+        pool = [p for p in pool if p[0] != first[0]]
+    elif spec.require_sized_item:
+        first = rng.choice([p for p in pool if reference.CATEGORY_SIZING[p[2]] != "none"])
         chosen.append(first)
         pool = [p for p in pool if p[0] != first[0]]
     chosen += rng.sample(pool, n - len(chosen))
@@ -212,6 +218,8 @@ def build_order(ctx: OrderContext, spec: OrderSpec, tl: Timeline, rng: random.Ra
         raise ValueError(f"duplicate charge not supported for state {spec.state}")
     if spec.include_final_sale_item and spec.state in RETURN_STATES:
         raise ValueError("final-sale items cannot appear in orders that have returns")
+    if spec.include_final_sale_item and (spec.exclude_final_sale or spec.require_sized_item):
+        raise ValueError("include_final_sale_item cannot be combined with exclude_final_sale or require_sized_item")
 
     ids = ctx.ids
     rows = OrderRows()

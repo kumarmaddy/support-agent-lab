@@ -81,15 +81,37 @@ def pick_received_at(rng: random.Random, now: datetime, earliest: datetime) -> d
 
 
 def latest_event(*timelines) -> datetime:
-    return max(t for tl in timelines for t in (tl.placed_at, tl.dispatched_at) if t)
+    """The latest thing that happened on the order(s); a ticket cannot arrive before it."""
+    return max(t for tl in timelines
+               for t in (tl.placed_at, tl.dispatched_at, tl.delivered_at, tl.label_issued_at,
+                         tl.received_at) if t)
+
+
+# Facts shared by several scenario families. Signature: (rows, deadline, fields) -> dict
+def shipped_facts(rows, deadline, fields):
+    order, shipment = rows.orders[0], rows.shipments[0]
+    return {"order_status": order[3], "promised_date": order[5], "carrier": shipment[2],
+            "tracking_no": shipment[3], "last_status": shipment[6]}
+
+
+def processing_facts(rows, deadline, fields):
+    facts = {"order_status": rows.orders[0][3], "promised_date": rows.orders[0][5],
+             "dispatched": False}
+    if deadline:
+        facts["deadline_date"] = deadline.isoformat()
+    return facts
 
 
 def build_single_order_ticket(sctx: ScenarioContext, rng: random.Random, *, scenario_id: str,
                               spec: OrderSpec, phrasing: Phrasing, subjects: list[str],
                               category: str, flags: dict[str, bool], actions: list[str],
-                              kb_ids: list[str], facts_fn, escalate_reason: str | None = None
+                              kb_ids: list[str], facts_fn, escalate_reason: str | None = None,
+                              secondary_categories: tuple[str, ...] = (), extra_fields_fn=None
                               ) -> GeneratedTicket:
-    """Build one order and one ticket about it, with its ground-truth label."""
+    """Build one order and one ticket about it, with its ground-truth label.
+
+    extra_fields_fn(rows, rng, received_at) may return additional values for the ticket text; they
+    are also passed to facts_fn(rows, deadline, fields) so labels and text always agree."""
     tl = plan_timeline(spec, rng)
     spec.customer_id = choose_customer(sctx, rng, tl.placed_at)
     rows = build_order(sctx.order_ctx, spec, tl, rng)
@@ -99,9 +121,11 @@ def build_single_order_ticket(sctx: ScenarioContext, rng: random.Random, *, scen
     customer = sctx.customers[order[1]]
     received_at = pick_received_at(rng, sctx.now, latest_event(tl))
 
+    product = sctx.product_names[rows.order_items[0][2]]
     fields = {
+        **text.grammar_fields(product),
         "order_id": order[0],
-        "product": sctx.product_names[rows.order_items[0][2]],
+        "product": product,
         "placed_date": text.fmt_date(datetime.fromisoformat(order[2]).date(), rng),
         "promised_date": text.fmt_date(date.fromisoformat(order[5]), rng),
     }
@@ -111,6 +135,8 @@ def build_single_order_ticket(sctx: ScenarioContext, rng: random.Random, *, scen
         deadline = received_at.date() + timedelta(days=rng.randint(lo, hi))
         fields["deadline_date"] = text.fmt_date(deadline, rng)
         fields["deadline_weekday"] = text.weekday_name(deadline)
+    if extra_fields_fn:
+        fields.update(extra_fields_fn(rows, rng, received_at))
 
     tone = phrasing.tone or rng.choices(text.TONES, weights=text.TONE_WEIGHTS)[0]
     body = text.compose(rng, phrasing.text.format(**fields), customer[1].split()[0], tone,
@@ -122,6 +148,7 @@ def build_single_order_ticket(sctx: ScenarioContext, rng: random.Random, *, scen
         attributes=priority.make_attributes(**flags),
         expected_actions=actions, required_kb_ids=kb_ids, referenced_order_id=order[0],
         expected_escalate=escalate_reason is not None, escalation_reason=escalate_reason,
-        expected_facts=facts_fn(rows, deadline),
-        difficulty=phrasing.difficulty, ambiguity_flag=phrasing.ambiguity)
+        expected_facts=facts_fn(rows, deadline, fields),
+        difficulty=phrasing.difficulty, ambiguity_flag=phrasing.ambiguity,
+        secondary_categories=secondary_categories)
     return GeneratedTicket(scenario_id, rows, customer[2], subject, body, received_at, label)

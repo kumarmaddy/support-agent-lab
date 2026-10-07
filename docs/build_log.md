@@ -55,26 +55,3 @@ entity type; database creation refuses to overwrite without `--force`.
 **Reproducibility note:** adding the timestamp fix changed which random numbers were drawn, so counts changed
 (for example processing orders 35 to 40, duplicate-charge payments 7 to 9) with the same seed. Same seed does not
 protect against code changes; see the seed explanation in the project notes and the dataset manifest planned for 0.4d.
-
----
-
-## Stage 0.4c-1: Ticket framework and order-status scenarios (2026-10-06)
-**Objective:** produce the first tickets and ground-truth labels, with a framework the remaining scenario
-families will reuse. Delivered in increments: 0.4c-1 (framework, S01-S04, S22), 0.4c-2 (returns, exchanges,
-refunds), 0.4c-3 (cancellation, address, account, product info, other, adversarial).
-**Files (new):** `src/datagen/{taxonomy,priority,kb_catalogue,labels,text,scenario_base,scenario_order_status,
-scenario_registry,tickets}.py`, `tests/test_datagen_tickets.py`
-**Files (changed):** `src/datagen/{config,orders,db,checks,cli}.py`, `docs/data-design.md` (v1.3)
-**Key decisions:**
-- The priority rubric is implemented as code (`priority.py`); labels compute priority from attributes and are
-  validated on creation, so a label can never disagree with the rubric.
-- Labels carry `expected_facts` taken from the database, so replies can later be graded for invented facts.
-- Each scenario has its own random stream; one scenario's text is unaffected by others.
-- Scenario orders use the same builder as the background pool and continue its id numbering.
-- S04 redefined: two open orders and no order number, so the correct action is to ask which one.
-**Defect found by reading samples:** one phrasing combined with a polite closing produced a double "Thanks";
-phrasing replaced.
-**Evidence:** 88 tests passing; 33 tickets (S01=10, S02=8, S03=5, S04=6, S22=4); 18 integrity checks pass.
-Mutation checks: deliberately breaking the S22 deadline range, an S02 priority flag, and an S04 order-number
-leak each made the tests fail.
-**Open item:** held-out phrasing is not yet separate from development phrasing (stage 0.4d).

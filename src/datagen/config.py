@@ -1,7 +1,7 @@
 """Central configuration for the synthetic data generator."""
 from datetime import datetime
 
-GENERATOR_VERSION = "0.3.0"
+GENERATOR_VERSION = "0.4.0"
 
 # Fixed reference date so generated data does not depend on the day it is run.
 AS_OF_DATETIME = datetime(2026, 10, 6, 12, 0, 0)

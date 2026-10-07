@@ -187,8 +187,8 @@ def test_expected_facts_match_database(dataset):
         ship = conn.execute("SELECT carrier, tracking_no, last_status FROM shipments WHERE order_id=?", (oid,)).fetchone()
         if "tracking_no" in facts:
             assert (facts["carrier"], facts["tracking_no"], facts["last_status"]) == ship
-        else:
-            assert ship is None and facts["dispatched"] is False
+        if "dispatched" in facts:
+            assert (ship is not None) == facts["dispatched"]
 
 
 def labels_for(labs, scenario):
