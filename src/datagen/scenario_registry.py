@@ -3,12 +3,16 @@
 Order matters for reproducibility: order and ticket ids are allocated in this sequence, so a new
 family must be appended, never inserted before existing ones, while a dataset version is in use.
 """
-from . import scenario_order_status, scenario_returns
+from . import (scenario_accounts, scenario_adversarial, scenario_changes, scenario_order_status,
+               scenario_returns)
 from .scenario_base import ScenarioDef
 
 SCENARIOS: list[ScenarioDef] = [
     *scenario_order_status.SCENARIOS,
     *scenario_returns.SCENARIOS,
+    *scenario_changes.SCENARIOS,
+    *scenario_accounts.SCENARIOS,
+    *scenario_adversarial.SCENARIOS,
 ]
 
 

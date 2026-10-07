@@ -18,4 +18,12 @@ KB_ARTICLES = {
     "KB-REF-02": "Duplicate or unauthorised charges",
     "KB-REF-03": "Damaged or wrong items",
     "KB-REF-04": "Payment disputes and chargebacks",
+    "KB-CAN-01": "Cancelling an order (before dispatch only)",
+    "KB-ADR-01": "Changing your delivery address (before dispatch only)",
+    "KB-ACC-01": "Resetting your password",
+    "KB-ACC-02": "Locked accounts",
+    "KB-ACC-03": "Suspected unauthorised access to your account",
+    "KB-SIZ-01": "Sizing guide",
+    "KB-CAR-01": "Care and washing instructions",
+    "KB-SEC-01": "Privacy: we only discuss an order with the account holder",
 }

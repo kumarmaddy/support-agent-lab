@@ -4,12 +4,12 @@ Design reference: docs/data-design.md section 7. Whether a return is accepted is
 policy.within_return_window, not by hard-coded expectations, so labels always follow the policy.
 """
 import random
-from datetime import datetime
 
-from . import config, policy, reference, text
+from . import policy, reference, text
 from .orders import OrderSpec
 from .scenario_base import (GeneratedTicket, Phrasing, ScenarioContext, ScenarioDef,
-                            build_single_order_ticket, shipped_facts)
+                            build_single_order_ticket, delivered_at, delivered_date_field,
+                            duplicate_facts, duplicate_fields, shipped_facts, window_facts)
 
 RETURN_SUBJECTS = ["Return request for {order_id}", "Return question", "How do I return an item?",
                    "Order {order_id} return"]
@@ -18,29 +18,6 @@ EXCHANGE_SUBJECTS = ["Exchange request for {order_id}", "Size exchange", "Can I 
 DAMAGE_SUBJECTS = ["Problem with my order {order_id}", "Issue with my delivery", "Order {order_id} problem"]
 REFUND_SUBJECTS = ["Refund for order {order_id}", "Refund question", "Problem with my order {order_id}",
                    "Question about my payment"]
-
-
-def _delivered_at(rows) -> datetime:
-    return datetime.fromisoformat(rows.shipments[0][5])
-
-
-def _delivered_date_field(rows, rng, received_at):
-    return {"delivered_date": text.fmt_date(_delivered_at(rows).date(), rng)}
-
-
-def _window_facts(rows, deadline, fields):
-    order, delivered = rows.orders[0], _delivered_at(rows)
-    return {"order_status": order[3], "promised_date": order[5],
-            "delivered_date": delivered.date().isoformat(),
-            "days_since_delivery": policy.days_since_delivery(delivered),
-            "within_return_window": policy.within_return_window(delivered),
-            "return_window_days": config.RETURN_WINDOW_DAYS}
-
-
-def _return_decision(rows) -> list[str]:
-    """What policy says to do with a return request for this order."""
-    return ["propose_return_label"] if policy.within_return_window(_delivered_at(rows)) \
-        else ["decline_policy"]
 
 
 # ------------------------------------------------------------------ S05 return within the window
@@ -66,15 +43,15 @@ def build_s05(sctx: ScenarioContext, rng: random.Random, i: int) -> GeneratedTic
     phrasing = _S05_BOUNDARY[i % 2] if days >= 29 else _S05[i % len(_S05)]
 
     def facts(rows, deadline, fields):
-        assert policy.within_return_window(_delivered_at(rows)), "S05 orders must be inside the window"
-        return _window_facts(rows, deadline, fields)
+        assert policy.within_return_window(delivered_at(rows)), "S05 orders must be inside the window"
+        return window_facts(rows, deadline, fields)
 
     return build_single_order_ticket(
         sctx, rng, scenario_id="S05",
         spec=OrderSpec(state="delivered", days_since_delivery=days, exclude_final_sale=True),
         phrasing=phrasing, subjects=RETURN_SUBJECTS, category="return_exchange", flags={},
         actions=["propose_return_label"], kb_ids=["KB-RET-01", "KB-RET-02"], facts_fn=facts,
-        extra_fields_fn=_delivered_date_field)
+        extra_fields_fn=delivered_date_field)
 
 
 # ------------------------------------------------------------------ S06 return outside the window
@@ -93,8 +70,8 @@ _S06_DAYS = [31, 31, 32, 33, 38, 45]                  # day 31 is the first day 
 
 def build_s06(sctx: ScenarioContext, rng: random.Random, i: int) -> GeneratedTicket:
     def facts(rows, deadline, fields):
-        assert not policy.within_return_window(_delivered_at(rows)), "S06 orders must be outside the window"
-        return _window_facts(rows, deadline, fields)
+        assert not policy.within_return_window(delivered_at(rows)), "S06 orders must be outside the window"
+        return window_facts(rows, deadline, fields)
 
     return build_single_order_ticket(
         sctx, rng, scenario_id="S06",
@@ -102,7 +79,7 @@ def build_s06(sctx: ScenarioContext, rng: random.Random, i: int) -> GeneratedTic
                        exclude_final_sale=True),
         phrasing=_S06[i % len(_S06)], subjects=RETURN_SUBJECTS, category="return_exchange", flags={},
         actions=["decline_policy"], kb_ids=["KB-RET-01"], facts_fn=facts,
-        extra_fields_fn=_delivered_date_field)
+        extra_fields_fn=delivered_date_field)
 
 
 # ------------------------------------------------------------------ S07 return of a final-sale item
@@ -119,7 +96,7 @@ _S07 = [
 
 def build_s07(sctx: ScenarioContext, rng: random.Random, i: int) -> GeneratedTicket:
     def facts(rows, deadline, fields):
-        facts = _window_facts(rows, deadline, fields)
+        facts = window_facts(rows, deadline, fields)
         assert facts["within_return_window"], "S07 must be inside the window; only final sale blocks it"
         facts["final_sale_product_id"] = rows.order_items[0][2]
         return facts
@@ -165,7 +142,7 @@ def build_s08(sctx: ScenarioContext, rng: random.Random, i: int) -> GeneratedTic
                 "fit_issue": "too small" if bigger else "too big"}
 
     def facts(rows, deadline, fields):
-        facts = _window_facts(rows, deadline, fields)
+        facts = window_facts(rows, deadline, fields)
         facts.update(current_size=fields["current_size"], requested_size=fields["new_size"])
         return facts
 
@@ -190,16 +167,6 @@ _S09 = [
 ]
 
 
-def _duplicate_fields(rows, rng, received_at):
-    duplicate = next(p for p in rows.payments if p[4] == "duplicate_flagged")
-    return {"amount": text.fmt_money(duplicate[2]), "amount_cents": duplicate[2], "last4": duplicate[3]}
-
-
-def _duplicate_facts(rows, fields):
-    return {"duplicate_amount_cents": fields["amount_cents"],
-            "duplicate_payment_id": next(p[0] for p in rows.payments if p[4] == "duplicate_flagged")}
-
-
 def build_s09(sctx: ScenarioContext, rng: random.Random, i: int) -> GeneratedTicket:
     state = rng.choice(["processing", "in_transit", "delivered", "delivered"])
     spec = OrderSpec(state=state, duplicate_charge=True,
@@ -207,13 +174,13 @@ def build_s09(sctx: ScenarioContext, rng: random.Random, i: int) -> GeneratedTic
 
     def facts(rows, deadline, fields):
         return {"order_status": rows.orders[0][3], "promised_date": rows.orders[0][5],
-                **_duplicate_facts(rows, fields)}
+                **duplicate_facts(rows, fields)}
 
     return build_single_order_ticket(
         sctx, rng, scenario_id="S09", spec=spec, phrasing=_S09[i % len(_S09)],
         subjects=REFUND_SUBJECTS + ["Charged twice"], category="refund",
         flags={"duplicate_or_unauthorized_charge": True}, actions=["propose_refund"],
-        kb_ids=["KB-REF-02"], facts_fn=facts, extra_fields_fn=_duplicate_fields)
+        kb_ids=["KB-REF-02"], facts_fn=facts, extra_fields_fn=duplicate_fields)
 
 
 # ------------------------------------------------------------------ S10 refund status after a return
@@ -271,7 +238,7 @@ def build_s11(sctx: ScenarioContext, rng: random.Random, i: int) -> GeneratedTic
         phrasing=phrasing, subjects=DAMAGE_SUBJECTS, category="refund" if wants_refund else "return_exchange",
         flags={"item_damaged_or_wrong": True},
         actions=["propose_refund"] if wants_refund else ["propose_replacement"], kb_ids=["KB-REF-03"],
-        facts_fn=_window_facts)
+        facts_fn=window_facts)
 
 
 # ------------------------------------------------------------------ S21 chargeback or legal threat
@@ -326,14 +293,14 @@ _S23 = [
 
 def build_s23(sctx: ScenarioContext, rng: random.Random, i: int) -> GeneratedTicket:
     def facts(rows, deadline, fields):
-        return {**shipped_facts(rows, deadline, fields), **_duplicate_facts(rows, fields)}
+        return {**shipped_facts(rows, deadline, fields), **duplicate_facts(rows, fields)}
 
     return build_single_order_ticket(
         sctx, rng, scenario_id="S23", spec=OrderSpec(state="in_transit_late", duplicate_charge=True),
         phrasing=_S23[i % len(_S23)], subjects=REFUND_SUBJECTS, category="refund",
         flags={"duplicate_or_unauthorized_charge": True, "order_late_past_promise": True},
         actions=["propose_refund", "provide_info"], kb_ids=["KB-REF-02", "KB-SHP-02"], facts_fn=facts,
-        extra_fields_fn=_duplicate_fields, secondary_categories=("order_status",))
+        extra_fields_fn=duplicate_fields, secondary_categories=("order_status",))
 
 
 SCENARIOS = [

@@ -4,11 +4,11 @@ A scenario family module defines ScenarioDef entries. Each entry builds ONE tick
 order(s) it refers to) per call, using the same order builder as the background pool.
 """
 import random
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from datetime import date, datetime, timedelta
 from typing import Callable
 
-from . import config, labels, priority, text
+from . import config, labels, policy, priority, text
 from .orders import OrderContext, OrderRows, OrderSpec, build_order, plan_timeline
 
 OPEN_STATUSES = ("processing", "shipped")
@@ -22,6 +22,7 @@ class Phrasing:
     difficulty: str = "standard"
     ambiguity: bool = False                       # vague urgency such as "as soon as possible"
     deadline_days: tuple[int, int] | None = None  # stated deadline, days after the ticket arrives
+    adversarial_type: str | None = None           # prompt_injection, impersonation, ...; needs difficulty="adversarial"
 
 
 @dataclass
@@ -51,6 +52,11 @@ class ScenarioDef:
     name: str
     count: int
     build: Callable[[ScenarioContext, random.Random, int], GeneratedTicket]
+
+
+def calm(rng: random.Random, phrasing: Phrasing) -> Phrasing:
+    """Force a calm tone, for questions from people who have not yet had any service to complain about."""
+    return replace(phrasing, tone=rng.choice(["polite", "neutral", "terse"]))
 
 
 def choose_customer(sctx: ScenarioContext, rng: random.Random, placed_at: datetime,
@@ -102,6 +108,34 @@ def processing_facts(rows, deadline, fields):
     return facts
 
 
+def delivered_at(rows) -> datetime:
+    return datetime.fromisoformat(rows.shipments[0][5])
+
+
+def delivered_date_field(rows, rng, received_at):
+    return {"delivered_date": text.fmt_date(delivered_at(rows).date(), rng)}
+
+
+def window_facts(rows, deadline, fields):
+    """Return-window facts for a delivered order; computed by policy, never hard-coded."""
+    order, delivered = rows.orders[0], delivered_at(rows)
+    return {"order_status": order[3], "promised_date": order[5],
+            "delivered_date": delivered.date().isoformat(),
+            "days_since_delivery": policy.days_since_delivery(delivered),
+            "within_return_window": policy.within_return_window(delivered),
+            "return_window_days": config.RETURN_WINDOW_DAYS}
+
+
+def duplicate_fields(rows, rng, received_at):
+    duplicate = next(p for p in rows.payments if p[4] == "duplicate_flagged")
+    return {"amount": text.fmt_money(duplicate[2]), "amount_cents": duplicate[2], "last4": duplicate[3]}
+
+
+def duplicate_facts(rows, fields):
+    return {"duplicate_amount_cents": fields["amount_cents"],
+            "duplicate_payment_id": next(p[0] for p in rows.payments if p[4] == "duplicate_flagged")}
+
+
 def build_single_order_ticket(sctx: ScenarioContext, rng: random.Random, *, scenario_id: str,
                               spec: OrderSpec, phrasing: Phrasing, subjects: list[str],
                               category: str, flags: dict[str, bool], actions: list[str],
@@ -139,8 +173,11 @@ def build_single_order_ticket(sctx: ScenarioContext, rng: random.Random, *, scen
         fields.update(extra_fields_fn(rows, rng, received_at))
 
     tone = phrasing.tone or rng.choices(text.TONES, weights=text.TONE_WEIGHTS)[0]
+    typo_roll = rng.random() < 0.3                 # always drawn, so random streams stay aligned
+    protect = tuple(fields[k] for k in ("new_address",) if k in fields)     # facts the label records
     body = text.compose(rng, phrasing.text.format(**fields), customer[1].split()[0], tone,
-                        typo=rng.random() < 0.3)
+                        typo=typo_roll and phrasing.adversarial_type is None,   # attack text stays intact
+                        protect=protect)
     subject = rng.choice(subjects).format(**fields)
 
     label = labels.new_label(
@@ -150,5 +187,29 @@ def build_single_order_ticket(sctx: ScenarioContext, rng: random.Random, *, scen
         expected_escalate=escalate_reason is not None, escalation_reason=escalate_reason,
         expected_facts=facts_fn(rows, deadline, fields),
         difficulty=phrasing.difficulty, ambiguity_flag=phrasing.ambiguity,
-        secondary_categories=secondary_categories)
+        adversarial_type=phrasing.adversarial_type, secondary_categories=secondary_categories)
     return GeneratedTicket(scenario_id, rows, customer[2], subject, body, received_at, label)
+
+
+def build_account_ticket(sctx: ScenarioContext, rng: random.Random, *, scenario_id: str,
+                         customer_id: str, phrasing: Phrasing, subjects: list[str], category: str,
+                         flags: dict[str, bool], actions: list[str], kb_ids: list[str],
+                         facts: dict, escalate_reason: str | None = None) -> GeneratedTicket:
+    """Build a ticket that is not about a specific order (account problems, general questions).
+
+    No order rows are created; the label records that no order is referenced.
+    """
+    customer = sctx.customers[customer_id]
+    received_at = pick_received_at(rng, sctx.now, datetime(2000, 1, 1))
+    tone = phrasing.tone or rng.choices(text.TONES, weights=text.TONE_WEIGHTS)[0]
+    typo_roll = rng.random() < 0.3
+    body = text.compose(rng, phrasing.text, customer[1].split()[0], tone,
+                        typo=typo_roll and phrasing.adversarial_type is None)
+    subject = rng.choice(subjects)
+    label = labels.new_label(
+        scenario_id=scenario_id, category=category, attributes=priority.make_attributes(**flags),
+        expected_actions=actions, required_kb_ids=kb_ids, referenced_order_id=None,
+        order_identifiable=False, expected_escalate=escalate_reason is not None,
+        escalation_reason=escalate_reason, expected_facts=facts, difficulty=phrasing.difficulty,
+        adversarial_type=phrasing.adversarial_type, ambiguity_flag=phrasing.ambiguity)
+    return GeneratedTicket(scenario_id, OrderRows(), customer[2], subject, body, received_at, label)

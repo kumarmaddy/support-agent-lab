@@ -41,7 +41,8 @@ def delivered_at(conn, order_id):
 def test_registry_order_is_stable():
     """Ids depend on this order; new families must be appended, never inserted."""
     assert [s.scenario_id for s in SCENARIOS] == [
-        "S01", "S02", "S03", "S04", "S22", "S05", "S06", "S07", "S08", "S09", "S10", "S11", "S21", "S23"]
+        "S01", "S02", "S03", "S04", "S22", "S05", "S06", "S07", "S08", "S09", "S10", "S11", "S21", "S23",
+        "S13", "S14", "S15", "S16", "S17", "S18", "S19", "S20", "S24", "S25", "S26"]
 
 
 def test_counts(ds):
@@ -49,7 +50,7 @@ def test_counts(ds):
     expected = {"S05": 10, "S06": 6, "S07": 5, "S08": 6, "S09": 8, "S10": 6, "S11": 8, "S21": 4, "S23": 4}
     for scenario, n in expected.items():
         assert len(of(labs, scenario)) == n, scenario
-    assert len(labs) == 90
+    assert len(labs) == sum(s.count for s in SCENARIOS) == 150    # the full development set
 
 
 def test_ticket_arrives_after_every_event_on_its_order(ds):

@@ -55,3 +55,82 @@ entity type; database creation refuses to overwrite without `--force`.
 **Reproducibility note:** adding the timestamp fix changed which random numbers were drawn, so counts changed
 (for example processing orders 35 to 40, duplicate-charge payments 7 to 9) with the same seed. Same seed does not
 protect against code changes; see the seed explanation in the project notes and the dataset manifest planned for 0.4d.
+
+---
+
+## Stage 0.4c-1: Ticket framework and order-status scenarios (2026-10-06)
+**Objective:** produce the first tickets and ground-truth labels, with a framework the remaining scenario
+families will reuse. Delivered in increments: 0.4c-1 (framework, S01-S04, S22), 0.4c-2 (returns, exchanges,
+refunds), 0.4c-3 (cancellation, address, account, product info, other, adversarial).
+**Files (new):** `src/datagen/{taxonomy,priority,kb_catalogue,labels,text,scenario_base,scenario_order_status,
+scenario_registry,tickets}.py`, `tests/test_datagen_tickets.py`
+**Files (changed):** `src/datagen/{config,orders,db,checks,cli}.py`, `docs/data-design.md` (v1.3)
+**Key decisions:**
+- The priority rubric is implemented as code (`priority.py`); labels compute priority from attributes and are
+  validated on creation, so a label can never disagree with the rubric.
+- Labels carry `expected_facts` taken from the database, so replies can later be graded for invented facts.
+- Each scenario has its own random stream; one scenario's text is unaffected by others.
+- Scenario orders use the same builder as the background pool and continue its id numbering.
+- S04 redefined: two open orders and no order number, so the correct action is to ask which one.
+**Defect found by reading samples:** one phrasing combined with a polite closing produced a double "Thanks";
+phrasing replaced.
+**Evidence:** 88 tests passing; 33 tickets (S01=10, S02=8, S03=5, S04=6, S22=4); 18 integrity checks pass.
+Mutation checks: deliberately breaking the S22 deadline range, an S02 priority flag, and an S04 order-number
+leak each made the tests fail.
+**Open item:** held-out phrasing is not yet separate from development phrasing (stage 0.4d).
+
+---
+
+## Stage 0.4c-2: Returns, exchanges and refunds (2026-10-06)
+**Objective:** add nine scenarios (S05-S11, S21, S23; 57 tickets), bringing the development set to 90 of 150.
+**Files (new):** `src/datagen/scenario_returns.py`, `tests/test_datagen_returns.py`
+**Files (changed):** `src/datagen/{config,orders,text,kb_catalogue,scenario_base,scenario_order_status,
+scenario_registry}.py`, `tests/test_datagen_tickets.py`, `docs/data-design.md` (v1.4)
+**Key decisions:**
+- Return acceptance is decided by `policy.within_return_window`; the generator refuses to build a ticket whose
+  order contradicts its scenario, so labels cannot drift from policy.
+- Shared fact builders moved into `scenario_base.py` once a second family needed them.
+- A ticket may not arrive before any event on its order.
+- Money in ticket text is formatted from integer cents (no floating point).
+**Defects found by reading samples (not by the integrity checks):**
+- Plural product names produced wrong grammar ("Hiking Pants is too small"); also present in two phrasings from
+  the previous stage. Fixed with agreement fields in `text.grammar_fields`.
+- Pronoun and article errors ("exchange they", "a S"); subject lines that did not match the request.
+- A design error: S06 listed boundary days 29-32, but days 29 and 30 are inside the window. Corrected in v1.4.
+**Test method note:** a regex first flagged four false positives ("Order O-000617 (Basecamp Gloves) is late" is
+grammatical); the check was tightened and then verified to still catch the real bug when re-introduced. The
+grammar test runs across six seeds because plural products appear only on some seeds.
+**Evidence:** 115 tests passing; 90 tickets; 18 integrity checks pass. Mutation checks (S06 day 30, missing S11
+flag, S21 time limit, ticket before delivery) each failed the tests.
+**Open items:** held-out phrasing separation (0.4d); remaining scenarios S13-S20, S24-S26 (0.4c-3).
+
+---
+
+## Stage 0.4c-3: Remaining scenarios, development set complete (2026-10-07)
+**Objective:** add the final eleven scenarios (S13-S20, S24-S26; 60 tickets), completing the 150-ticket development set.
+**Files (new):** `src/datagen/{scenario_changes,scenario_accounts,scenario_adversarial}.py`,
+`tests/{test_datagen_changes,test_datagen_accounts,test_datagen_adversarial}.py`
+**Files (changed):** `src/datagen/{config,kb_catalogue,text,scenario_base,scenario_returns,scenario_registry}.py`,
+`tests/{test_datagen_tickets,test_datagen_returns}.py`, `docs/data-design.md` (v1.5)
+**Key decisions:**
+- Adversarial labels describe the legitimate underlying issue plus `injected_instruction` and `must_not`, so a
+  grader can score "resisted" versus "obeyed" without judgement.
+- Tickets that are not about an order use a separate builder; the label records that no order is referenced.
+- Helpers needed by two families moved into `scenario_base.py`; one unused function was removed from `scenario_returns.py`.
+- Policy facts in knowledge-question labels are verified against the generated data (delivery days, refund age).
+- Policy wording corrected to calendar days, matching the data (data-design section 3).
+**Defects found by reading samples (not by the integrity checks):**
+- Typo injection corrupted a requested delivery address ("Aevnue") so the ticket disagreed with its label. Typos now
+  skip text that labels record.
+- Complaint wording was appended to pre-purchase questions ("disappointed with the service so far"). Those
+  questions now use calm tones only.
+- Double thanks ("Thanks for your help with this. Thank you so much,") caused by the shared tone wrapper.
+- An impersonation ticket's subject did not match its claim.
+**Existing tests changed (with reasons):** a hard-coded ticket count (90) now derives from the registry; two tests
+assumed every referenced order belongs to the sender, which impersonation tickets deliberately violate (now
+asserted the other way round in `test_datagen_adversarial.py`).
+**Evidence:** 153 tests passing (Python 3.13); 150 tickets (47 edge, 13 adversarial); 18 integrity checks pass.
+Seven mutation checks (typo in address, unhappy tone on questions, typo in attack text, wrong locked-customer
+source, attack succeeding in a label, sender equal to order owner, orphaned knowledge-base article) each failed the tests.
+**Known limitations:** the set over-represents difficult cases (priority mix 96 LOW, 25 MEDIUM, 29 HIGH), so accuracy on
+it will not predict accuracy on real traffic; the held-out split still reuses development phrasing (stage 0.4d).

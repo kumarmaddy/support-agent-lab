@@ -169,7 +169,10 @@ def test_referenced_orders_belong_to_the_sender_and_are_mentioned(dataset):
         owner = conn.execute("SELECT c.email, o.placed_at FROM orders o JOIN customers c USING(customer_id) "
                              "WHERE o.order_id = ?", (lab["referenced_order_id"],)).fetchone()
         assert owner is not None, lab["ticket_id"]
-        assert owner[0] == email
+        if lab["adversarial_type"] == "impersonation":      # S25: the order belongs to someone else
+            assert owner[0] != email                        # (asserted in detail in test_datagen_adversarial)
+        else:
+            assert owner[0] == email
         assert lab["referenced_order_id"] in body + subject
         assert received_at > owner[1]                       # ticket arrives after the order was placed
         assert set(ORDER_ID.findall(body + subject)) <= {lab["referenced_order_id"]}
@@ -179,7 +182,7 @@ def test_expected_facts_match_database(dataset):
     conn, labs, _ = dataset
     for lab in labs:
         oid = lab["referenced_order_id"]
-        if oid is None:
+        if oid is None or lab["adversarial_type"] == "impersonation":   # S25 facts describe the request, not the order
             continue
         status, promised = conn.execute("SELECT status, promised_date FROM orders WHERE order_id=?", (oid,)).fetchone()
         facts = lab["expected_facts"]

@@ -22,7 +22,7 @@ _GREETINGS = {
     "terse": [""],
 }
 _EXTRAS = {
-    "polite": ["I hope you can help.", "Thanks for your help with this."],
+    "polite": ["I hope you can help.", "I'd appreciate your help with this."],
     "frustrated": ["This is really frustrating.", "I'm quite disappointed with the service so far.",
                    "I expected better from you."],
 }
@@ -67,13 +67,26 @@ def fmt_money(cents: int) -> str:
     return f"${cents // 100:,}.{cents % 100:02d}"
 
 
-def add_typos(rng: random.Random, text: str, max_typos: int = 2) -> str:
+def _spans(text: str, fragments: tuple[str, ...]) -> list[tuple[int, int]]:
+    spans = []
+    for fragment in fragments:
+        start = text.find(fragment)
+        while fragment and start != -1:
+            spans.append((start, start + len(fragment)))
+            start = text.find(fragment, start + len(fragment))
+    return spans
+
+
+def add_typos(rng: random.Random, text: str, max_typos: int = 2, protect: tuple[str, ...] = ()) -> str:
     """Swap two adjacent letters inside up to max_typos words of 6+ letters.
 
     Month and weekday names are protected. Order ids and numbers are never touched because only
-    purely alphabetic words are candidates.
+    purely alphabetic words are candidates. Any text in `protect` (for example a requested delivery
+    address that a label records) is left exactly as written, so labels and ticket text cannot disagree.
     """
-    words = [m for m in _WORD.finditer(text) if m.group().lower() not in _PROTECTED]
+    spans = _spans(text, tuple(protect))
+    words = [m for m in _WORD.finditer(text) if m.group().lower() not in _PROTECTED
+             and not any(s <= m.start() and m.end() <= e for s, e in spans)]
     if not words:
         return text
     k = min(len(words), rng.randint(1, max_typos))
@@ -87,10 +100,11 @@ def add_typos(rng: random.Random, text: str, max_typos: int = 2) -> str:
     return text
 
 
-def compose(rng: random.Random, core: str, first_name: str, tone: str, typo: bool) -> str:
+def compose(rng: random.Random, core: str, first_name: str, tone: str, typo: bool,
+            protect: tuple[str, ...] = ()) -> str:
     """Wrap the core request with a greeting, an optional tone sentence, a closing and a name."""
     if typo:
-        core = add_typos(rng, core)
+        core = add_typos(rng, core, protect=protect)
     parts = []
     greeting = rng.choice(_GREETINGS[tone])
     if greeting:
