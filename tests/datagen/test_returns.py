@@ -4,9 +4,11 @@ from datetime import datetime
 
 import pytest
 
-from src.datagen import config, labels, policy, reference, text
-from src.datagen.db import create_database, load_base_data, load_orders
-from src.datagen.scenario_registry import SCENARIOS
+from src.datagen import config
+from src.datagen.domain import labels, policy, reference
+from src.datagen.generation import text
+from src.datagen.store.db import create_database, load_base_data, load_orders
+from src.datagen.scenarios.registry import SCENARIOS
 from src.datagen.tickets import create_ticket_dataset
 
 

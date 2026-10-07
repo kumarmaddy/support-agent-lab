@@ -7,10 +7,11 @@ import argparse
 import sys
 from pathlib import Path
 
-from . import checks, config
-from .db import create_database, load_base_data, load_orders
-from .scenario_base import MissingHeldoutPhrasing
-from .tickets import create_ticket_dataset
+from src.datagen import config
+from src.datagen.store import checks
+from src.datagen.store.db import create_database, load_base_data, load_orders
+from src.datagen.scenarios.base import MissingHeldoutPhrasing
+from src.datagen.tickets import create_ticket_dataset
 
 
 def main(argv: list[str] | None = None) -> int:

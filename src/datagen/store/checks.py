@@ -6,7 +6,7 @@ an empty result means the check passes. Extended with label checks in stage 0.4d
 """
 import sqlite3
 
-from . import config
+from src.datagen import config
 
 _NOW = config.AS_OF_DATETIME.strftime("%Y-%m-%dT%H:%M:%S")
 _TODAY = config.AS_OF_DATE.isoformat()

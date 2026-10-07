@@ -4,8 +4,11 @@ from datetime import datetime
 
 import pytest
 
-from src.datagen import checks, config, orders, policy
-from src.datagen.db import create_database, load_base_data, load_orders
+from src.datagen import config
+from src.datagen.domain import policy
+from src.datagen.generation import orders
+from src.datagen.store import checks
+from src.datagen.store.db import create_database, load_base_data, load_orders
 
 
 def build_db(tmp_path, seed=20261006, name="support.db"):

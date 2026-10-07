@@ -4,8 +4,8 @@ from collections import Counter
 
 import pytest
 
-from src.datagen import labels
-from src.datagen.db import create_database, load_base_data, load_orders
+from src.datagen.domain import labels
+from src.datagen.store.db import create_database, load_base_data, load_orders
 from src.datagen.tickets import create_ticket_dataset
 
 ORDER_ID = re.compile(r"O-\d{6}")
@@ -150,7 +150,7 @@ def test_dataset_is_complete_and_balanced(ds):
 
 
 def test_every_category_and_action_is_exercised(ds):
-    from src.datagen.taxonomy import ACTIONS, CATEGORIES
+    from src.datagen.domain.taxonomy import ACTIONS, CATEGORIES
     _, labs = ds
     assert {l["category"] for l in labs} == set(CATEGORIES)
     assert {a for l in labs for a in l["expected_actions"]} == set(ACTIONS)
@@ -158,7 +158,7 @@ def test_every_category_and_action_is_exercised(ds):
 
 def test_every_knowledge_base_article_is_needed_by_some_ticket(ds):
     """Each article stage 0.5 must write is required by at least one label, and none is orphaned."""
-    from src.datagen.kb_catalogue import KB_ARTICLES
+    from src.datagen.domain.kb_catalogue import KB_ARTICLES
     _, labs = ds
     required = Counter(k for l in labs for k in l["required_kb_ids"])
     assert set(required) == set(KB_ARTICLES)

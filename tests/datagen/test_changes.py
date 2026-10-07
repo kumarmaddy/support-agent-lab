@@ -1,8 +1,9 @@
 """Tests for stage 0.4c-3a: cancellations and address changes (S13-S16)."""
 import pytest
 
-from src.datagen import config, labels
-from src.datagen.db import create_database, load_base_data, load_orders
+from src.datagen import config
+from src.datagen.domain import labels
+from src.datagen.store.db import create_database, load_base_data, load_orders
 from src.datagen.tickets import create_ticket_dataset
 
 

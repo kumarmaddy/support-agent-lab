@@ -35,7 +35,7 @@ Observations:
 - The 3B miss: "charged twice, please refund" labelled order_status (surface feature: an order number
   appeared in the text).
 - Priority output differed between models for the same tickets (for example refund: low vs high).
-  No priority rubric existed at test time; see docs/priority-rubric.md.
+  No priority rubric existed at test time; see docs/design/priority-rubric.md.
 - Earlier test without a schema (smoke_test.py): valid JSON but the category field copied the prompt
   template. Lesson: valid structure is not a correct answer.
 

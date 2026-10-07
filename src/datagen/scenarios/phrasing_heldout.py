@@ -11,7 +11,7 @@ Rules for every pool (enforced by tests/test_datagen_heldout.py):
 
 Scenarios without an entry cannot yet be generated for the held-out split.
 """
-from .scenario_base import Phrasing
+from src.datagen.scenarios.base import Phrasing
 
 HELDOUT: dict[str, list] = {
     # S01 order in transit, within the promised date

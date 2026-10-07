@@ -1,15 +1,26 @@
 """Scenario family: returns, exchanges and refunds (S05-S11, S21, S23).
 
-Design reference: docs/data-design.md section 7. Whether a return is accepted is decided by
+Design reference: docs/design/data-design.md section 7. Whether a return is accepted is decided by
 policy.within_return_window, not by hard-coded expectations, so labels always follow the policy.
 """
 import random
 
-from . import policy, reference, text
-from .orders import OrderSpec
-from .scenario_base import (GeneratedTicket, Phrasing, ScenarioContext, ScenarioDef,
-                            build_single_order_ticket, delivered_at, delivered_date_field,
-                            duplicate_facts, duplicate_fields, shipped_facts, window_facts)
+from src.datagen.domain import policy, reference
+from src.datagen.generation import text
+from src.datagen.generation.orders import OrderSpec
+from src.datagen.scenarios.base import (
+    GeneratedTicket,
+    Phrasing,
+    ScenarioContext,
+    ScenarioDef,
+    build_single_order_ticket,
+    delivered_at,
+    delivered_date_field,
+    duplicate_facts,
+    duplicate_fields,
+    shipped_facts,
+    window_facts,
+)
 
 RETURN_SUBJECTS = ["Return request for {order_id}", "Return question", "How do I return an item?",
                    "Order {order_id} return"]

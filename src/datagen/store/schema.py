@@ -1,6 +1,6 @@
 """SQLite schema for the operational database.
 
-Design reference: docs/data-design.md section 4.
+Design reference: docs/design/data-design.md section 4.
 All monetary amounts are integer cents (USD). Ground-truth labels are NOT stored here.
 """
 

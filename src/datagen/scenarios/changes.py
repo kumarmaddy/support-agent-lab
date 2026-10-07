@@ -1,14 +1,21 @@
 """Scenario family: cancellations and address changes (S13-S16).
 
-Policy (docs/data-design.md section 3): cancellation and address changes are possible only before
+Policy (docs/design/data-design.md section 3): cancellation and address changes are possible only before
 dispatch. Before dispatch the correct action is a proposal; after dispatch it is a policy decline.
 """
 import random
 
-from . import reference
-from .orders import OrderSpec
-from .scenario_base import (GeneratedTicket, Phrasing, ScenarioContext, ScenarioDef,
-                            build_single_order_ticket, processing_facts, shipped_facts)
+from src.datagen.domain import reference
+from src.datagen.generation.orders import OrderSpec
+from src.datagen.scenarios.base import (
+    GeneratedTicket,
+    Phrasing,
+    ScenarioContext,
+    ScenarioDef,
+    build_single_order_ticket,
+    processing_facts,
+    shipped_facts,
+)
 
 CANCEL_SUBJECTS = ["Cancel order {order_id}", "Cancellation request", "Please cancel my order",
                    "Order {order_id} cancellation"]

@@ -3,9 +3,10 @@ import re
 
 import pytest
 
-from src.datagen import labels, text
-from src.datagen.db import create_database, load_base_data, load_orders
-from src.datagen.kb_catalogue import KB_ARTICLES
+from src.datagen.domain import labels
+from src.datagen.generation import text
+from src.datagen.store.db import create_database, load_base_data, load_orders
+from src.datagen.domain.kb_catalogue import KB_ARTICLES
 from src.datagen.tickets import create_ticket_dataset
 
 ORDER_ID = re.compile(r"O-\d{6}")

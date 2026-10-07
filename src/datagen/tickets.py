@@ -8,12 +8,13 @@ registered (stage 0.4d freezes it).
 import sqlite3
 from pathlib import Path
 
-from . import config, labels
-from .base_data import make_rng
-from .db import insert_order_rows
-from .orders import IdAllocator, OrderContext, OrderRows, ts
-from .scenario_base import GeneratedTicket, MissingHeldoutPhrasing, ScenarioContext
-from .scenario_registry import get_scenarios
+from src.datagen import config
+from src.datagen.domain import labels
+from src.datagen.generation.base_data import make_rng
+from src.datagen.store.db import insert_order_rows
+from src.datagen.generation.orders import IdAllocator, OrderContext, OrderRows, ts
+from src.datagen.scenarios.base import GeneratedTicket, MissingHeldoutPhrasing, ScenarioContext
+from src.datagen.scenarios.registry import get_scenarios
 
 
 def build_scenario_context(conn: sqlite3.Connection, split: str = "dev") -> ScenarioContext:
@@ -42,7 +43,7 @@ def generate_tickets(conn: sqlite3.Connection, seed: int,
     generated: list[GeneratedTicket] = []
     selected = get_scenarios(scenario_ids)
     if split == "heldout":
-        from .phrasing_heldout import HELDOUT       # guard: never fall back to dev wording
+        from src.datagen.scenarios.phrasing_heldout import HELDOUT
         missing = [s.scenario_id for s in selected if s.scenario_id not in HELDOUT]
         if missing:
             raise MissingHeldoutPhrasing(f"no held-out phrasing for: {', '.join(missing)}")

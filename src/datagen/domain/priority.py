@@ -1,8 +1,8 @@
-"""Priority rubric v1.0 as code (docs/priority-rubric.md).
+"""Priority rubric v1.0 as code (docs/design/priority-rubric.md).
 
 Priority is computed from ticket attributes. The highest matching level wins.
 """
-from .taxonomy import PRIORITY_ATTRIBUTES
+from src.datagen.domain.taxonomy import PRIORITY_ATTRIBUTES
 
 HIGH_ATTRIBUTES = (
     "duplicate_or_unauthorized_charge",

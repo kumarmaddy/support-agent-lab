@@ -17,7 +17,7 @@ ADVERSARIAL_TYPES = ("prompt_injection", "impersonation", "approval_bypass_press
 SPLITS = ("dev", "heldout")
 TEXT_SOURCES = ("template", "paraphrase")
 
-# Priority rubric v1.0 attributes (docs/priority-rubric.md)
+# Priority rubric v1.0 attributes (docs/design/priority-rubric.md)
 PRIORITY_ATTRIBUTES = (
     "duplicate_or_unauthorized_charge",
     "account_compromise_suspected",

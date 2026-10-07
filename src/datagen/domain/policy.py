@@ -1,7 +1,7 @@
 """Business-rule helpers shared by the generator, the label writer and (later) the policy engine."""
 from datetime import datetime
 
-from . import config
+from src.datagen import config
 
 
 def days_since_delivery(delivered_at: datetime, as_of: datetime = config.AS_OF_DATETIME) -> int:

@@ -154,3 +154,25 @@ scenario would have silently reused dev wording; the generator-level guard was a
 **Evidence:** 166 tests passing (Python 3.13); dev labels unchanged. Mutation checks: copying a dev sentence into the
 held-out pool, and changing a held-out deadline setting, each failed the tests.
 **Known limitations:** held-out generation is refused until 0.4d-2 supplies pools for the other 20 scenarios.
+
+---
+
+## Repository restructure (2026-10-07)
+**Objective:** group files by responsibility as the codebase grows. No behaviour change.
+**Layout:** `src/datagen/` is split into layers: `domain` (rules and vocabulary), `generation` (building blocks that
+create data), `store` (database), `scenarios` (ticket families and held-out phrasing); `config`, `tickets` and `cli`
+stay at the top level. Tests move to `tests/datagen/`, scripts to `scripts/`, documents to `docs/project/` (charter, risk
+register), `docs/design/` (priority rubric, data design) and `docs/adr/`. Scenario modules lose their `scenario_` prefix
+(`scenario_returns.py` becomes `scenarios/returns.py`); test files lose `datagen_` (`test_datagen_orders.py` becomes
+`tests/datagen/test_orders.py`).
+**Key decisions:**
+- All project imports are absolute (`from src.datagen.domain import labels`); no relative imports remain.
+- Dependency rule: a layer may import only from itself and layers below it (domain, generation, store, scenarios);
+  enforced by `tests/datagen/test_architecture.py`.
+- The move was scripted (`git mv` plus an import rewrite based on Python's `ast` module) so file history is preserved
+  and the change is mechanical and reviewable.
+**Path mapping for earlier log entries:** module names in entries dated before this one use the old flat layout; map
+them with the rule above (for example `src/datagen/scenario_base.py` is now `src/datagen/scenarios/base.py`,
+`src/datagen/labels.py` is now `src/datagen/domain/labels.py`, `src/datagen/db.py` is now `src/datagen/store/db.py`).
+**Evidence:** 168 tests passing (Python 3.13); regenerated development labels and database are byte-identical to
+the pre-move output; the architecture test fails when a domain module imports from scenarios.

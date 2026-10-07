@@ -4,8 +4,14 @@ None of these tickets refers to an order. The sender is identified by the ticket
 """
 import random
 
-from .scenario_base import (GeneratedTicket, Phrasing, ScenarioContext, ScenarioDef,
-                            build_account_ticket, calm)
+from src.datagen.scenarios.base import (
+    GeneratedTicket,
+    Phrasing,
+    ScenarioContext,
+    ScenarioDef,
+    build_account_ticket,
+    calm,
+)
 
 ACCOUNT_SUBJECTS = ["Can't log in", "Problem with my account", "Account help", "Sign-in problem"]
 SECURITY_SUBJECTS = ["Urgent: account security", "Someone else is using my account",

@@ -1,15 +1,27 @@
 """Scenario family: order status and delivery timing (S01, S02, S03, S04, S22).
 
-Design reference: docs/data-design.md section 7.
+Design reference: docs/design/data-design.md section 7.
 """
 import random
 from datetime import datetime
 
-from . import labels, priority, text
-from .orders import OrderSpec, build_order, plan_timeline
-from .scenario_base import (GeneratedTicket, Phrasing, ScenarioContext, ScenarioDef,
-                            build_single_order_ticket, choose_customer, latest_event,
-                            note_open_orders, pick, pick_received_at, processing_facts, shipped_facts)
+from src.datagen.domain import labels, priority
+from src.datagen.generation import text
+from src.datagen.generation.orders import OrderSpec, build_order, plan_timeline
+from src.datagen.scenarios.base import (
+    GeneratedTicket,
+    Phrasing,
+    ScenarioContext,
+    ScenarioDef,
+    build_single_order_ticket,
+    choose_customer,
+    latest_event,
+    note_open_orders,
+    pick,
+    pick_received_at,
+    processing_facts,
+    shipped_facts,
+)
 
 STATUS_SUBJECTS = [
     "Where is my order {order_id}?",

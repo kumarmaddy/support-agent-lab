@@ -7,7 +7,7 @@ Two steps keep the logic testable:
 Scenario builders (stage 0.4c) call the same functions with forced specs, so scenario orders and
 background orders follow identical consistency rules.
 
-Simplifications (documented in docs/data-design.md): calendar days (no business-day calendar),
+Simplifications (documented in docs/design/data-design.md): calendar days (no business-day calendar),
 full-order refunds and returns, no tax or shipping charges, cancellations only before dispatch,
 duplicate charges only on orders that are not cancelled or returned.
 """
@@ -15,8 +15,9 @@ from dataclasses import dataclass, field
 from datetime import date, datetime, timedelta
 import random
 
-from . import config, reference
-from .base_data import make_rng
+from src.datagen import config
+from src.datagen.domain import reference
+from src.datagen.generation.base_data import make_rng
 
 STATES = tuple(config.ORDER_STATE_WEIGHTS)
 RETURN_STATES = {"return_in_progress", "returned_refund_pending", "returned_refunded"}

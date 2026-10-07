@@ -6,10 +6,13 @@ import random
 
 import pytest
 
-from src.datagen import checks, cli, config, labels, priority, text
-from src.datagen.db import create_database, load_base_data, load_orders
-from src.datagen.orders import IdAllocator
-from src.datagen.scenario_registry import SCENARIOS
+from src.datagen import cli, config
+from src.datagen.domain import labels, priority
+from src.datagen.generation import text
+from src.datagen.store import checks
+from src.datagen.store.db import create_database, load_base_data, load_orders
+from src.datagen.generation.orders import IdAllocator
+from src.datagen.scenarios.registry import SCENARIOS
 from src.datagen.tickets import create_ticket_dataset
 
 ORDER_ID = re.compile(r"O-\d{6}")

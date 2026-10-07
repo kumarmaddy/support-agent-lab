@@ -8,8 +8,16 @@ from dataclasses import dataclass, replace
 from datetime import date, datetime, timedelta
 from typing import Callable
 
-from . import config, labels, policy, priority, text
-from .orders import OrderContext, OrderRows, OrderSpec, build_order, plan_timeline
+from src.datagen import config
+from src.datagen.domain import labels, policy, priority
+from src.datagen.generation import text
+from src.datagen.generation.orders import (
+    OrderContext,
+    OrderRows,
+    OrderSpec,
+    build_order,
+    plan_timeline,
+)
 
 OPEN_STATUSES = ("processing", "shipped")
 
@@ -69,7 +77,7 @@ def pick(sctx: ScenarioContext, scenario_id: str, dev_pool: list, i: int):
     if sctx.split == "dev":
         pool = dev_pool
     else:
-        from .phrasing_heldout import HELDOUT       # imported here: that module imports this one
+        from src.datagen.scenarios.phrasing_heldout import HELDOUT
         if scenario_id not in HELDOUT:
             raise MissingHeldoutPhrasing(scenario_id)
         pool = HELDOUT[scenario_id]

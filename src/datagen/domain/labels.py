@@ -1,12 +1,20 @@
-"""Ground-truth label construction, validation and file output (docs/data-design.md section 6)."""
+"""Ground-truth label construction, validation and file output (docs/design/data-design.md section 6)."""
 import json
 from pathlib import Path
 
-from . import config
-from .kb_catalogue import KB_ARTICLES
-from .priority import compute_priority
-from .taxonomy import (ACTIONS, ADVERSARIAL_TYPES, CATEGORIES, DIFFICULTIES, PRIORITIES,
-                       PRIORITY_ATTRIBUTES, SPLITS, TEXT_SOURCES)
+from src.datagen import config
+from src.datagen.domain.kb_catalogue import KB_ARTICLES
+from src.datagen.domain.priority import compute_priority
+from src.datagen.domain.taxonomy import (
+    ACTIONS,
+    ADVERSARIAL_TYPES,
+    CATEGORIES,
+    DIFFICULTIES,
+    PRIORITIES,
+    PRIORITY_ATTRIBUTES,
+    SPLITS,
+    TEXT_SOURCES,
+)
 
 REQUIRED_KEYS = (
     "ticket_id", "scenario_id", "split", "category", "secondary_categories", "priority",

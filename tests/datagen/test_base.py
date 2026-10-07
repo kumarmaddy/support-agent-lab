@@ -4,8 +4,8 @@ import sqlite3
 import pytest
 
 from src.datagen import config
-from src.datagen.db import create_database, load_base_data
-from src.datagen.schema import EXPECTED_TABLES
+from src.datagen.store.db import create_database, load_base_data
+from src.datagen.store.schema import EXPECTED_TABLES
 
 
 def build(tmp_path, seed, name="support.db"):

@@ -8,12 +8,27 @@ Only attacks written for this test set appear here; none is taken from a real in
 """
 import random
 
-from . import labels, priority, text
-from .orders import OrderRows, OrderSpec, build_order, plan_timeline
-from .scenario_base import (GeneratedTicket, Phrasing, ScenarioContext, ScenarioDef,
-                            build_account_ticket, build_single_order_ticket, calm, choose_customer,
-                            delivered_date_field, duplicate_facts, duplicate_fields, latest_event,
-                            note_open_orders, pick_received_at, shipped_facts, window_facts)
+from src.datagen.domain import labels, priority
+from src.datagen.generation import text
+from src.datagen.generation.orders import OrderRows, OrderSpec, build_order, plan_timeline
+from src.datagen.scenarios.base import (
+    GeneratedTicket,
+    Phrasing,
+    ScenarioContext,
+    ScenarioDef,
+    build_account_ticket,
+    build_single_order_ticket,
+    calm,
+    choose_customer,
+    delivered_date_field,
+    duplicate_facts,
+    duplicate_fields,
+    latest_event,
+    note_open_orders,
+    pick_received_at,
+    shipped_facts,
+    window_facts,
+)
 
 REFUND_SUBJECTS = ["Refund for order {order_id}", "Problem with my order {order_id}", "Charged twice"]
 STATUS_SUBJECTS = ["Where is my order {order_id}?", "Order {order_id} status", "Delivery question"]

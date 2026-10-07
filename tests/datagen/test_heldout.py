@@ -4,13 +4,15 @@ import re
 
 import pytest
 
-from src.datagen import config, labels, scenario_order_status
-from src.datagen.db import create_database, load_base_data, load_orders
-from src.datagen.phrasing_heldout import HELDOUT
-from src.datagen.scenario_base import MissingHeldoutPhrasing, Phrasing
+from src.datagen import config
+from src.datagen.domain import labels
+from src.datagen.scenarios import order_status
+from src.datagen.store.db import create_database, load_base_data, load_orders
+from src.datagen.scenarios.phrasing_heldout import HELDOUT
+from src.datagen.scenarios.base import MissingHeldoutPhrasing, Phrasing
 from src.datagen.tickets import create_ticket_dataset
 
-DEV_MODULES = [scenario_order_status]       # extended as families gain held-out pools (0.4d-2)
+DEV_MODULES = [order_status]       # extended as families gain held-out pools (0.4d-2)
 COVERED = {"S01", "S02", "S03", "S04", "S22"}
 
 

@@ -2,8 +2,8 @@
 import sqlite3
 from pathlib import Path
 
-from . import base_data, orders
-from .schema import DDL
+from src.datagen.generation import base_data, orders
+from src.datagen.store.schema import DDL
 
 
 def create_database(path: Path, force: bool = False) -> sqlite3.Connection:

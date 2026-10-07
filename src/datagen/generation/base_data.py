@@ -5,7 +5,8 @@ Pure functions: a seed in, plain tuples out. No database access here, which keep
 import random
 from datetime import timedelta
 
-from . import config, reference
+from src.datagen import config
+from src.datagen.domain import reference
 
 
 def make_rng(seed: int, stream: str) -> random.Random:

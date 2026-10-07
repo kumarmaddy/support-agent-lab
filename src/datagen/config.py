@@ -21,7 +21,7 @@ PROMISE_DAYS = 10            # promised_date = placed date + 10 calendar days
 RETURN_WINDOW_DAYS = 30      # returns accepted up to 30 days after delivery (inclusive)
 P_DUPLICATE_CHARGE = 0.02    # share of eligible background orders with a duplicate charge
 
-# Background order mix (weights sum to 1.0). See docs/data-design.md section 4.
+# Background order mix (weights sum to 1.0). See docs/design/data-design.md section 4.
 ORDER_STATE_WEIGHTS = {
     "processing": 0.06,
     "in_transit": 0.08,
