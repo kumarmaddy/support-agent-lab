@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| Version | 1.7 |
+| Version | 1.8 |
 | Date | 2026-10-07 (first issued 2026-10-06) |
 | Owner | Kumar Maddipatla, Project Lead |
 | Phase | 0 (Discovery and baseline), stage 0.3 |
@@ -25,8 +25,8 @@ before tuning begins.
 
 ## 3. Company and provisional policies (fictional)
 Company: NorthPeak Outdoors, an online retailer of outdoor apparel and gear.
-Policies below are provisional v1 and are published as knowledge-base articles. Approval thresholds
-for refunds are decided in ADR-004 (stage 0.7).
+Policies below are provisional v1 and are published as knowledge-base articles. Refund approval
+thresholds are set in ADR-004 (accepted 2026-10-07).
 
 | Policy | Provisional rule |
 |--------|------------------|
@@ -173,7 +173,9 @@ Allowed values:
 Priority is computed from priority_attributes by the rubric function and must equal the recorded value.
 Every label is validated on creation (src/datagen/labels.py): allowed values, priority consistency,
 escalation fields, known knowledge-base ids.
-Policy-engine outcomes (auto-approve, require approval) are added to labels after ADR-004 sets thresholds.
+Policy-engine outcomes (auto-approve, require approval, deny) are not stored in labels. They are derived by the
+policy engine from the ADR-004 rules and the ticket's database facts, so the frozen dataset (version 1.0.0) does not change.
+The evaluation harness recomputes the expected outcome with the same rules and compares it with the engine's decision.
 
 ## 7. Scenario catalogue (dataset v1, development split: 150 tickets)
 
@@ -361,7 +363,7 @@ module can read the `data/labels` directory.
 ## 11. Open decisions
 | Item | Owner | When |
 |------|-------|------|
-| Refund approval thresholds (ADR-004) | Project Lead | Stage 0.7 |
+| Refund approval thresholds | Project Lead | Decided: ADR-004 (2026-10-07) |
 | Knowledge-base article authoring approach and review | Project Lead | Stage 0.5 |
 | Lost-in-transit scenario and any rubric extension (v1.1) | Project Lead | After Phase 1 |
 
@@ -387,6 +389,7 @@ build until the dataset is deliberately re-frozen.
 3. A defect found in the frozen dataset is recorded and fixed through rule 2; the old version is not edited in place.
 
 ## 12. Change log
+- 1.8 (2026-10-07): refund approval thresholds decided (ADR-004); policy outcomes are derived by rule rather than stored in labels, so dataset 1.0.0 is unchanged.
 - 1.7 (2026-10-07): knowledge-base articles written; article format, location, enforced checks and relationship to the frozen dataset recorded (section 7a); repository layout updated.
 - 1.6 (2026-10-07): dataset v1.0.0 frozen; held-out size corrected to 150; held-out phrasing rule recorded (section 8,
   item 7); dataset-level checks and manifest added to section 9; change control added (section 13).

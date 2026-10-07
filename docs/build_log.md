@@ -273,3 +273,21 @@ spelled out in the test, and a deliberate break (counting paused time) fails it.
 no minimum per scenario, session importing labels) each failed a test; a scripted run of the real command line worked end to end.
 **Known limitations:** the baseline is single-handler and the handler is the project author; the run itself (about two
 hours across sessions) and the generated report follow in this stage.
+
+---
+
+## Stage 0.7a: Refund approval thresholds (2026-10-07)
+**Objective:** fix the refund approval limits before the policy engine and approval service are built (spec FR-6, FR-7).
+**Files (new):** `docs/adr/ADR-004-refund-approval-thresholds.md`
+**Files (changed):** `docs/design/data-design.md` (1.7 to 1.8)
+**Key decisions:**
+- Auto-approval up to $50.00, support-agent approval up to $250.00, support-lead approval above; four mandatory
+  conditions for every tier and three more for auto-approval. Shadow mode (everything approved by a person) until Phase 4.
+- The limits are a stated risk position defended by exposure reasoning. The development split described the scale of
+  amounts only; the held-out split was not consulted.
+- Policy outcomes are derived by rule and are not stored in labels, so dataset 1.0.0 and its freeze are unchanged.
+- ADR numbering: the shared foundations document reserves ADR-004 for the vector store; this project committed the number
+  to the refund thresholds earlier, and the vector-store decision takes the next free number.
+**Evidence:** document stage; figures in the ADR were recomputed from the development labels and database (20 refund-action
+tickets; counts at each limit; minimum adversarial amount $84.99).
+**Open (stage 0.7b):** Phase 0 exit review after the manual baseline report is produced.
