@@ -70,6 +70,20 @@ class IdAllocator:
         prefix, width = self.FORMATS[kind]
         return f"{prefix}{self._n[kind]:0{width}d}"
 
+    @classmethod
+    def continuing_from(cls, conn) -> "IdAllocator":
+        """Start numbering after the highest id already stored, so scenario orders never collide
+        with the background order pool."""
+        tables = {"order": ("orders", "order_id"), "item": ("order_items", "order_item_id"),
+                  "shipment": ("shipments", "shipment_id"), "payment": ("payments", "payment_id"),
+                  "refund": ("refunds", "refund_id"), "return": ("returns", "return_id")}
+        allocator = cls()
+        for kind, (table, column) in tables.items():
+            highest = conn.execute(f"SELECT MAX({column}) FROM {table}").fetchone()[0]
+            if highest:
+                allocator._n[kind] = int(highest.rsplit("-", 1)[1])
+        return allocator
+
 
 @dataclass
 class OrderContext:

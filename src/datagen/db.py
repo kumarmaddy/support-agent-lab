@@ -34,18 +34,24 @@ def load_base_data(conn: sqlite3.Connection, seed: int) -> dict[str, int]:
     return {"customers": len(customers), "addresses": len(addresses), "products": len(products)}
 
 
+def insert_order_rows(conn: sqlite3.Connection, rows: orders.OrderRows) -> None:
+    """Insert generated order rows into all related tables (one transaction)."""
+    with conn:
+        conn.executemany("INSERT INTO orders VALUES (?,?,?,?,?,?,?)", rows.orders)
+        conn.executemany("INSERT INTO order_items VALUES (?,?,?,?,?,?)", rows.order_items)
+        conn.executemany("INSERT INTO shipments VALUES (?,?,?,?,?,?,?)", rows.shipments)
+        conn.executemany("INSERT INTO payments VALUES (?,?,?,?,?,?)", rows.payments)
+        conn.executemany("INSERT INTO refunds VALUES (?,?,?,?,?)", rows.refunds)
+        conn.executemany("INSERT INTO returns VALUES (?,?,?,?,?)", rows.returns)
+
+
 def load_orders(conn: sqlite3.Connection, seed: int) -> dict[str, int]:
+    """Generate the background order pool from the customers/addresses/products already loaded."""
     customers = conn.execute("SELECT * FROM customers ORDER BY customer_id").fetchall()
     addresses = conn.execute("SELECT * FROM addresses ORDER BY address_id").fetchall()
     products = conn.execute("SELECT * FROM products ORDER BY product_id").fetchall()
     pool = orders.generate_order_pool(seed, customers, addresses, products)
-    with conn:
-        conn.executemany("INSERT INTO orders VALUES (?,?,?,?,?,?,?)", pool.orders)
-        conn.executemany("INSERT INTO order_items VALUES (?,?,?,?,?,?)", pool.order_items)
-        conn.executemany("INSERT INTO shipments VALUES (?,?,?,?,?,?,?)", pool.shipments)
-        conn.executemany("INSERT INTO payments VALUES (?,?,?,?,?,?)", pool.payments)
-        conn.executemany("INSERT INTO refunds VALUES (?,?,?,?,?)", pool.refunds)
-        conn.executemany("INSERT INTO returns VALUES (?,?,?,?,?)", pool.returns)
+    insert_order_rows(conn, pool)
     return {"orders": len(pool.orders), "order_items": len(pool.order_items),
             "shipments": len(pool.shipments), "payments": len(pool.payments),
             "refunds": len(pool.refunds), "returns": len(pool.returns)}

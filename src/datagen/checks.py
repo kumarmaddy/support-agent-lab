@@ -47,7 +47,8 @@ CHECKS: dict[str, tuple[str, tuple]] = {
         "UNION SELECT payment_id FROM payments WHERE created_at > ? "
         "UNION SELECT shipment_id FROM shipments WHERE dispatched_at > ? OR delivered_at > ? "
         "UNION SELECT return_id FROM returns WHERE label_issued_at > ? OR received_at > ? "
-        "UNION SELECT refund_id FROM refunds WHERE requested_at > ?", (_NOW,) * 7),
+        "UNION SELECT refund_id FROM refunds WHERE requested_at > ? "
+        "UNION SELECT ticket_id FROM tickets WHERE received_at > ?", (_NOW,) * 8),
     "return_dates_and_status_consistent": (
         "SELECT r.return_id FROM returns r JOIN shipments s USING (order_id) "
         "WHERE r.label_issued_at <= s.delivered_at "
@@ -71,6 +72,8 @@ CHECKS: dict[str, tuple[str, tuple]] = {
     "customer_existed_when_ordering": (
         "SELECT o.order_id FROM orders o JOIN customers c USING (customer_id) "
         "WHERE c.created_at > substr(o.placed_at, 1, 10)", ()),
+    "tickets_come_from_known_customers": (
+        "SELECT ticket_id FROM tickets WHERE customer_email NOT IN (SELECT email FROM customers)", ()),
     "duplicate_charge_follows_original": (
         "SELECT d.payment_id FROM payments d LEFT JOIN payments p ON p.order_id = d.order_id "
         "AND p.status IN ('captured', 'refunded') AND p.amount_cents = d.amount_cents "

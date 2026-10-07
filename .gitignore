@@ -55,6 +55,10 @@ cover/
 #database
 *.db
 
+#data
+data/generated/
+data/labels/
+
 # Translations
 *.mo
 *.pot
