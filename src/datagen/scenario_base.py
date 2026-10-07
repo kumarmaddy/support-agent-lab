@@ -33,6 +33,7 @@ class ScenarioContext:
     open_customer_ids: set[str]       # customers with at least one open (processing/shipped) order
     reserved_customer_ids: set[str]   # customers whose open-order count must not change later
     now: datetime = config.AS_OF_DATETIME
+    split: str = "dev"                # "dev" or "heldout"; selects the phrasing pool (see pick)
 
 
 @dataclass
@@ -52,6 +53,27 @@ class ScenarioDef:
     name: str
     count: int
     build: Callable[[ScenarioContext, random.Random, int], GeneratedTicket]
+
+
+class MissingHeldoutPhrasing(LookupError):
+    """Raised when the held-out split is requested for a scenario that has no held-out phrasing yet."""
+
+
+def pick(sctx: ScenarioContext, scenario_id: str, dev_pool: list, i: int):
+    """Choose entry i of the phrasing pool for the current split.
+
+    The held-out pool has the same length and the same meaning at each index as the dev pool (so
+    labels and edge-case coverage match) but different wording. A missing held-out pool is an error,
+    never a silent fallback to dev wording, because that would leak dev phrasing into the test set.
+    """
+    if sctx.split == "dev":
+        pool = dev_pool
+    else:
+        from .phrasing_heldout import HELDOUT       # imported here: that module imports this one
+        if scenario_id not in HELDOUT:
+            raise MissingHeldoutPhrasing(scenario_id)
+        pool = HELDOUT[scenario_id]
+    return pool[i % len(pool)]
 
 
 def calm(rng: random.Random, phrasing: Phrasing) -> Phrasing:

@@ -9,6 +9,7 @@ from pathlib import Path
 
 from . import checks, config
 from .db import create_database, load_base_data, load_orders
+from .scenario_base import MissingHeldoutPhrasing
 from .tickets import create_ticket_dataset
 
 
@@ -32,7 +33,11 @@ def main(argv: list[str] | None = None) -> int:
     try:
         counts = load_base_data(conn, seed)
         counts.update(load_orders(conn, seed))
-        ticket_summary = create_ticket_dataset(conn, seed, args.split, args.labels_dir)
+        try:
+            ticket_summary = create_ticket_dataset(conn, seed, args.split, args.labels_dir)
+        except MissingHeldoutPhrasing as exc:
+            print(f"Cannot build the held-out split yet: {exc}")
+            return 2
         status_mix = conn.execute(
             "SELECT status, COUNT(*) FROM orders GROUP BY status ORDER BY 2 DESC").fetchall()
         duplicates = conn.execute(
@@ -49,8 +54,6 @@ def main(argv: list[str] | None = None) -> int:
     print(f"  duplicate-charge payments: {duplicates}")
     print(f"Tickets: {ticket_summary['tickets']} -> labels at {ticket_summary['labels_path']}")
     print("  by scenario: " + ", ".join(f"{k}={v}" for k, v in ticket_summary["by_scenario"].items()))
-    if args.split == "heldout":
-        print("NOTE: held-out phrasing is not yet separated from development phrasing (planned for 0.4d).")
     if violations:
         print(f"INTEGRITY CHECKS FAILED ({len(violations)}):")
         for v in violations:

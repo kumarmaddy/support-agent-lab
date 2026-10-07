@@ -9,7 +9,7 @@ from . import labels, priority, text
 from .orders import OrderSpec, build_order, plan_timeline
 from .scenario_base import (GeneratedTicket, Phrasing, ScenarioContext, ScenarioDef,
                             build_single_order_ticket, choose_customer, latest_event,
-                            note_open_orders, pick_received_at, processing_facts, shipped_facts)
+                            note_open_orders, pick, pick_received_at, processing_facts, shipped_facts)
 
 STATUS_SUBJECTS = [
     "Where is my order {order_id}?",
@@ -38,7 +38,8 @@ _S01 = [
 
 def build_s01(sctx: ScenarioContext, rng: random.Random, i: int) -> GeneratedTicket:
     return build_single_order_ticket(
-        sctx, rng, scenario_id="S01", spec=OrderSpec(state="in_transit"), phrasing=_S01[i % len(_S01)],
+        sctx, rng, scenario_id="S01", spec=OrderSpec(state="in_transit"),
+        phrasing=pick(sctx, "S01", _S01, i),
         subjects=STATUS_SUBJECTS, category="order_status", flags={}, actions=["provide_info"],
         kb_ids=["KB-SHP-01"], facts_fn=shipped_facts)
 
@@ -61,7 +62,7 @@ _S02 = [
 def build_s02(sctx: ScenarioContext, rng: random.Random, i: int) -> GeneratedTicket:
     return build_single_order_ticket(
         sctx, rng, scenario_id="S02", spec=OrderSpec(state="in_transit_late"),
-        phrasing=_S02[i % len(_S02)], subjects=STATUS_SUBJECTS, category="order_status",
+        phrasing=pick(sctx, "S02", _S02, i), subjects=STATUS_SUBJECTS, category="order_status",
         flags={"order_late_past_promise": True}, actions=["provide_info"], kb_ids=["KB-SHP-02"],
         facts_fn=shipped_facts)
 
@@ -86,7 +87,7 @@ _S03 = [
 def build_s03(sctx: ScenarioContext, rng: random.Random, i: int) -> GeneratedTicket:
     return build_single_order_ticket(
         sctx, rng, scenario_id="S03", spec=OrderSpec(state="processing"),
-        phrasing=_S03[i % len(_S03)], subjects=STATUS_SUBJECTS, category="order_status", flags={},
+        phrasing=pick(sctx, "S03", _S03, i), subjects=STATUS_SUBJECTS, category="order_status", flags={},
         actions=["provide_info"], kb_ids=["KB-ORD-01"], facts_fn=processing_facts)
 
 
@@ -104,7 +105,7 @@ _S04_STATE_PAIRS = [("in_transit", "processing"), ("in_transit", "in_transit"), 
 
 def build_s04(sctx: ScenarioContext, rng: random.Random, i: int) -> GeneratedTicket:
     """The customer has two open orders and does not say which one: the agent must ask."""
-    phrasing = _S04[i % len(_S04)]
+    phrasing = pick(sctx, "S04", _S04, i)
     states = rng.choice(_S04_STATE_PAIRS)
     specs = [OrderSpec(state=s) for s in states]
     timelines = [plan_timeline(s, rng) for s in specs]
@@ -153,7 +154,7 @@ _S22 = [
 def build_s22(sctx: ScenarioContext, rng: random.Random, i: int) -> GeneratedTicket:
     return build_single_order_ticket(
         sctx, rng, scenario_id="S22", spec=OrderSpec(state="processing"),
-        phrasing=_S22[i % len(_S22)], subjects=STATUS_SUBJECTS, category="order_status",
+        phrasing=pick(sctx, "S22", _S22, i), subjects=STATUS_SUBJECTS, category="order_status",
         flags={"deadline_within_3_days": True}, actions=["escalate_human"], kb_ids=["KB-SHP-03"],
         facts_fn=processing_facts, escalate_reason="delivery_deadline_cannot_be_guaranteed")
 

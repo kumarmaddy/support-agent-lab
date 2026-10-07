@@ -12,11 +12,11 @@ from . import config, labels
 from .base_data import make_rng
 from .db import insert_order_rows
 from .orders import IdAllocator, OrderContext, OrderRows, ts
-from .scenario_base import GeneratedTicket, ScenarioContext
+from .scenario_base import GeneratedTicket, MissingHeldoutPhrasing, ScenarioContext
 from .scenario_registry import get_scenarios
 
 
-def build_scenario_context(conn: sqlite3.Connection) -> ScenarioContext:
+def build_scenario_context(conn: sqlite3.Connection, split: str = "dev") -> ScenarioContext:
     customer_rows = conn.execute("SELECT * FROM customers ORDER BY customer_id").fetchall()
     address_rows = conn.execute("SELECT * FROM addresses ORDER BY address_id").fetchall()
     products = conn.execute("SELECT * FROM products ORDER BY product_id").fetchall()
@@ -32,14 +32,21 @@ def build_scenario_context(conn: sqlite3.Connection) -> ScenarioContext:
         customers={c[0]: c for c in customer_rows},
         open_customer_ids=open_ids,
         reserved_customer_ids=set(),
+        split=split,
     )
 
 
 def generate_tickets(conn: sqlite3.Connection, seed: int,
-                     scenario_ids: set[str] | None = None) -> list[GeneratedTicket]:
-    sctx = build_scenario_context(conn)
+                     scenario_ids: set[str] | None = None, split: str = "dev") -> list[GeneratedTicket]:
+    sctx = build_scenario_context(conn, split)
     generated: list[GeneratedTicket] = []
-    for scenario in get_scenarios(scenario_ids):
+    selected = get_scenarios(scenario_ids)
+    if split == "heldout":
+        from .phrasing_heldout import HELDOUT       # guard: never fall back to dev wording
+        missing = [s.scenario_id for s in selected if s.scenario_id not in HELDOUT]
+        if missing:
+            raise MissingHeldoutPhrasing(f"no held-out phrasing for: {', '.join(missing)}")
+    for scenario in selected:
         rng = make_rng(seed, f"tickets:{scenario.scenario_id}")
         for i in range(scenario.count):
             generated.append(scenario.build(sctx, rng, i))
@@ -50,7 +57,7 @@ def generate_tickets(conn: sqlite3.Connection, seed: int,
 def create_ticket_dataset(conn: sqlite3.Connection, seed: int, split: str, labels_dir: Path,
                           scenario_ids: set[str] | None = None) -> dict:
     """Generate tickets and their orders, store them in the database, write labels to labels_dir."""
-    generated = generate_tickets(conn, seed, scenario_ids)
+    generated = generate_tickets(conn, seed, scenario_ids, split)
 
     all_orders = OrderRows()
     ticket_rows, label_rows = [], []

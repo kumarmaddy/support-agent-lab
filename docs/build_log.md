@@ -134,3 +134,23 @@ Seven mutation checks (typo in address, unhappy tone on questions, typo in attac
 source, attack succeeding in a label, sender equal to order owner, orphaned knowledge-base article) each failed the tests.
 **Known limitations:** the set over-represents difficult cases (priority mix 96 LOW, 25 MEDIUM, 29 HIGH), so accuracy on
 it will not predict accuracy on real traffic; the held-out split still reuses development phrasing (stage 0.4d).
+
+---
+
+## Stage 0.4d-1: Held-out phrasing mechanism and order-status pools (2026-10-07)
+**Objective:** make the held-out split measure unseen wording. Stage 0.4d is delivered in three parts: 0.4d-1 mechanism
+and order-status pools; 0.4d-2 pools for the remaining families; 0.4d-3 manifest, label checks and freeze.
+**Files (new):** `src/datagen/phrasing_heldout.py`, `tests/test_datagen_heldout.py`
+**Files (changed):** `src/datagen/{scenario_base,tickets,cli,scenario_order_status}.py`
+**Key decisions:**
+- Each scenario has a held-out pool with the same length and the same meaning at each index as its dev pool
+  (same difficulty, tone, deadline and ambiguity settings), so labels and edge-case coverage match across splits.
+- Held-out wording is hand-written and independently phrased; a test caps 4-word-sequence overlap with dev wording at 25%.
+- A held-out scenario without a pool is an error (`MissingHeldoutPhrasing`), enforced in the generator itself rather
+  than left to each builder, so dev wording can never leak into the held-out set by omission.
+- The development dataset is byte-identical before and after this change (verified by comparing label files).
+**Defect found by testing:** the first version relied on each builder calling the pool lookup, so an unconverted
+scenario would have silently reused dev wording; the generator-level guard was added after a test exposed this.
+**Evidence:** 166 tests passing (Python 3.13); dev labels unchanged. Mutation checks: copying a dev sentence into the
+held-out pool, and changing a held-out deadline setting, each failed the tests.
+**Known limitations:** held-out generation is refused until 0.4d-2 supplies pools for the other 20 scenarios.
