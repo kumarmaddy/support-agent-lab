@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| Version | 1.6 |
+| Version | 1.7 |
 | Date | 2026-10-07 (first issued 2026-10-06) |
 | Owner | Kumar Maddipatla, Project Lead |
 | Phase | 0 (Discovery and baseline), stage 0.3 |
@@ -255,7 +255,7 @@ Edge and adversarial share: 60 of 150 (40%): 47 edge and 13 adversarial, above t
 the 20% charter minimum. The set deliberately over-represents difficult cases; accuracy on it will not
 predict accuracy on real traffic (priority mix: 96 LOW, 25 MEDIUM, 29 HIGH).
 
-### 7a. Knowledge-base article ids used by labels (written in stage 0.5)
+### 7a. Knowledge-base article ids used by labels (articles written in stage 0.5)
 | Id | Title |
 |----|-------|
 | KB-SHP-01 | Delivery times and tracking your order |
@@ -283,6 +283,23 @@ predict accuracy on real traffic (priority mix: 96 LOW, 25 MEDIUM, 29 HIGH).
 These 21 articles are the complete list for dataset v1; a test confirms every one is required by at least
 one ticket and none is orphaned. The article text must use calendar days (section 3) and must state the
 policy facts recorded in S19 labels.
+
+**Article format and location.** One markdown file per article in `data/seed/kb/`, named by id, with a front-matter
+header (id, title, category, version, effective date) and three sections: *Key facts* (short, atomic statements; what
+a citation must support), *Details* (customer-facing explanation) and *Support guidance (internal)* (how the agent
+should act; never shown to customers). Articles are at most 250 words so that retrieved context stays small for a
+CPU-run model (ADR-003).
+
+**What the articles must satisfy (enforced by `tests/kb/test_articles.py`).** The set of articles equals the catalogue
+(ids and titles); durations use calendar days and never business days; the 30-day return window, the 3 to 7 and 5 to 7
+calendar-day figures, and the before-dispatch-only rules agree with `config.py` and the S19 labels; no article contains
+instruction-like text aimed at a model (the knowledge base is a trusted source and a poisoned article would be an
+attack path); articles cite only existing article ids.
+
+**Relationship to the frozen dataset.** The `kb_articles` table in the database stays empty and the articles are not
+part of the manifest hashes: the knowledge base is read from its own files and indexed for retrieval in Phase 2.
+Article changes are tracked by the `version` field and git history, and evaluation reports record the commit they
+ran against. Sizing and care articles are fictional product guidance, not policy.
 Held-out split: 150 tickets with exactly the same scenario mix, categories, actions, escalations, difficulty and
 priority counts as the development split, generated with a different seed and independently written phrasing
 (section 8, item 7), frozen before development tuning.
@@ -326,7 +343,8 @@ Deferred to a later dataset version: lost-in-transit claims (not covered by rubr
 ## 10. Repository layout
 ```
 data/
-  seed/                 reference lists, name pools, KB article sources
+  seed/
+    kb/                 knowledge-base articles (21 markdown files, section 7a)
   generated/
     dev/                operational DB and tickets for the development split
     heldout/            frozen; not used before Phase 4
@@ -369,6 +387,7 @@ build until the dataset is deliberately re-frozen.
 3. A defect found in the frozen dataset is recorded and fixed through rule 2; the old version is not edited in place.
 
 ## 12. Change log
+- 1.7 (2026-10-07): knowledge-base articles written; article format, location, enforced checks and relationship to the frozen dataset recorded (section 7a); repository layout updated.
 - 1.6 (2026-10-07): dataset v1.0.0 frozen; held-out size corrected to 150; held-out phrasing rule recorded (section 8,
   item 7); dataset-level checks and manifest added to section 9; change control added (section 13).
 - 1.5 (2026-10-07): policy table uses calendar days (matches the data) and adds locked-account, privacy and not-covered rules; boundary rules 5 and 6; adversarial label fields; S13 to S26 clarifications; edge/adversarial share 40%; 21 knowledge-base ids; typo and tone rules.

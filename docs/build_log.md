@@ -226,3 +226,50 @@ labels digest; both are therefore recorded.
 changed development seed, second `write` without `--force`) each produced the expected failure.
 **Known limitations:** hashes were produced on one operating system; verification on a second platform (Windows) is
 the cross-platform reproducibility check.
+
+---
+
+## Stage 0.5: Knowledge-base articles (2026-10-07)
+**Objective:** write the 21 knowledge-base articles that labels cite, consistent with the published policy and the S19 facts.
+**Files (new):** `data/seed/kb/*.md` (21 articles), `src/kb/__init__.py`, `src/kb/articles.py`, `tests/kb/test_articles.py`
+**Files (changed):** `docs/design/data-design.md` (v1.7)
+**Key decisions:**
+- Each article has *Key facts* (atomic statements a citation can be checked against), *Details* (customer-facing) and
+  *Support guidance (internal)*; internal guidance is separable so it is never shown to a customer.
+- Policy facts are tested against `config.py` and the S19 labels, so an article cannot drift from the data without
+  failing a test; durations use calendar days only.
+- Articles stay at or below 250 words to keep retrieved context small for a CPU-run model.
+- The knowledge base is outside the frozen dataset: the `kb_articles` table stays empty and the manifest is unchanged;
+  articles are versioned by front matter and git history.
+- Sizing and care articles are fictional product guidance; no article states a refund approval threshold (ADR-004 is
+  decided in stage 0.7).
+**Defects found while testing:** the first window test would not have caught a changed "30 days" key fact because the
+number also appears elsewhere in the article; it now checks the key facts specifically. Two invented process claims
+(dispatch order, bank authorisations) were removed because no policy or data supports them.
+**Evidence:** 238 tests passing (Python 3.13); manifest still verifies. Mutation checks: changed return window,
+"business days", an injected instruction, a missing article, and a changed cancellation rule each failed a test.
+**Known limitations:** articles are written by one author and reviewed by the same person; retrieval quality is measured in Phase 2.
+
+---
+
+## Stage 0.6: Baseline protocol and timing tool (2026-10-07)
+**Objective:** define and tooling-support the manual-handling baseline (objective O8, principle P6).
+**Files (new):** `docs/project/baseline-protocol.md`, `src/baseline/{__init__,sampling,lookups,session,scoring,report,cli}.py`,
+`tests/baseline/{conftest,test_sampling,test_session,test_scoring,test_cli}.py`
+**Key decisions:**
+- The baseline uses development tickets only; the held-out split stays unused until Phase 4. The consequence for the
+  Phase 4 accuracy comparison is recorded in the protocol (threats to validity).
+- Sample: 40 scored tickets plus 3 practice tickets, stratified by scenario with the generator seed (every scenario at
+  least once); chosen once and not changeable after results exist.
+- The timing tool shows the same records the agent's read-only tools will expose, so manual and automated runs use the
+  same information. It cannot read ground-truth labels (an automated test inspects its imports and strings); scoring is a
+  separate command run after all tickets are handled.
+- The clock stops when the reply is submitted; pauses are excluded; a ticket cannot be abandoned or repeated once seen.
+- Cost per ticket is shown as a sensitivity table over assumed hourly rates, not as a single finding.
+- Five accuracy measures include a "consequential actions" rate, the manual counterpart of the wrong-action measure (O2).
+**Defect found by testing:** my first expected value for the timer test was off by one input; the arithmetic is now
+spelled out in the test, and a deliberate break (counting paused time) fails it.
+**Evidence:** 263 tests passing (Python 3.13); four mutation checks (paused time counted, consequential errors ignored,
+no minimum per scenario, session importing labels) each failed a test; a scripted run of the real command line worked end to end.
+**Known limitations:** the baseline is single-handler and the handler is the project author; the run itself (about two
+hours across sessions) and the generated report follow in this stage.
