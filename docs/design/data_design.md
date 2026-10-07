@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| Version | 1.5 |
+| Version | 1.6 |
 | Date | 2026-10-07 (first issued 2026-10-06) |
 | Owner | Kumar Maddipatla, Project Lead |
 | Phase | 0 (Discovery and baseline), stage 0.3 |
@@ -283,8 +283,9 @@ predict accuracy on real traffic (priority mix: 96 LOW, 25 MEDIUM, 29 HIGH).
 These 21 articles are the complete list for dataset v1; a test confirms every one is required by at least
 one ticket and none is orphaned. The article text must use calendar days (section 3) and must state the
 policy facts recorded in S19 labels.
-Held-out split: 100 tickets in the same proportions, generated with a different seed and different
-phrasing templates, frozen before development tuning.
+Held-out split: 150 tickets with exactly the same scenario mix, categories, actions, escalations, difficulty and
+priority counts as the development split, generated with a different seed and independently written phrasing
+(section 8, item 7), frozen before development tuning.
 Deferred to a later dataset version: lost-in-transit claims (not covered by rubric v1.0).
 
 ## 8. Ticket text generation
@@ -303,9 +304,11 @@ Deferred to a later dataset version: lost-in-transit claims (not covered by rubr
 6. Typo injection never alters text that a label records (order ids, dates, amounts, requested delivery
    addresses) and never alters adversarial text. Customers asking general questions before any purchase
    use calm tones only (no complaints about service they have not yet received).
-7. Open item for stage 0.4d: the held-out split currently uses the same phrasing templates as the
-   development split with a different seed. The design requires different phrasing; a separate held-out
-   phrasing set (or reserved templates) must be added before the held-out set is frozen.
+7. Held-out phrasing: every scenario has a hand-written held-out phrasing pool (`scenarios/phrasing_heldout.py`)
+   that mirrors the development pool in length and in meaning at each index (difficulty, tone, deadline, order
+   state, knowledge-base ids, stated facts) with different wording. Each held-out phrasing is compared with every
+   development phrasing and must stay at or below 0.70 word-level similarity. A held-out scenario without a pool
+   cannot be generated; the generator never falls back to development wording.
 
 ## 9. Quality checks (run on every generation)
 - Referential integrity across all tables.
@@ -314,7 +317,11 @@ Deferred to a later dataset version: lost-in-transit claims (not covered by rubr
 - Order ids and amounts in ticket text match the database.
 - No duplicate ticket bodies; distribution report by scenario, category, priority, difficulty.
 - Manual review of a random 10% sample against labels (R5), with results recorded.
-- Held-out files hashed (SHA-256) and the hash recorded in `docs/dataset-manifest.md`.
+- Dataset-level checks before a freeze: ticket ids contiguous and identical in database and labels; scenario counts
+  equal the registry; every label valid; referenced orders exist; no duplicate ticket text within a split; no ticket
+  text shared between splits.
+- Both splits hashed (SHA-256, labels file and every database table) and recorded in `data/manifest.json`, rendered
+  to `docs/dataset-manifest.md` (section 13).
 
 ## 10. Repository layout
 ```
@@ -327,7 +334,8 @@ data/
     dev/labels.jsonl
     heldout/labels.jsonl
 src/datagen/            generator code and tests
-docs/dataset-manifest.md  versions, seeds, counts, hashes
+data/manifest.json      machine-readable freeze record (committed)
+docs/dataset-manifest.md  the same record, rendered for readers
 ```
 Labels live outside the operational database. Automated tests confirm that no MCP server or agent
 module can read the `data/labels` directory.
@@ -339,7 +347,30 @@ module can read the `data/labels` directory.
 | Knowledge-base article authoring approach and review | Project Lead | Stage 0.5 |
 | Lost-in-transit scenario and any rubric extension (v1.1) | Project Lead | After Phase 1 |
 
+## 13. Freeze and change control
+**What is frozen.** Dataset version 1.0.0, built by generator version 1.0.0, comprises two splits: development
+(seed 20261006) and held-out (seed 20261007), 150 tickets each. `data/manifest.json` records, per split, the SHA-256
+digest of the labels file and of every database table, plus row counts and scenario counts. Database tables are
+hashed by content, so the SQLite file layout cannot cause false differences. The manifest also records the Python
+version and operating system used; random sequences are not guaranteed identical across Python versions, so the
+project pins Python 3.13 (`.python-version`).
+
+**How it is enforced.** `python -m src.datagen.freeze verify` rebuilds both splits in a temporary folder and compares
+every digest with the manifest, naming each artifact that differs. The test suite runs the same comparison, so a
+change to the generator, a scenario, a phrasing pool, a seed or the Python version that alters the dataset fails the
+build until the dataset is deliberately re-frozen.
+
+**Rules.**
+1. The held-out split is not used for prompt tuning, model selection or threshold setting before Phase 4. Evaluation
+   runs before Phase 4 use the development split only.
+2. Changing the frozen dataset requires: a new `DATASET_VERSION` and `GENERATOR_VERSION`, an ADR recording the reason,
+   a re-run of `python -m src.datagen.freeze write --force`, and a new entry in the change log and build log. Results
+   obtained on an earlier dataset version are not comparable with results on a later one.
+3. A defect found in the frozen dataset is recorded and fixed through rule 2; the old version is not edited in place.
+
 ## 12. Change log
+- 1.6 (2026-10-07): dataset v1.0.0 frozen; held-out size corrected to 150; held-out phrasing rule recorded (section 8,
+  item 7); dataset-level checks and manifest added to section 9; change control added (section 13).
 - 1.5 (2026-10-07): policy table uses calendar days (matches the data) and adds locked-account, privacy and not-covered rules; boundary rules 5 and 6; adversarial label fields; S13 to S26 clarifications; edge/adversarial share 40%; 21 knowledge-base ids; typo and tone rules.
 - 1.4 (2026-10-06): S05/S06 boundary corrected (S06 starts at day 31); S23 expected actions; per-scenario clarifications for S07 to S11 and S21; knowledge-base id table (7a).
 - 1.3 (2026-10-06): labels gain expected_facts and text_source; difficulty is per ticket; S04 clarified (two open orders, request_info); S03 variants defined; held-out phrasing open item recorded.

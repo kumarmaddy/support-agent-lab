@@ -201,3 +201,28 @@ labels byte-identical to before. Mutation checks: copying a development sentence
 held-out order state, and allowing typos in attack text each failed the tests.
 **Known limitations:** held-out wording is written by one author, so stylistic range is limited; the held-out set is
 the same size and mix as the development set (150 tickets) and over-represents difficult cases in the same way.
+
+---
+
+## Stage 0.4d-3: Manifest and freeze, dataset v1.0.0 (2026-10-07)
+**Objective:** freeze the dataset so that later results are measured against a fixed, verifiable reference.
+**Files (new):** `src/datagen/freeze.py`, `tests/datagen/test_freeze.py`, `data/manifest.json`,
+`docs/dataset-manifest.md`, `.python-version`
+**Files (changed):** `src/datagen/config.py` (versions 1.0.0), `docs/design/data-design.md` (v1.6)
+**Key decisions:**
+- Databases are hashed by table content rather than as files, so SQLite file layout cannot produce false alarms;
+  the labels file is hashed as bytes (written as UTF-8 with `\n` endings on every operating system).
+- `freeze write` builds in a temporary folder and refuses to run if any check fails or a manifest already exists;
+  `freeze verify` rebuilds and names every artifact whose digest differs. The test suite runs the same comparison,
+  so the freeze is enforced on every test run.
+- Dataset-level checks added before a freeze: contiguous ticket ids matching labels, registry counts, valid labels,
+  existing referenced orders, no duplicate text within a split, no shared text between splits.
+- Python is pinned to 3.13 and the manifest records the interpreter, SQLite version and operating system.
+- Change control recorded in data-design section 13: held-out unused before Phase 4; any change needs a version
+  bump, an ADR and a re-freeze.
+**Finding:** labels do not contain ticket wording, so a wording change alters only the `tickets` table digest, not the
+labels digest; both are therefore recorded.
+**Evidence:** 226 tests passing (Python 3.13); manifest verified; three mutation checks (changed held-out wording,
+changed development seed, second `write` without `--force`) each produced the expected failure.
+**Known limitations:** hashes were produced on one operating system; verification on a second platform (Windows) is
+the cross-platform reproducibility check.
