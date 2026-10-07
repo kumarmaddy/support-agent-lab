@@ -44,7 +44,8 @@ def generate_tickets(conn: sqlite3.Connection, seed: int,
     selected = get_scenarios(scenario_ids)
     if split == "heldout":
         from src.datagen.scenarios.phrasing_heldout import HELDOUT
-        missing = [s.scenario_id for s in selected if s.scenario_id not in HELDOUT]
+        missing = [s.scenario_id for s in selected
+                   if not any(k == s.scenario_id or k.startswith(s.scenario_id + "_") for k in HELDOUT)]
         if missing:
             raise MissingHeldoutPhrasing(f"no held-out phrasing for: {', '.join(missing)}")
     for scenario in selected:

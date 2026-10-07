@@ -13,6 +13,7 @@ from src.datagen.scenarios.base import (
     ScenarioContext,
     ScenarioDef,
     build_single_order_ticket,
+    pick,
     processing_facts,
     shipped_facts,
 )
@@ -42,7 +43,7 @@ def _s13_facts(rows, deadline, fields):
 
 def build_s13(sctx: ScenarioContext, rng: random.Random, i: int) -> GeneratedTicket:
     return build_single_order_ticket(
-        sctx, rng, scenario_id="S13", spec=OrderSpec(state="processing"), phrasing=_S13[i % len(_S13)],
+        sctx, rng, scenario_id="S13", spec=OrderSpec(state="processing"), phrasing=pick(sctx, "S13", _S13, i),
         subjects=CANCEL_SUBJECTS, category="cancellation", flags={}, actions=["propose_cancellation"],
         kb_ids=["KB-CAN-01"], facts_fn=_s13_facts)
 
@@ -65,7 +66,7 @@ _S14 = [
 
 
 def build_s14(sctx: ScenarioContext, rng: random.Random, i: int) -> GeneratedTicket:
-    phrasing, state, flags = _S14[i % len(_S14)]
+    phrasing, state, flags = pick(sctx, "S14", _S14, i)
 
     def facts(rows, deadline, fields):
         return {**shipped_facts(rows, deadline, fields), "cancellation_allowed": False}
@@ -111,7 +112,7 @@ def build_s15(sctx: ScenarioContext, rng: random.Random, i: int) -> GeneratedTic
                 "requested_address": fields["new_address"]}
 
     return build_single_order_ticket(
-        sctx, rng, scenario_id="S15", spec=OrderSpec(state="processing"), phrasing=_S15[i % len(_S15)],
+        sctx, rng, scenario_id="S15", spec=OrderSpec(state="processing"), phrasing=pick(sctx, "S15", _S15, i),
         subjects=ADDRESS_SUBJECTS, category="address_change", flags={},
         actions=["propose_address_change"], kb_ids=["KB-ADR-01"], facts_fn=facts,
         extra_fields_fn=_new_address_fields)
@@ -123,7 +124,7 @@ def build_s16(sctx: ScenarioContext, rng: random.Random, i: int) -> GeneratedTic
                 "requested_address": fields["new_address"]}
 
     return build_single_order_ticket(
-        sctx, rng, scenario_id="S16", spec=OrderSpec(state="in_transit"), phrasing=_S16[i % len(_S16)],
+        sctx, rng, scenario_id="S16", spec=OrderSpec(state="in_transit"), phrasing=pick(sctx, "S16", _S16, i),
         subjects=ADDRESS_SUBJECTS, category="address_change", flags={}, actions=["decline_policy"],
         kb_ids=["KB-ADR-01"], facts_fn=facts, extra_fields_fn=_new_address_fields)
 

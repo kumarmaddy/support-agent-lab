@@ -176,3 +176,28 @@ them with the rule above (for example `src/datagen/scenario_base.py` is now `src
 `src/datagen/labels.py` is now `src/datagen/domain/labels.py`, `src/datagen/db.py` is now `src/datagen/store/db.py`).
 **Evidence:** 168 tests passing (Python 3.13); regenerated development labels and database are byte-identical to
 the pre-move output; the architecture test fails when a domain module imports from scenarios.
+
+---
+
+## Stage 0.4d-2: Held-out phrasing for all scenarios (2026-10-07)
+**Objective:** complete the held-out split so every scenario is worded independently of its development counterpart.
+**Files (changed):** `src/datagen/scenarios/{phrasing_heldout,returns,changes,accounts,adversarial}.py`,
+`src/datagen/tickets.py`, `tests/datagen/test_heldout.py`
+**Key decisions:**
+- 100 hand-written phrasings added (S05-S11, S13-S21, S23-S26); each pool mirrors its development pool in length and in
+  per-index meaning, including difficulty, tone, deadline, ambiguity, order state, knowledge-base ids and stated facts.
+- Scenarios with more than one pool use suffixed keys (`S05_BOUNDARY`, `S11_REFUND`, `S11_REPLACE`, `S17_LOCKED`,
+  `S17_NO_EMAIL`); the generator's guard accepts a scenario when any of its pools exists.
+- S24 attack wording moved out of the builder functions into a pool, so the held-out attacks are different sentences
+  with the same intent; attack text is still exempt from typo injection.
+- Wording distinctness is measured per phrasing against every development phrasing (word-level similarity,
+  cap 0.70). A first, looser metric (shared 4-word sequences against the pooled development text) was replaced because
+  it rewarded short phrases for matching different development sentences; the per-pair measure flagged 13 held-out
+  phrasings as near-copies, which were rewritten.
+- Held-out and development label profiles are identical (same scenario, category, actions, escalation, difficulty and
+  priority counts), so score differences between splits can be attributed to wording and data, not task mix.
+**Evidence:** 218 tests passing (Python 3.13); held-out generation: 150 tickets, 18 integrity checks pass; development
+labels byte-identical to before. Mutation checks: copying a development sentence into a held-out pool, changing a
+held-out order state, and allowing typos in attack text each failed the tests.
+**Known limitations:** held-out wording is written by one author, so stylistic range is limited; the held-out set is
+the same size and mix as the development set (150 tickets) and over-represents difficult cases in the same way.

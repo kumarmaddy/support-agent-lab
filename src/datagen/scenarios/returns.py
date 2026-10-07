@@ -18,6 +18,7 @@ from src.datagen.scenarios.base import (
     delivered_date_field,
     duplicate_facts,
     duplicate_fields,
+    pick,
     shipped_facts,
     window_facts,
 )
@@ -51,7 +52,8 @@ _S05_DAYS = [2, 4, 6, 8, 11, 14, 18, 23, 29, 30]      # 29 and 30 are inside the
 
 def build_s05(sctx: ScenarioContext, rng: random.Random, i: int) -> GeneratedTicket:
     days = _S05_DAYS[i % len(_S05_DAYS)]
-    phrasing = _S05_BOUNDARY[i % 2] if days >= 29 else _S05[i % len(_S05)]
+    phrasing = (pick(sctx, "S05_BOUNDARY", _S05_BOUNDARY, i) if days >= 29
+                else pick(sctx, "S05", _S05, i))
 
     def facts(rows, deadline, fields):
         assert policy.within_return_window(delivered_at(rows)), "S05 orders must be inside the window"
@@ -88,7 +90,7 @@ def build_s06(sctx: ScenarioContext, rng: random.Random, i: int) -> GeneratedTic
         sctx, rng, scenario_id="S06",
         spec=OrderSpec(state="delivered", days_since_delivery=_S06_DAYS[i % len(_S06_DAYS)],
                        exclude_final_sale=True),
-        phrasing=_S06[i % len(_S06)], subjects=RETURN_SUBJECTS, category="return_exchange", flags={},
+        phrasing=pick(sctx, "S06", _S06, i), subjects=RETURN_SUBJECTS, category="return_exchange", flags={},
         actions=["decline_policy"], kb_ids=["KB-RET-01"], facts_fn=facts,
         extra_fields_fn=delivered_date_field)
 
@@ -116,7 +118,7 @@ def build_s07(sctx: ScenarioContext, rng: random.Random, i: int) -> GeneratedTic
         sctx, rng, scenario_id="S07",
         spec=OrderSpec(state="delivered", days_since_delivery=rng.randint(3, 25),
                        include_final_sale_item=True),
-        phrasing=_S07[i % len(_S07)], subjects=RETURN_SUBJECTS, category="return_exchange", flags={},
+        phrasing=pick(sctx, "S07", _S07, i), subjects=RETURN_SUBJECTS, category="return_exchange", flags={},
         actions=["decline_policy"], kb_ids=["KB-RET-03"], facts_fn=facts)
 
 
@@ -161,7 +163,7 @@ def build_s08(sctx: ScenarioContext, rng: random.Random, i: int) -> GeneratedTic
         sctx, rng, scenario_id="S08",
         spec=OrderSpec(state="delivered", days_since_delivery=rng.randint(2, 25),
                        exclude_final_sale=True, require_sized_item=True),
-        phrasing=_S08[i % len(_S08)], subjects=EXCHANGE_SUBJECTS, category="return_exchange", flags={},
+        phrasing=pick(sctx, "S08", _S08, i), subjects=EXCHANGE_SUBJECTS, category="return_exchange", flags={},
         actions=["propose_exchange"], kb_ids=["KB-RET-04"], facts_fn=facts, extra_fields_fn=size_fields)
 
 
@@ -188,7 +190,7 @@ def build_s09(sctx: ScenarioContext, rng: random.Random, i: int) -> GeneratedTic
                 **duplicate_facts(rows, fields)}
 
     return build_single_order_ticket(
-        sctx, rng, scenario_id="S09", spec=spec, phrasing=_S09[i % len(_S09)],
+        sctx, rng, scenario_id="S09", spec=spec, phrasing=pick(sctx, "S09", _S09, i),
         subjects=REFUND_SUBJECTS + ["Charged twice"], category="refund",
         flags={"duplicate_or_unauthorized_charge": True}, actions=["propose_refund"],
         kb_ids=["KB-REF-02"], facts_fn=facts, extra_fields_fn=duplicate_fields)
@@ -206,7 +208,7 @@ _S10 = [
 
 def build_s10(sctx: ScenarioContext, rng: random.Random, i: int) -> GeneratedTicket:
     pending = i < 4                                   # 4 pending, 2 already processed (harder)
-    phrasing = _S10[i % len(_S10)]
+    phrasing = pick(sctx, "S10", _S10, i)
     if not pending:
         phrasing = Phrasing(phrasing.text, difficulty="edge")
 
@@ -242,7 +244,8 @@ _S11_REPLACE = [
 
 def build_s11(sctx: ScenarioContext, rng: random.Random, i: int) -> GeneratedTicket:
     wants_refund = i % 2 == 0                         # boundary rule 2: money back vs replacement
-    phrasing = (_S11_REFUND if wants_refund else _S11_REPLACE)[(i // 2) % 4]
+    phrasing = (pick(sctx, "S11_REFUND", _S11_REFUND, i // 2) if wants_refund
+                else pick(sctx, "S11_REPLACE", _S11_REPLACE, i // 2))
     return build_single_order_ticket(
         sctx, rng, scenario_id="S11",
         spec=OrderSpec(state="delivered", days_since_delivery=rng.randint(1, 20), exclude_final_sale=True),
@@ -266,7 +269,7 @@ _S21 = [   # (phrasing, underlying issue)
 
 
 def build_s21(sctx: ScenarioContext, rng: random.Random, i: int) -> GeneratedTicket:
-    phrasing, issue = _S21[i % len(_S21)]
+    phrasing, issue = pick(sctx, "S21", _S21, i)
     late = issue == "late"
 
     def facts(rows, deadline, fields):
@@ -308,7 +311,7 @@ def build_s23(sctx: ScenarioContext, rng: random.Random, i: int) -> GeneratedTic
 
     return build_single_order_ticket(
         sctx, rng, scenario_id="S23", spec=OrderSpec(state="in_transit_late", duplicate_charge=True),
-        phrasing=_S23[i % len(_S23)], subjects=REFUND_SUBJECTS, category="refund",
+        phrasing=pick(sctx, "S23", _S23, i), subjects=REFUND_SUBJECTS, category="refund",
         flags={"duplicate_or_unauthorized_charge": True, "order_late_past_promise": True},
         actions=["propose_refund", "provide_info"], kb_ids=["KB-REF-02", "KB-SHP-02"], facts_fn=facts,
         extra_fields_fn=duplicate_fields, secondary_categories=("order_status",))

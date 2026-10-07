@@ -11,6 +11,7 @@ from src.datagen.scenarios.base import (
     ScenarioDef,
     build_account_ticket,
     calm,
+    pick,
 )
 
 ACCOUNT_SUBJECTS = ["Can't log in", "Problem with my account", "Account help", "Sign-in problem"]
@@ -46,9 +47,10 @@ _S17_NO_EMAIL = [   # the account is active, but the reset email never arrives
 def build_s17(sctx: ScenarioContext, rng: random.Random, i: int) -> GeneratedTicket:
     locked = i < len(_S17_LOCKED)
     if locked:
-        customer_id, phrasing = _locked_ids(sctx)[i], _S17_LOCKED[i]
+        customer_id, phrasing = _locked_ids(sctx)[i], pick(sctx, "S17_LOCKED", _S17_LOCKED, i)
     else:
-        customer_id, phrasing = _active_id(sctx, rng), _S17_NO_EMAIL[i - len(_S17_LOCKED)]
+        customer_id, phrasing = _active_id(sctx, rng), pick(
+            sctx, "S17_NO_EMAIL", _S17_NO_EMAIL, i - len(_S17_LOCKED))
     return build_account_ticket(
         sctx, rng, scenario_id="S17", customer_id=customer_id, phrasing=phrasing,
         subjects=ACCOUNT_SUBJECTS, category="account", flags={"account_locked_out": True},
@@ -71,7 +73,7 @@ _S18 = [
 
 def build_s18(sctx: ScenarioContext, rng: random.Random, i: int) -> GeneratedTicket:
     return build_account_ticket(
-        sctx, rng, scenario_id="S18", customer_id=_active_id(sctx, rng), phrasing=_S18[i % len(_S18)],
+        sctx, rng, scenario_id="S18", customer_id=_active_id(sctx, rng), phrasing=pick(sctx, "S18", _S18, i),
         subjects=SECURITY_SUBJECTS, category="account", flags={"account_compromise_suspected": True},
         actions=["escalate_human"], kb_ids=["KB-ACC-03"], facts={"account_status": "active"},
         escalate_reason="suspected_account_compromise")
@@ -99,7 +101,7 @@ _S19 = [
 
 
 def build_s19(sctx: ScenarioContext, rng: random.Random, i: int) -> GeneratedTicket:
-    phrasing, kb_ids, facts = _S19[i % len(_S19)]
+    phrasing, kb_ids, facts = pick(sctx, "S19", _S19, i)
     return build_account_ticket(
         sctx, rng, scenario_id="S19", customer_id=_active_id(sctx, rng), phrasing=calm(rng, phrasing),
         subjects=QUESTION_SUBJECTS, category="product_info", flags={}, actions=["provide_info"],
@@ -119,7 +121,7 @@ _S20 = [
 def build_s20(sctx: ScenarioContext, rng: random.Random, i: int) -> GeneratedTicket:
     return build_account_ticket(
         sctx, rng, scenario_id="S20", customer_id=_active_id(sctx, rng),
-        phrasing=calm(rng, Phrasing(_S20[i % len(_S20)], difficulty="edge")), subjects=QUESTION_SUBJECTS,
+        phrasing=calm(rng, Phrasing(pick(sctx, "S20", _S20, i), difficulty="edge")), subjects=QUESTION_SUBJECTS,
         category="other", flags={}, actions=["escalate_human"], kb_ids=[],
         facts={"topic": "not_covered_by_knowledge_base"}, escalate_reason="not_in_knowledge_base")
 
