@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| Version | 1.0 |
+| Version | 1.1 |
 | Date | 2026-10-07 |
 | Owner | Kumar Maddipatla, Project Lead |
 | Phase | 0 (Discovery and baseline), stage 0.6 |
@@ -66,8 +66,17 @@ The consequential-action rate is the manual counterpart of the wrong-action meas
 
 ## 8. Analysis and reporting
 - Handling time: mean, median, 90th percentile, fastest, slowest, total, throughput; by difficulty.
-- Learning effect: median of the first third of tickets against the last third.
-- Accuracy: the five measures above, and the list of tickets where category or actions differed from the label.
+- Learning effect: median and mean of the first third of tickets against the last third. The overall median and the last-third median are both quoted when the baseline is used as a reference, because early tickets include the handler's learning.
+- Accuracy: the five measures above, each with the number of tickets and a 95% Wilson confidence interval. The consequential-action rate is also given for the tickets where such an action was expected or taken, because the all-ticket rate is inflated by tickets that involve no consequential action.
+- Escalation as a decision: a two-by-two table with precision and recall, comparable with the objective O3 targets.
+- Disagreements: every ticket where at least one measure failed, with the handler's answer beside the label.
+- Disagreement review (added in 1.1): each disagreement is classified before it is counted as a handler error.
+  H handler error; L label error; K knowledge-base article missing, wrong or ambiguous; P policy or rubric wording ambiguous.
+  Findings L, K and P are defects in the project's artefacts. A label error needs a dataset version bump, an ADR and a new
+  freeze (data design, section 13); a knowledge-base or policy defect is corrected in the article or document and logged in the build log.
+  The tool is `python -m src.baseline.cli review`: it shows the ticket, records, both answers and the relevant article facts, and
+  the reviewer chooses the code and writes the reasoning; nothing is classified automatically. Decisions are kept in
+  `data/baseline/review.jsonl` and the record is rendered to `docs/project/baseline-disagreement-review.md`.
 - Cost per ticket: mean handling time multiplied by an assumed hourly labour cost, shown for several rates as a sensitivity table. The rate is an input chosen for the business case, not a measured value.
 - With 40 tickets the median and spread are reported; differences of a few percent are not treated as real.
 
@@ -79,7 +88,8 @@ The consequential-action rate is the manual counterpart of the wrong-action meas
 | Learning effect | Early tickets slower | Practice tickets; learning effect reported |
 | Handler sees labels | Accuracy overstated | Timing tool cannot read labels (tested); scoring is a separate step |
 | Synthetic tickets are short and clean | Times understated | Stated in the report |
-| Small sample | Wide uncertainty | Median and spread reported; no fine comparisons |
+| Small sample | Wide uncertainty | Median and spread reported; confidence intervals shown; no fine comparisons |
+| Analysis additions made after the first results were seen (1.1) | Choice of analysis could be influenced by the results | Data collection is unchanged; the additions are reported as additions in the change log, and none removes a result |
 | Dev split is the agent's tuning set in later phases | Accuracy comparison on dev would favour the agent | Phase 4 reports agent accuracy on the held-out split against the labels; manual figures are a reference for time and for the kinds of error people make |
 
 ## 10. Exit evidence for stage 0.6
@@ -89,4 +99,5 @@ The consequential-action rate is the manual counterpart of the wrong-action meas
 - Targets that the baseline shows to be unrealistic are revised through an ADR at the Phase 0 exit review (stage 0.7).
 
 ## 11. Change log
+- 1.1 (2026-10-07): analysis additions after the run: confidence intervals, escalation table, consequential rate on relevant tickets, detailed disagreement list and review step. Collection procedure, sample and scoring rules are unchanged.
 - 1.0 (2026-10-07): initial version.

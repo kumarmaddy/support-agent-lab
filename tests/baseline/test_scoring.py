@@ -3,7 +3,9 @@ from pathlib import Path
 
 import pytest
 
-from src.baseline.scoring import CONSEQUENTIAL_ACTIONS, percentile, score_ticket, summarise
+import math
+
+from src.baseline.scoring import CONSEQUENTIAL_ACTIONS, escalation_matrix, percentile, score_ticket, summarise, wilson_interval
 
 SRC = Path(__file__).resolve().parents[2] / "src" / "baseline"
 
@@ -66,6 +68,47 @@ def test_summary_lists_misses():
 def test_summary_needs_scored_results():
     with pytest.raises(ValueError):
         summarise([result(practice=True, position=None)], {"T-1": label()})
+
+
+# ------------------------------------------------------------------ added at the exit review: intervals, escalation, detail
+def test_wilson_interval_known_values():
+    low, high = wilson_interval(37, 40)
+    assert 0.80 < low < 0.81 and 0.97 < high < 0.98            # 92.5% of 40: about 80.1% to 97.4%
+    assert wilson_interval(40, 40)[1] == 1.0 and wilson_interval(0, 40)[0] == 0.0
+    assert all(math.isnan(x) for x in wilson_interval(0, 0))
+    assert wilson_interval(37, 40)[0] < wilson_interval(370, 400)[0]  # more tickets, narrower interval
+
+
+def test_escalation_matrix_counts_all_four_cells():
+    rows = [score_ticket(result(actions=a), label(expected_escalate=e, expected_actions=ea))
+            for a, e, ea in ((["escalate_human"], True, ["escalate_human"]),      # true positive
+                             (["escalate_human"], False, ["provide_info"]),       # false positive
+                             (["provide_info"], True, ["escalate_human"]),        # false negative
+                             (["provide_info"], False, ["provide_info"]))]        # true negative
+    m = escalation_matrix(rows)
+    assert (m["tp"], m["fp"], m["fn"], m["tn"]) == (1, 1, 1, 1)
+    assert m["precision"] == 0.5 and m["recall"] == 0.5
+    assert math.isnan(escalation_matrix(rows[3:])["recall"])   # nothing should be escalated: recall undefined
+
+
+def test_score_ticket_keeps_detail_for_review():
+    row = score_ticket(result(category="other", actions=["propose_refund"], kb_ids=[]), label(required_kb_ids=["KB-REF-02"]))
+    assert row["handled_category"] == "other" and row["handled_actions"] == ["propose_refund"]
+    assert row["missing_kb"] == ["KB-REF-02"] and row["consequential_relevant"] is True
+
+
+def test_summary_lists_every_failed_measure_as_a_disagreement():
+    results = [result(), result(ticket_id="T-2", position=2, kb_ids=[]),
+               result(ticket_id="T-3", position=3, actions=["provide_info"]),
+               result(ticket_id="T-4", position=4, actions=["provide_info"], category="refund")]       # missed refund
+    labels = {"T-1": label(), "T-2": label(ticket_id="T-2"), "T-3": label(ticket_id="T-3", expected_actions=["provide_info"]),
+              "T-4": label(ticket_id="T-4")}
+    summary = summarise(results, labels)
+    assert [d["ticket_id"] for d in summary["disagreements"]] == ["T-2", "T-4"]    # knowledge-base miss; missed refund
+    assert [m["ticket_id"] for m in summary["misses"]] == ["T-4"]                  # the older list: category or actions only
+    assert summary["counts"]["kb_ok"] == {"correct": 3, "n": 4}
+    # T-3 involves no consequential action either way; T-4 expected one and the handler took none, so it counts as relevant
+    assert summary["consequential_relevant"] == {"correct": 2, "n": 3}
 
 
 # ------------------------------------------------------------------ the handler must not be able to see labels

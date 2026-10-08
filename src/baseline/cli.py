@@ -3,6 +3,7 @@
     python -m src.baseline.cli prepare            # choose the sample (once)
     python -m src.baseline.cli run                # time yourself on the tickets; resumable
     python -m src.baseline.cli report             # score against labels and write the baseline report
+    python -m src.baseline.cli review             # classify each disagreement; writes the review document
 """
 import argparse
 import json
@@ -11,6 +12,7 @@ from pathlib import Path
 
 from src.baseline import lookups
 from src.baseline.report import DEFAULT_HOURLY_RATES, render_report
+from src.baseline.review import DRAFT_DEFAULT, LOG_DEFAULT, ReviewSession, load_drafts, render_review
 from src.baseline.sampling import select_sample
 from src.baseline.scoring import summarise
 from src.baseline.session import Session
@@ -62,8 +64,42 @@ def cmd_report(args) -> int:
     summary = summarise(results, labels_by_id)
     rates = tuple(args.hourly_rate) if args.hourly_rate else DEFAULT_HOURLY_RATES
     args.report.parent.mkdir(parents=True, exist_ok=True)
-    args.report.write_text(render_report(summary, sample, results, rates), encoding="utf-8", newline="\n")
+    version = None
+    if args.manifest.exists():
+        version = json.loads(args.manifest.read_text(encoding="utf-8")).get("dataset_version")
+    args.report.write_text(render_report(summary, sample, results, rates, version), encoding="utf-8", newline="\n")
     print(f"Wrote {args.report}: {summary['tickets']} tickets, median {summary['time']['median']:.0f} s")
+    return 0
+
+
+def cmd_review(args) -> int:
+    from datetime import date
+    sample = json.loads(args.sample.read_text(encoding="utf-8"))
+    results = read_results(args.results)
+    labels_by_id = {lab["ticket_id"]: lab for lab in label_io.read_labels(args.labels)}
+    summary = summarise(results, labels_by_id)
+    handled = {r["ticket_id"] for r in results if not r["practice"]}
+    if len(handled) < len(sample["ticket_ids"]):
+        print("The run is not finished. Review the disagreements after all tickets are handled.")
+        return 1
+    conn = lookups.open_readonly(args.db)
+    try:
+        session = ReviewSession(conn, load_articles(args.kb), results, labels_by_id, summary["disagreements"], args.review_log,
+                                input_fn=lambda prompt="": input(prompt))
+        redo = set(args.redo or ())
+        session.confirm_drafts(load_drafts(args.drafts), redo)
+        session.run(redo=redo)
+    finally:
+        conn.close()
+    records = session.records()
+    left = [d for d in summary["disagreements"] if d["ticket_id"] not in records]
+    if left and not args.allow_partial:
+        print(f"{len(left)} disagreement(s) not reviewed yet; run the command again, or pass --allow-partial to write a partial review.")
+        return 0
+    args.output.parent.mkdir(parents=True, exist_ok=True)
+    args.output.write_text(render_review(records, summary["disagreements"], summary["tickets"], date.today().isoformat()),
+                           encoding="utf-8", newline="\n")
+    print(f"Wrote {args.output}")
     return 0
 
 
@@ -90,9 +126,20 @@ def main(argv: list[str] | None = None) -> int:
     p.add_argument("--report", type=Path, default=Path("docs/project/baseline-report.md"))
     p.add_argument("--hourly-rate", type=float, action="append", help="repeat for several rates")
     p.add_argument("--allow-partial", action="store_true")
+    p.add_argument("--manifest", type=Path, default=Path("data/manifest.json"), help="source of the dataset version")
+
+    p = sub.add_parser("review", parents=[common])
+    p.add_argument("--db", type=Path, default=Path("data/generated/dev/support.db"))
+    p.add_argument("--kb", type=Path, default=Path("data/seed/kb"))
+    p.add_argument("--labels", type=Path, default=labels_default)
+    p.add_argument("--review-log", type=Path, default=LOG_DEFAULT)
+    p.add_argument("--drafts", type=Path, default=DRAFT_DEFAULT, help="proposed decisions to confirm one by one")
+    p.add_argument("--output", type=Path, default=Path("docs/project/baseline-disagreement-review.md"))
+    p.add_argument("--redo", action="append", metavar="TICKET", help="re-review a ticket (repeatable)")
+    p.add_argument("--allow-partial", action="store_true")
 
     args = parser.parse_args(argv)
-    return {"prepare": cmd_prepare, "run": cmd_run, "report": cmd_report}[args.command](args)
+    return {"prepare": cmd_prepare, "run": cmd_run, "report": cmd_report, "review": cmd_review}[args.command](args)
 
 
 if __name__ == "__main__":

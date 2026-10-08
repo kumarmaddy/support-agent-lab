@@ -54,7 +54,8 @@ def test_report_end_to_end(tmp_path, dev_dataset):
     write_results(tmp_path / "results.jsonl", perfect_results(sample, labs, flaw=sample["ticket_ids"][0]))
     args = ["report", "--labels", str(labels_path), "--sample", str(tmp_path / "sample.json"),
             "--results", str(tmp_path / "results.jsonl"), "--report", str(tmp_path / "report.md"),
-            "--hourly-rate", "25", "--hourly-rate", "50"]
+            "--hourly-rate", "25", "--hourly-rate", "50", "--manifest", str(tmp_path / "manifest.json")]
+    (tmp_path / "manifest.json").write_text('{"dataset_version": "9.8.7"}', encoding="utf-8")
     assert cli.main(args) == 0
     text = (tmp_path / "report.md").read_text(encoding="utf-8")
     for heading in ("# Baseline Report", "## 1. Handling time", "## 2. Accuracy", "## 3. Cost per ticket", "## 4. Limitations"):
@@ -63,3 +64,6 @@ def test_report_end_to_end(tmp_path, dev_dataset):
     assert sample["ticket_ids"][0] in text                                 # the deliberately wrong ticket is listed
     assert "96.7%" in text                                                 # 29 of 30 categories right
     assert "one person" in text.lower() and "familiarity" in text.lower()
+    assert "dataset version 9.8.7" in text                                 # version comes from the manifest
+    assert "95% CI" in text and "### Escalation as a decision" in text and "### Disagreements with the labels" in text
+    assert "Precision:" in text and "Recall:" in text

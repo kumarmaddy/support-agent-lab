@@ -291,3 +291,56 @@ hours across sessions) and the generated report follow in this stage.
 **Evidence:** document stage; figures in the ADR were recomputed from the development labels and database (20 refund-action
 tickets; counts at each limit; minimum adversarial amount $84.99).
 **Open (stage 0.7b):** Phase 0 exit review after the manual baseline report is produced.
+
+---
+
+## Stage 0.7b-1: Baseline results and analysis additions (2026-10-07)
+**Objective:** read the first baseline results correctly before the Phase 0 exit review.
+**Results (40 scored tickets, one handler):** mean 162 s, median 136 s, 90th percentile 260 s; category 92.5%, action set 82.5%,
+escalation decision 92.5%, consequential actions 90.0%, required articles 87.5%; ten tickets differed on category or actions.
+Median time fell from 237 s (first 13 tickets) to 103 s (last 13).
+**Issues found in the first report:** the dataset row did not state the dataset version; accuracy was shown without
+counts or intervals; the consequential rate counted every ticket, including those with no consequential action; escalation
+had no precision and recall, so it could not be compared with objective O3; the list of differences did not show the
+handler's answer beside the label.
+**Files (changed):** `src/baseline/{scoring,report,cli}.py`, `tests/baseline/{test_scoring,test_cli}.py`,
+`docs/project/baseline-protocol.md` (1.0 to 1.1). **Files (new):** `docs/project/baseline-disagreement-review.md` (template).
+**Key decisions:**
+- The report now shows the dataset version from the manifest, counts with 95% Wilson intervals, the consequential rate on
+  relevant tickets, an escalation table with precision and recall, and a detailed disagreement list.
+- Each disagreement is classified (handler error, label error, knowledge-base defect, policy ambiguity) before it is counted as a
+  manual error. These analysis additions were made after the ticket list was seen; the protocol records this and the collection
+  procedure, sample and scoring rules are unchanged.
+**Evidence:** 267 tests passing; four mutation checks (escalation positives, interval formula, disagreement filter, relevance
+rule) each failed a test; the relevance mutation first survived and exposed a weak test, which was strengthened.
+**Known limitations:** the review is a self-review by the handler and dataset author.
+
+---
+
+## Stage 0.7b-2: Disagreement review tool (2026-10-07)
+**Objective:** make the review of baseline disagreements fast and consistent, without automating the judgement.
+**Files (new):** `src/baseline/review.py`, `tests/baseline/test_review.py`. **Files (changed):** `src/baseline/cli.py` (new `review`
+subcommand), `docs/project/baseline-protocol.md` (tool described in section 8).
+**Key decisions:**
+- The tool shows, per disagreement, the ticket, the records, the handler's answer, the label and the key facts of the required
+  and cited articles, with a neutral pointer to where to look. The reviewer chooses H, L, K or P and writes the evidence; the tool
+  never proposes a code, because a suggested classification would anchor a self-review.
+- Decisions are appended to `data/baseline/review.jsonl` (resumable; a later decision for a ticket replaces an earlier one) and the
+  review document is rendered from that log, so it can be regenerated and always matches the record.
+- The review reads labels, so it is a separate module; a test checks that the timed tool cannot import it.
+- The summary states manual accuracy two ways, first pass and handler errors only, on the same denominator.
+**Evidence:** 278 tests passing; five mutation checks (later decision ignored, defect count including handler errors, table cells
+unescaped, empty evidence accepted, log ignored) each failed a test; one survived at first and exposed a weak test, which was strengthened.
+**Known limitations:** self-review by the handler and dataset author.
+
+---
+
+## Stage 0.7b-3: Confirming drafted review decisions (2026-10-08)
+**Objective:** allow the reviewer to work quickly from prepared proposals without losing the reviewer's accountability.
+**Files (changed):** `src/baseline/review.py`, `src/baseline/cli.py`, `tests/baseline/test_review.py`.
+**Key decisions:**
+- Proposals live in `data/baseline/review-draft.jsonl` and are never recorded automatically. Each one is shown beside the
+  handler's answer and the label; the reviewer accepts it, takes it back for review from scratch, or stops.
+- An accepted proposal is stored with its source, and the generated review states how many decisions were drafted with assistance
+  and confirmed by the reviewer. A review done entirely by hand carries no such statement.
+**Evidence:** 282 tests passing; mutation checks (source not recorded, "review myself" still recording) each failed a test.
