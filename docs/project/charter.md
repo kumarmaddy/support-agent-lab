@@ -88,7 +88,7 @@ structured as a project brief.
 | Milestone | Target |
 |-----------|--------|
 | Environment ready; provisional model selection (ADR-003) | Complete (2026-10-06) |
-| Phase 0 exit: charter, risk register, rubric, dataset v1, baseline report | Week 2 |
+| Phase 0 exit: charter, risk register, rubric, dataset v1, baseline report | Complete (2026-10-08) |
 | Phase 1 exit: order-status slice and 30-ticket evaluation | Week 4 |
 | Phase 2 exit | Week 7 |
 | Phase 3 exit | Week 9 |

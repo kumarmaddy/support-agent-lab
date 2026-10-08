@@ -344,3 +344,29 @@ unescaped, empty evidence accepted, log ignored) each failed a test; one survive
 - An accepted proposal is stored with its source, and the generated review states how many decisions were drafted with assistance
   and confirmed by the reviewer. A review done entirely by hand carries no such statement.
 **Evidence:** 282 tests passing; mutation checks (source not recorded, "review myself" still recording) each failed a test.
+
+---
+
+## Stage 0.7b-4: Phase 0 exit review and storage decision (2026-10-08)
+**Objective:** evidence the Phase 0 exit criteria, review the charter objectives against the baseline, and record the storage decision.
+**Files (new):** `docs/project/phase-0-exit-review.md`, `docs/adr/ADR-005-operational-data-store.md`.
+**Files (changed):** `docs/project/risk-register.md` (1.0 to 1.1).
+**Key decisions:**
+- No objective is re-baselined at this gate: the evidence concerns the manual process and no model has been measured. The next
+  re-baseline point is the Phase 1 exit.
+- Metric definitions to fix in the Phase 1 evaluation design: executed versus proposed wrong actions, escalation reported with
+  intervals (22 escalation tickets per split), autonomous resolution, citation validity.
+- Storage: SQLite, one file per split, read-only access for tools that must not change data (ADR-005). ADR-004 is the refund
+  thresholds, so the vector-store decision takes the next free number.
+- Two risks added: instruments omitting information the agent will have (R15) and too few escalation cases (R16).
+**Evidence:** figures in the exit review recomputed from the report and the development labels and database; intervals are Wilson intervals.
+**Known limitations:** four exit criteria depend on commands run on the project machine and are marked "Confirm" until evidenced.
+
+---
+
+## Phase 0 closed (2026-10-08)
+**Decision:** Phase 0 (Discovery, baseline and data) is closed; the exit review is `docs/project/phase-0-exit-review.md` and the charter milestone is marked complete.
+**Evidence recorded at sign-off:**
+- `python -m src.datagen.freeze verify` on the project machine (Windows, Python 3.13): `Verified: dataset 1.0.0 matches the manifest (all hashes identical).`
+- Baseline data, the disagreement review and the automated test result were confirmed by the Project Lead at sign-off.
+**Carried into Phase 1:** the actions in section 6 of the exit review, in particular category definitions in the agent prompt, the evaluation metric definitions, and the 150-ticket model comparison with a pinned model digest.
