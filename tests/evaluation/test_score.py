@@ -40,7 +40,7 @@ def test_a_perfect_reader_scores_every_in_slice_ticket_and_hands_over_the_rest(w
     assert s["set_a"]["end_to_end"]["successes"] == 35, s["misses"]
     assert s["set_b"]["wrongly_answered"]["successes"] == 0 and s["set_b"]["handed_to_person"]["successes"] == 115
     assert s["read"]["category_agreement"]["successes"] == 150 and s["read"]["valid_readings"]["n"] == 150
-    assert s["misses"] == []
+    assert s["misses"] == [] and len(s["rows"]) == 150
     assert sc.render(s).startswith("run run-t")
 
 

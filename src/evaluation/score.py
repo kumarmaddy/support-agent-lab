@@ -97,7 +97,7 @@ def score_run(run_dir: Path, labels: list) -> dict:
     answered_correctly = [r for r in a if r["end_to_end_ok"] and r["action"] in ANSWERS]
     return {
         "schema": 1, "run_id": run_dir.name, "model": meta.get("model"), "reply_mode": meta.get("reply_mode"),
-        "prompts": meta.get("prompts"), "code": meta.get("code"), "tickets": len(rows),
+        "prompts": meta.get("prompts"), "code": meta.get("code"), "dataset": meta.get("dataset"), "tickets": len(rows),
         "read": {"valid_readings": rate(sum(1 for r in rows if r["read_category"] is not None), len(rows)),
                  "category_agreement": rate(sum(1 for r in rows if r["category_ok"]), len(rows))},
         "set_a": {"tickets": len(a),
@@ -115,6 +115,7 @@ def score_run(run_dir: Path, labels: list) -> dict:
         "replies": {"template_fallback_share": summary.get("template_fallback_share"), "template_fallbacks": summary.get("template_fallbacks"),
                     "drafts_by_model": summary.get("drafts_by_model"), "rejected_draft_codes": summary.get("rejected_draft_codes")},
         "latency_ms": (summary.get("latency_ms") or {}).get("per_ticket"), "warmup_ms": meta.get("warmup_ms"),
+        "rows": rows,
         "misses": [r for r in rows if (r["in_slice"] and not r["end_to_end_ok"]) or (not r["in_slice"] and r["wrongly_answered"])],
     }
 
