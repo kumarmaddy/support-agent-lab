@@ -370,3 +370,21 @@ unescaped, empty evidence accepted, log ignored) each failed a test; one survive
 - `python -m src.datagen.freeze verify` on the project machine (Windows, Python 3.13): `Verified: dataset 1.0.0 matches the manifest (all hashes identical).`
 - Baseline data, the disagreement review and the automated test result were confirmed by the Project Lead at sign-off.
 **Carried into Phase 1:** the actions in section 6 of the exit review, in particular category definitions in the agent prompt, the evaluation metric definitions, and the 150-ticket model comparison with a pinned model digest.
+
+---
+
+## Stage 1.1: Phase 1 design and architecture decision (2026-10-08)
+**Objective:** fix the shape of the first agent version before writing code.
+**Files (new):** `docs/design/phase-1-design.md`, `docs/adr/ADR-006-fixed-pipeline-architecture.md`.
+**Key decisions:**
+- Fixed pipeline: code owns the order of steps and every business decision; the model reads the ticket into a schema and
+  words the reply from verified facts. An agent loop is built later on the same tools and compared on the same measures
+  (ADR-006); the held-out run is made once per variant at Phase 4.
+- Slice: the 35 development tickets whose category is order_status (S01 to S04, S22, two adversarial S24). Other categories are
+  recognised and routed to a person.
+- Reply validation with a code-built template fallback; the share of fallbacks is reported.
+- Traces are JSON Lines files kept outside the operational database, which stays read-only for every tool.
+- Evaluation: set A (35 in-slice tickets, end to end) and set B (115 others, classification only), development split only,
+  guard against the held-out split.
+**Evidence:** document stage. Scenario counts and the order-status profile were taken from the development labels.
+**Open item settled in a later stage:** whether the tools are also served over MCP (1.7).
