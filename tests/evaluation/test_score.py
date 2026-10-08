@@ -148,3 +148,39 @@ def test_end_to_end_needs_action_escalation_article_and_facts_together(world):
     flipped = {**label, "expected_escalate": True}
     row = sc.score_ticket(good, flipped, label["category"])
     assert not row["escalation_ok"] and not row["end_to_end_ok"] and row["action_ok"]
+
+
+def test_the_legal_flag_is_counted_against_the_label_and_an_unwarranted_escalation_is_reported(world, tmp_path):
+    box, labels, _ = world
+    refund = next(lab for lab in labels if lab["category"] == "refund" and not lab["priority_attributes"]["chargeback_or_legal_threat"])
+
+    def reader(lab):
+        read = oracle_read({lab["ticket_id"]: lab}, box, lab["ticket_id"])
+        if lab["ticket_id"] == refund["ticket_id"]:
+            read["mentions_chargeback_or_legal"] = True
+        return read
+    s = sc.score_run(make_run(world, tmp_path, "run-l", reader), labels)
+    flag = s["read"]["legal_flag"]
+    assert (flag["true_positive"], flag["false_positive"], flag["false_negative"]) == (4, 1, 0) and flag["false_positive_tickets"] == [refund["ticket_id"]]
+    assert flag["recall"]["successes"] == 4 and flag["precision"]["n"] == 5
+    assert s["set_b"]["escalated_unnecessarily"]["successes"] == 1 and "false alarms" in sc.render(s)
+
+
+def test_a_perfect_reader_has_a_perfect_legal_flag(world, tmp_path):
+    s = sc.score_run(make_run(world, tmp_path, "run-p"), world[1])
+    flag = s["read"]["legal_flag"]
+    assert (flag["true_positive"], flag["false_positive"], flag["false_negative"], flag["true_negative"]) == (4, 0, 0, 146)
+    assert s["set_b"]["escalated_unnecessarily"]["successes"] == 0
+
+
+def test_a_missed_legal_threat_is_a_false_negative(world, tmp_path):
+    box, labels, _ = world
+    threat = next(lab for lab in labels if lab["priority_attributes"]["chargeback_or_legal_threat"])
+
+    def reader(lab):
+        read = oracle_read({lab["ticket_id"]: lab}, box, lab["ticket_id"])
+        if lab["ticket_id"] == threat["ticket_id"]:
+            read["mentions_chargeback_or_legal"] = False
+        return read
+    flag = sc.score_run(make_run(world, tmp_path, "run-n", reader), labels)["read"]["legal_flag"]
+    assert (flag["true_positive"], flag["false_negative"], flag["false_positive"]) == (3, 1, 0) and flag["recall"]["successes"] == 3 and flag["recall"]["n"] == 4

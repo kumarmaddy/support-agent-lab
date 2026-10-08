@@ -48,10 +48,11 @@ def facts_agree(resolution: dict, label: dict) -> bool:
     return True
 
 
-def score_ticket(resolution: dict, label: dict, read_category: Optional[str]) -> dict:
+def score_ticket(resolution: dict, label: dict, read_category: Optional[str], read_legal: Optional[bool] = None) -> dict:
     expected_action = label["expected_actions"][0]
     row = {"ticket_id": label["ticket_id"], "in_slice": in_slice(label), "scenario_id": label["scenario_id"],
            "label_category": label["category"], "read_category": read_category, "category_ok": read_category == label["category"],
+           "read_legal": read_legal, "label_legal": bool(label["priority_attributes"]["chargeback_or_legal_threat"]),
            "action": resolution["action"], "reason": resolution["reason"], "reply_source": resolution["reply_source"],
            "expected_action": expected_action}
     if row["in_slice"]:
@@ -64,6 +65,7 @@ def score_ticket(resolution: dict, label: dict, read_category: Optional[str]) ->
         row["handed_to_person"] = resolution["action"] in HAND_OVERS
         row["wrongly_answered"] = resolution["action"] in ANSWERS
         row["should_escalate_but_routed"] = bool(label["expected_escalate"]) and resolution["action"] != "escalate_human"
+        row["escalated_unnecessarily"] = resolution["action"] == "escalate_human" and not label["expected_escalate"]
     return row
 
 
@@ -73,24 +75,34 @@ def rate(successes: int, n: int) -> dict:
             "low": None if n == 0 else round(low, 4), "high": None if n == 0 else round(high, 4)}
 
 
-def read_categories(trace: list) -> dict:
-    """ticket_id -> category the read step returned, or None when the reading failed."""
+def read_results(trace: list) -> dict:
+    """ticket_id -> (category, legal flag) the read step returned, or (None, None) when the reading failed."""
     found = {}
     for record in trace:
         if record.get("step") == "read_ticket":
             reading = record.get("reading")
-            found[record["ticket_id"]] = reading.get("category") if reading else None
+            found[record["ticket_id"]] = (reading.get("category"), reading.get("legal")) if reading else (None, None)
     return found
+
+
+def legal_flag_counts(rows: list) -> dict:
+    """The reader's chargeback-or-legal flag against the label, over the tickets that were read."""
+    read = [r for r in rows if r["read_legal"] is not None]
+    tp = sum(1 for r in read if r["read_legal"] and r["label_legal"])
+    fp = sum(1 for r in read if r["read_legal"] and not r["label_legal"])
+    fn = sum(1 for r in read if not r["read_legal"] and r["label_legal"])
+    return {"true_positive": tp, "false_positive": fp, "false_negative": fn, "true_negative": len(read) - tp - fp - fn,
+            "precision": rate(tp, tp + fp), "recall": rate(tp, tp + fn), "false_positive_tickets": [r["ticket_id"] for r in read if r["read_legal"] and not r["label_legal"]]}
 
 
 def score_run(run_dir: Path, labels: list) -> dict:
     resolutions = read_jsonl(run_dir / "resolutions.jsonl")
-    categories = read_categories(read_jsonl(run_dir / "trace.jsonl"))
+    results = read_results(read_jsonl(run_dir / "trace.jsonl"))
     by_id = {lab["ticket_id"]: lab for lab in labels}
     unknown = [r["ticket_id"] for r in resolutions if r["ticket_id"] not in by_id]
     if unknown:
         raise SystemExit(f"Tickets in the run without a development label: {unknown[:5]}")
-    rows = [score_ticket(r, by_id[r["ticket_id"]], categories.get(r["ticket_id"])) for r in resolutions]
+    rows = [score_ticket(r, by_id[r["ticket_id"]], *results.get(r["ticket_id"], (None, None))) for r in resolutions]
     a, b = [r for r in rows if r["in_slice"]], [r for r in rows if not r["in_slice"]]
     summary = json.loads((run_dir / "summary.json").read_text(encoding="utf-8")) if (run_dir / "summary.json").exists() else {}
     meta = json.loads((run_dir / "run.json").read_text(encoding="utf-8")) if (run_dir / "run.json").exists() else {}
@@ -99,7 +111,8 @@ def score_run(run_dir: Path, labels: list) -> dict:
         "schema": 1, "run_id": run_dir.name, "model": meta.get("model"), "reply_mode": meta.get("reply_mode"),
         "prompts": meta.get("prompts"), "code": meta.get("code"), "dataset": meta.get("dataset"), "tickets": len(rows),
         "read": {"valid_readings": rate(sum(1 for r in rows if r["read_category"] is not None), len(rows)),
-                 "category_agreement": rate(sum(1 for r in rows if r["category_ok"]), len(rows))},
+                 "category_agreement": rate(sum(1 for r in rows if r["category_ok"]), len(rows)),
+                 "legal_flag": legal_flag_counts(rows)},
         "set_a": {"tickets": len(a),
                   "action": rate(sum(r["action_ok"] for r in a), len(a)),
                   "escalation": rate(sum(r["escalation_ok"] for r in a), len(a)),
@@ -111,7 +124,8 @@ def score_run(run_dir: Path, labels: list) -> dict:
         "set_b": {"tickets": len(b),
                   "handed_to_person": rate(sum(r["handed_to_person"] for r in b), len(b)),
                   "wrongly_answered": rate(sum(r["wrongly_answered"] for r in b), len(b)),
-                  "should_escalate_but_routed": sum(r["should_escalate_but_routed"] for r in b)},
+                  "should_escalate_but_routed": sum(r["should_escalate_but_routed"] for r in b),
+                  "escalated_unnecessarily": rate(sum(r["escalated_unnecessarily"] for r in b), len(b))},
         "replies": {"template_fallback_share": summary.get("template_fallback_share"), "template_fallbacks": summary.get("template_fallbacks"),
                     "drafts_by_model": summary.get("drafts_by_model"), "rejected_draft_codes": summary.get("rejected_draft_codes")},
         "latency_ms": (summary.get("latency_ms") or {}).get("per_ticket"), "warmup_ms": meta.get("warmup_ms"),
@@ -130,6 +144,8 @@ def render(score: dict) -> str:
     a, b, rd = score["set_a"], score["set_b"], score["read"]
     lines = [f"run {score['run_id']}  model {(score['model'] or {}).get('tag')}  reply mode {score['reply_mode']}  tickets {score['tickets']}",
              f"read step: valid readings {fmt(rd['valid_readings'])}; category agreement {fmt(rd['category_agreement'])}",
+             f"chargeback or legal flag: found {rd['legal_flag']['true_positive']} of {rd['legal_flag']['true_positive'] + rd['legal_flag']['false_negative']} labelled, "
+             f"{rd['legal_flag']['false_positive']} false alarms {rd['legal_flag']['false_positive_tickets']}",
              f"Set A, in-slice ({a['tickets']}):",
              f"  action {fmt(a['action'])}", f"  escalation decision {fmt(a['escalation'])}", f"  article {fmt(a['article'])}",
              f"  facts {fmt(a['facts'])}", f"  end to end {fmt(a['end_to_end'])}",
@@ -137,6 +153,7 @@ def render(score: dict) -> str:
              f"Set B, other tickets ({b['tickets']}):",
              f"  handed to a person {fmt(b['handed_to_person'])}", f"  answered by the agent (wrong) {fmt(b['wrongly_answered'])}",
              f"  needed escalation but were only routed: {b['should_escalate_but_routed']}",
+             f"  escalated although the label does not call for it {fmt(b['escalated_unnecessarily'])}",
              f"replies: template fallbacks {score['replies']['template_fallbacks']}/{score['replies']['drafts_by_model']}; rejected {score['replies']['rejected_draft_codes']}",
              f"latency per ticket: {score['latency_ms']}"]
     for m in score["misses"]:
