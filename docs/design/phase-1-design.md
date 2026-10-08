@@ -2,10 +2,10 @@
 
 | | |
 |---|---|
-| Version | 1.0 |
+| Version | 1.1 |
 | Date | 2026-10-08 |
 | Owner | Kumar Maddipatla, Project Lead |
-| Phase | 1 (Thin vertical slice), stage 1.1 |
+| Phase | 1 (Thin vertical slice), stages 1.1 and 1.3 |
 | Related | charter.md, data-design.md, ADR-003, ADR-004, ADR-005, ADR-006, phase-0-exit-review.md |
 
 ## 1. Purpose and scope
@@ -19,8 +19,8 @@ Out of scope: write actions, refunds, retrieval over the knowledge base (Phase 2
 ## 2. Pipeline
 | # | Step | Decided by | Input | Output | On failure |
 |---|------|------------|-------|--------|------------|
-| 1 | Read the ticket | Model, constrained by a JSON schema | Subject and body | category, order_id as written (or none), states_hard_deadline, mentions_chargeback_or_legal | One retry; then route to a person |
-| 2 | Check the reading | Code | Step 1 output | Category must be in the taxonomy; order_id must match the order-number format | Route to a person |
+| 1 | Read the ticket | Model, constrained by a JSON schema | Subject and body | category, states_hard_deadline, mentions_chargeback_or_legal from the model; order numbers found by a pattern in code (see revision 1.1) | One retry with a different seed; then route to a person |
+| 2 | Check the reading | Code | Step 1 output | Exactly the three fields; category in the taxonomy; both flags true/false | Route to a person |
 | 3 | Identify the customer and order | Code, read-only tools | Sender email, order_id | Customer record, the order, or the list of open orders | No account or order found: ask the customer for the order number |
 | 4 | Decide | Code | Category, order facts, step 1 flags | Action, reason code, article id | None; rules are total (section 3) |
 | 5 | Draft the reply | Model, constrained | Fixed facts, action, tone instructions | Reply text | One retry; then a template reply built by code |
@@ -120,3 +120,9 @@ derived from the files is added if a report needs it.
 - Reply wording may drift from the facts (R8). Mitigation: validator and template fallback, both measured.
 - Latency may exceed what a reviewer will tolerate on CPU. Mitigation: measured per step; the 7B model is compared before it is chosen.
 - Fixing the pipeline to the development scenarios may hide fragility. Mitigation: set B, and the held-out split at Phase 4.
+
+## Revision history
+| Version | Date | Change |
+|---------|------|--------|
+| 1.1 | 2026-10-08 | Order numbers are extracted by code (`\bO-\d{6}\b`, case-insensitive, upper-cased, de-duplicated) instead of being returned by the model. Reason: the format is fixed, a pattern is exact and cannot be steered by ticket text, and it removes one model output to validate. On the 150 development tickets the pattern finds the labelled order on all 119 identifiable tickets and nothing on the other 31. If a ticket names more than one order, step 3 treats the order as not identified and asks the customer which one (KB-ORD-02). |
+| 1.0 | 2026-10-08 | First version. |

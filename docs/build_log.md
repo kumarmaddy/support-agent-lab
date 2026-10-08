@@ -413,3 +413,25 @@ status, promised date and, for shipped orders, carrier, tracking number and last
 owner leaked in the refusal) each failed a test.
 **Known limitations:** `Order` carries one shipment because the dataset has at most one per order (guarded by a test); the fixture
 module for `tests/agent` imports the shared fixtures from `tests/baseline`, to be consolidated when a third test package needs them.
+
+## Stage 1.3: Model client, prompt v1, reading step (2026-10-08)
+**Files (new):** `src/agent/taxonomy.py`, `src/agent/prompting.py`, `src/agent/model.py`, `src/agent/reading.py`,
+`src/agent/prompts/read_ticket.v1.md`, `src/agent/prompts/__init__.py`, `scripts/probe_read_step.py`, `scripts/__init__.py`,
+`tests/agent/test_model.py`, `tests/agent/test_reading.py`. **Changed:** `docs/design/phase-1-design.md` (v1.1).
+**Key decisions:**
+- Category definitions and the six boundary rules from the data design are in the prompt (carry-forward action 1). Rule 5 (general policy
+  question with no order is product_info) is stated explicitly. The category list is restated in the agent package, which may not import the
+  generator; a test compares it with the generator's taxonomy.
+- Model client: local hosts only by default; temperature 0; explicit seed per call; token limit; JSON schema in the `format` option; model digest
+  read from `/api/tags`. Failures are returned as an `error` value, never raised. The transport is injectable, so every test runs without Ollama.
+- Prompts are versioned files; the loader returns name, version and SHA-256 for the trace.
+- Ticket text is passed as data between `<ticket>` delimiters; delimiter lookalikes are removed and the text is capped at 4,000 characters.
+- Order numbers come from a pattern in code, not from the model (design v1.1).
+- Step 2 accepts only the exact three fields with an allowed category and true booleans (an integer 1 is rejected). One retry with seed+1,
+  then the outcome is `failed` with a reason (`model_error` or `invalid_reading`) and the pipeline routes the ticket to a person.
+**Evidence:** 356 tests passing (47 new). Pattern check: all 150 development labels agree (119 found, 31 none). Seven mutation checks
+(retry seed unchanged, loose boolean check, delimiter stripping removed, length cap removed, temperature changed, local-only check removed,
+word boundary removed from the pattern) each failed a test.
+**Not yet evidenced:** behaviour of the real model. The probe script (`python -m scripts.probe_read_step`) measures category agreement with the
+development labels, the two flags, latency and tokens; the results feed prompt v2 and the model comparison in stage 1.6.
+**Known limitations:** the deadline flag is compared with `deadline_within_3_days`, which is a narrower label, so that agreement figure is indicative only.
