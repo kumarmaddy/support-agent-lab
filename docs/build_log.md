@@ -530,3 +530,26 @@ uses the real read prompt and schema), `tracing.py` (run-id suffix widened to 6 
 test flaky and could have refused a run), design doc v1.5.
 **Evidence:** 539 tests passing (8 new, 2 updated). Regression tests use the traced texts of T-000007 and T-000002. Five mutation checks each failed a test: misplaced-reference rule disabled, channel rule disabled, label pattern without the optional "is", template mode ignored in `draft_reply`, and template mode ignored in the pipeline. The last one first survived (the pipeline wiring had no test); a test over all 35 in-slice tickets now covers it.
 **Not yet evidenced:** the hinted retry and the new rules on the real model (rerun the smoke test); how many accepted replies are inaccurate (stage 1.6 reply-accuracy check).
+
+## Stage 1.6a to 1.6c: Evaluation harness and the first full development run (2026-10-08)
+**Built (1.6a, 1.6b):** `src/evaluation/` with a scorer (Set A end to end, Set B hand-over, read-step agreement, Wilson intervals, held-out guard), a paired run
+comparison (exact sign test, refuses different data or tickets) and a blind reply review (model reply against template reply, seeded order, key held apart,
+resumable). 564 tests; sixteen mutation checks each failed a test (two survivors found and covered).
+**First full run (commit ea5af9bc, clean tree, 150 development tickets):** three runs, llama3.2:3b with model-written replies, llama3.2:3b template-only, and
+qwen2.5:7b with model-written replies. Results are in `docs/evidence/phase-1-first-full-run.txt`. Summary: the read step gave 150 of 150 valid readings and
+category agreement of 137/150 (3B) and 139/150 (7B). Set A end to end: 33/35 (3B) and 35/35 (7B). Set B: 115/115 handed to a person and 0/115 answered by the agent in
+all three runs. Template fallbacks: 10 of 29 (3B) against 3 of 31 (7B), Fisher exact p = 0.028 (different draft sets, so unpaired). Median latency for a Set A ticket:
+12.3 s (3B), 26.0 s (7B), 4.3 s (template-only); full run 15.9, 31.4 and 10.3 minutes.
+**Findings:** (1) the old rule order routed four labelled chargeback or legal-threat tickets instead of escalating them, although the reader had flagged all four;
+(2) all five 3B replies for not-yet-dispatched orders called the promised delivery date a shipping date ("we are expecting to ship it on October 15"), which the
+validator could not see; none of the 7B replies did; (3) 7B replies say the promised date "remains" a date that has passed, which needs the reviewer's judgement;
+(4) the 3B model reads 13 tickets in the wrong category and misses T-000048 (an order question read as product_info) and T-000072 (an order question with an
+injected instruction, read as other), both of which the 7B model gets right; the 7B model reads the impersonation ticket T-000121 as order status and the ownership
+check then escalates it, which is the guard working and not the reader; (5) 16 or 17 tickets labelled "escalate" are only routed in this slice (suspected account
+compromise 5, chargeback or legal 4 before the correction, identity not verified 2 to 3, not in the knowledge base 5): a Phase 3 policy-engine item.
+**Changes (1.6c):** `decide.py` (legal threat before out of slice), `validate.py` and `reply.py` (`wrong_date_role`, `delivery_dates_only`), `review.py` (tickets on
+which the runs decided differently are excluded and listed instead of aborting), design doc v1.6.
+**Evidence:** 570 tests (6 new). Seven mutation checks each failed a test. Replayed offline over the accepted replies of the first run, the new rule rejects exactly
+the five defective 3B replies and none of the 28 accepted 7B replies. It was written after seeing those five, so it is a rule about what the supplied date means
+and not a tuned threshold; the final runs are the test of it.
+**Next:** final runs on the corrected code (3B, 3B template-only, 7B), blind review of the model-written replies, the first evaluation report.

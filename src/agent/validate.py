@@ -40,6 +40,7 @@ _PROMISE = re.compile(r"\b(refund\w*|compensat\w*|voucher\w*|discount\w*|credit\
 _INTERNAL = re.compile(r"\bKB-[A-Z]{3}-\d{2}\b|support guidance|\binternal\b", re.IGNORECASE)
 _CHANNEL = re.compile(r"\b(web\s?site|web\s?page|portal|app|online|click|links?|url|https?\S*|call (?:us|our)|phone|hotline|live chat|contact us|email us)\b", re.IGNORECASE)
 _REFERENCE_LABEL = re.compile(r"(?:number|no\.?|reference|ref\.?|id|code)\W*(?:is\W*)?$", re.IGNORECASE)
+_DISPATCH_WORD = re.compile(r"\b(ship|ships|shipped|shipping|dispatch|dispatches|dispatched|dispatching|send|sent)\b", re.IGNORECASE)
 _LEAK = re.compile(r"system prompt|\bprompt\b|\btools?\b|\binstructions?\b|</?ticket>|\bas an ai\b|\blanguage model\b", re.IGNORECASE)
 
 
@@ -50,6 +51,7 @@ class ReplyFacts:
     allowed_ids: frozenset = frozenset()            # order numbers, upper-case
     allowed_tokens: frozenset = frozenset()         # tracking numbers and other references
     must_include: tuple = ()                        # rendered strings that must appear in the reply
+    delivery_dates_only: bool = False               # the only dates supplied are delivery promises (no dispatch date is known)
 
 
 def _words(text: str) -> list:
@@ -100,6 +102,11 @@ def _misplaced_reference(text: str, facts: ReplyFacts) -> bool:
     return False
 
 
+def _dispatch_date(text: str) -> bool:
+    """True when one sentence has both a date and a shipping word: the date supplied is the delivery promise, not a dispatch date."""
+    return any(_DISPATCH_WORD.search(sentence) and dates_in(sentence) for sentence in re.split(r"(?<=[.!?])\s+", text))
+
+
 def validate_reply(text: str, facts: ReplyFacts, internal: frozenset = frozenset()) -> list:
     """Return the codes of the rules the reply breaks; an empty list means it passes."""
     failures = []
@@ -123,6 +130,8 @@ def validate_reply(text: str, facts: ReplyFacts, internal: frozenset = frozenset
         failures.append("promise")
     if _CHANNEL.search(text):
         failures.append("unsupported_claim")
+    if facts.delivery_dates_only and _dispatch_date(text):
+        failures.append("wrong_date_role")
     if _misplaced_reference(text, facts):
         failures.append("misplaced_reference")
     if _INTERNAL.search(text) or (internal and _shingles(_words(text), SHINGLE_WORDS) & internal):

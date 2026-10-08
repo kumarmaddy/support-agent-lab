@@ -126,7 +126,7 @@ def test_all_hand_over_and_template_replies_pass_the_validator_with_internal_gui
 def test_no_customer_lookup_happens_for_tickets_that_do_not_need_one(world):
     """Out-of-slice and legal-threat tickets are handed over without reading the customer record (data minimisation)."""
     box, by_id, _ = world
-    ticket_id = next(t for t, l in by_id.items() if l["category"] == "refund")
+    ticket_id = next(t for t, l in by_id.items() if l["category"] == "refund" and not l["priority_attributes"]["chargeback_or_legal_threat"])
     other, _ = run(world, ticket_id)
     assert (other.action, other.reason) == (d.ROUTE_TO_HUMAN, "out_of_slice")
     assert "identify" not in [s["step"] for s in other.steps] and other.reply.startswith("Hello,\n")
@@ -154,3 +154,14 @@ def test_template_reply_mode_makes_no_reply_call_for_any_in_slice_ticket(world):
         res = run_ticket(box, model, READ, REPLY, internal, ticket_id, reply_mode="template")
         assert all("body" not in c["schema"]["properties"] for c in model.calls), ticket_id
         assert res.reply_source == "template", ticket_id
+
+
+def test_a_legal_threat_in_any_category_is_escalated_with_the_legal_article(world):
+    """Labelled chargeback or legal-threat tickets are refund tickets: they escalate although the category is out of the slice."""
+    box, by_id, _ = world
+    threats = [t for t, l in by_id.items() if l["escalation_reason"] == "chargeback_or_legal_threat"]
+    assert len(threats) == 4
+    for ticket_id in threats:
+        res, _ = run(world, ticket_id)
+        assert (res.action, res.reason, res.article) == (d.ESCALATE_HUMAN, "chargeback_or_legal_threat", "KB-REF-04"), ticket_id
+        assert "identify" not in [s["step"] for s in res.steps]

@@ -1,0 +1,85 @@
+Phase 1 first full development run: scores and comparisons (stage 1.6c). Code commit ea5af9bc, dataset sha256 403baccf8228..., dirty: false for all three runs.
+Runs: 3B model-written replies = run-20261008-112118-40579e; 3B template-only = run-20261008-114047-ae2408; qwen2.5:7b model-written = run-20261008-115211-85269a.
+These runs predate the corrections of stage 1.6c (legal threat before the slice check; wrong_date_role rule); they are the evidence for those findings and are superseded by the final runs.
+
+  run run-20261008-112118-40579e  model llama3.2:3b  reply mode model  tickets 150
+  read step: valid readings 150/150 = 100.0% (98-100%); category agreement 137/150 = 91.3% (86-95%)
+  Set A, in-slice (35):
+    action 33/35 = 94.3% (81-98%)
+    escalation decision 35/35 = 100.0% (90-100%)
+    article 33/35 = 94.3% (81-98%)
+    facts 33/35 = 94.3% (81-98%)
+    end to end 33/35 = 94.3% (81-98%)
+    answered without a person and correct 29/35 = 82.9% (67-92%); replies by source {'model': 19, 'template': 10}
+  Set B, other tickets (115):
+    handed to a person 115/115 = 100.0% (97-100%)
+    answered by the agent (wrong) 0/115 = 0.0% (0-3%)
+    needed escalation but were only routed: 17
+  replies: template fallbacks 10/29; rejected {'misplaced_reference': 9, 'missing_fact': 12, 'unsupported_claim': 4}
+  latency per ticket: {'max': 23410, 'p50': 4278, 'p90': 12745}
+    miss T-000048 S04 expected request_info got route_to_human (out_of_slice)
+    miss T-000072 S24 expected provide_info got route_to_human (out_of_slice)
+
+  run run-20261008-114047-ae2408  model llama3.2:3b  reply mode template  tickets 150
+  read step: valid readings 150/150 = 100.0% (98-100%); category agreement 137/150 = 91.3% (86-95%)
+  Set A, in-slice (35):
+    action 33/35 = 94.3% (81-98%)
+    escalation decision 35/35 = 100.0% (90-100%)
+    article 33/35 = 94.3% (81-98%)
+    facts 33/35 = 94.3% (81-98%)
+    end to end 33/35 = 94.3% (81-98%)
+    answered without a person and correct 29/35 = 82.9% (67-92%); replies by source {'model': 0, 'template': 29}
+  Set B, other tickets (115):
+    handed to a person 115/115 = 100.0% (97-100%)
+    answered by the agent (wrong) 0/115 = 0.0% (0-3%)
+    needed escalation but were only routed: 17
+  replies: template fallbacks 0/0; rejected {}
+  latency per ticket: {'max': 8317, 'p50': 4038, 'p90': 4838}
+    miss T-000048 S04 expected request_info got route_to_human (out_of_slice)
+    miss T-000072 S24 expected provide_info got route_to_human (out_of_slice)
+
+  run run-20261008-115211-85269a  model qwen2.5:7b  reply mode model  tickets 150
+  read step: valid readings 150/150 = 100.0% (98-100%); category agreement 139/150 = 92.7% (87-96%)
+  Set A, in-slice (35):
+    action 35/35 = 100.0% (90-100%)
+    escalation decision 35/35 = 100.0% (90-100%)
+    article 35/35 = 100.0% (90-100%)
+    facts 35/35 = 100.0% (90-100%)
+    end to end 35/35 = 100.0% (90-100%)
+    answered without a person and correct 31/35 = 88.6% (74-95%); replies by source {'model': 28, 'template': 3}
+  Set B, other tickets (115):
+    handed to a person 115/115 = 100.0% (97-100%)
+    answered by the agent (wrong) 0/115 = 0.0% (0-3%)
+    needed escalation but were only routed: 16
+  replies: template fallbacks 3/31; rejected {'missing_fact': 10}
+  latency per ticket: {'max': 57211, 'p50': 8421, 'p90': 26276}
+
+=== 3B vs 7B (both model-written) ===
+A = run-20261008-112118-40579e
+B = run-20261008-115211-85269a
+differences in configuration:
+  model: A {'digest': 'a80c4f17acd55265feec403c7aef86be0c25983ab279d83f3bcd3abbcb5b8b72', 'tag': 'llama3.2:3b'}  |  B {'digest': '845dbda0ea48ed749caafd9e6037047aa19acfcfd82e704d7ca97d631a0b697e', 'tag': 'qwen2.5:7b'}
+paired comparison (same tickets):
+  category agreement (all tickets): A 137/150, B 139/150; only A right 4, only B right 6; p = 0.754 (no reliable difference)
+  Set A end to end: A 33/35, B 35/35; only A right 0, only B right 2; p = 0.500 (no reliable difference)
+  Set A action: A 33/35, B 35/35; only A right 0, only B right 2; p = 0.500 (no reliable difference)
+  Set A facts: A 33/35, B 35/35; only A right 0, only B right 2; p = 0.500 (no reliable difference)
+  Set B handed to a person: A 115/115, B 115/115; only A right 0, only B right 0; p = 1.000 (no reliable difference)
+tickets with a different action: ['T-000048', 'T-000072', 'T-000121']
+template fallbacks: A 10/29, B 3/31
+latency per ticket (ms): A {'max': 23410, 'p50': 4278, 'p90': 12745}  |  B {'max': 57211, 'p50': 8421, 'p90': 26276}
+
+=== 3B model-written vs 3B template-only ===
+A = run-20261008-112118-40579e
+B = run-20261008-114047-ae2408
+differences in configuration:
+  reply_mode: A model  |  B template
+paired comparison (same tickets):
+  category agreement (all tickets): A 137/150, B 137/150; only A right 0, only B right 0; p = 1.000 (no reliable difference)
+  Set A end to end: A 33/35, B 33/35; only A right 0, only B right 0; p = 1.000 (no reliable difference)
+  Set A action: A 33/35, B 33/35; only A right 0, only B right 0; p = 1.000 (no reliable difference)
+  Set A facts: A 33/35, B 33/35; only A right 0, only B right 0; p = 1.000 (no reliable difference)
+  Set B handed to a person: A 115/115, B 115/115; only A right 0, only B right 0; p = 1.000 (no reliable difference)
+tickets with a different action: none
+template fallbacks: A 10/29, B 0/0
+latency per ticket (ms): A {'max': 23410, 'p50': 4278, 'p90': 12745}  |  B {'max': 8317, 'p50': 4038, 'p90': 4838}

@@ -146,7 +146,7 @@ def test_retry_hints_use_only_codes_and_supplied_facts():
     assert retry_hint(["unknown_date", "promise"], GOOD_BODY, facts).count(".") >= 2
     assert retry_hint(["something_else"], GOOD_BODY, facts) == "Follow the facts exactly."
     assert set(RETRY_HINTS) <= {"unknown_date", "relative_time", "unknown_order", "unknown_token", "amount", "promise", "internal_text", "prompt_leak", "length",
-                                   "missing_fact", "unsupported_claim", "misplaced_reference"}
+                                   "missing_fact", "unsupported_claim", "misplaced_reference", "wrong_date_role"}
 
 
 def test_a_model_error_draft_is_retried_without_a_hint():
@@ -179,3 +179,17 @@ def test_template_mode_makes_no_model_call_and_uses_the_template():
     model = ScriptedModel(reply=lambda s, u, seed: {"body": GOOD_BODY})
     out = draft_reply(model, PROMPT, DECISIONS["shipped_on_time"], "Ada", use_model=False)
     assert model.calls == [] and out.source == "template"
+
+
+def test_only_an_undispatched_order_has_delivery_dates_only():
+    assert facts_for(DECISIONS["order_processing"]).delivery_dates_only
+    for name in ("shipped_on_time", "shipped_late", "delivered"):
+        assert not facts_for(DECISIONS[name]).delivery_dates_only, name
+
+
+def test_a_processing_reply_that_calls_the_promised_date_a_shipping_date_is_rejected_and_the_template_is_not():
+    facts = facts_for(DECISIONS["order_processing"])
+    bad = "Your order O-000123 has not been dispatched yet. We are expecting to ship it on October 15, 2026."
+    good = "Your order O-000123 has not been dispatched yet. The promised delivery date is October 15, 2026."
+    assert "wrong_date_role" in validate_reply(bad, facts) and "wrong_date_role" not in validate_reply(good, facts)
+    assert "wrong_date_role" not in validate_reply(template_body(DECISIONS["order_processing"]), facts)

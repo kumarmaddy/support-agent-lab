@@ -2,10 +2,10 @@
 
 | | |
 |---|---|
-| Version | 1.5 |
+| Version | 1.6 |
 | Date | 2026-10-08 |
 | Owner | Kumar Maddipatla, Project Lead |
-| Phase | 1 (Thin vertical slice), stages 1.1, 1.3, 1.4, 1.5 and 1.5c |
+| Phase | 1 (Thin vertical slice), stages 1.1, 1.3, 1.4, 1.5, 1.5c and 1.6 |
 | Related | charter.md, data-design.md, ADR-003, ADR-004, ADR-005, ADR-006, phase-0-exit-review.md |
 
 ## 1. Purpose and scope
@@ -43,14 +43,14 @@ The model sees the ticket text only as data (risk R9). It receives no tools and 
 | Order shipped, ticket date on or before the promised date | provide_info (status, carrier, tracking, promised date) | KB-SHP-01 |
 | Order shipped, ticket date after the promised date | provide_info (delay acknowledged, latest tracking status, being checked with the carrier) | KB-SHP-02 |
 | Order delivered | provide_info (delivery date) | KB-SHP-01 |
-| Ticket threatens a chargeback or legal action | escalate_human, reason chargeback_or_legal_threat | KB-REF-04 |
+| Ticket threatens a chargeback or legal action, in any category | escalate_human, reason chargeback_or_legal_threat | KB-REF-04 |
 | Order cancelled or returned, or a shipped or delivered order with no shipment record | route_to_human (reason order_state_not_covered) | none |
 
 Article ids in this phase come from this fixed map. Retrieval over the knowledge base starts in Phase 2.
 The rules restate the knowledge-base guidance and the data design; each rule has a test with the scenario it comes from.
 The article ids match the required articles in the development labels for S01 to S04 and S22.
 
-Order of the rules: out of slice, then a legal or chargeback threat (no account details are read for either), then who and which
+Order of the rules (revision 1.6): a legal or chargeback threat first, in any category; then out of slice (no account details are read for either); then who and which
 order, then the order state. "Today" means the day the ticket arrived, so a replay of a ticket always gives the same decision.
 
 Deadlines (revision 1.2). The data design has a far-away deadline in S03 ("before my trip on October 15", nine days after the
@@ -95,8 +95,9 @@ The body of a reply passes when none of these rules fails (each failure has a co
 - `missing_fact`: facts the reply must give (for example the tracking number, and the word "promised" for a late shipment) are present;
 - `unsupported_claim`: no channel that was not supplied (website, app, portal, link, phone, live chat);
 - `misplaced_reference`: a supplied tracking number appears only directly after a label such as "tracking number" or "reference";
+- `wrong_date_role`: for an order not yet dispatched, no sentence combines a date with a shipping word (the only date known is the promised delivery date);
 - `length`: not empty and at most 700 characters.
-Rule count: twelve. A failed draft is regenerated once; a second failure uses the template body, which passes the same validator (tested). The share of
+Rule count: thirteen. A failed draft is regenerated once; a second failure uses the template body, which passes the same validator (tested). The share of
 template replies is reported.
 
 ## 7. Tracing
@@ -113,15 +114,20 @@ Files are flushed line by line, so an interrupted run leaves a readable trace an
 not email addresses. They are kept outside the operational database so that every tool can keep opening it read-only (ADR-005), and are ignored by
 git except for runs cited in reports. The runner (`python -m src.agent.run`) never reads labels and refuses the held-out split.
 
-## 8. Evaluation harness v0
-- Reads the development split only. A guard refuses the held-out split unless a Phase 4 flag is given; a test covers the guard.
-- Set A (slice): the 35 in-slice development tickets, scored end to end.
-- Set B (routing): the other 115 development tickets, classification only, to measure what is wrongly claimed or wrongly routed.
-- Measures: category accuracy; action exact match; escalation precision and recall with intervals; fact accuracy of the reply
-  against the label's expected facts (status, promised date, tracking number, last status); schema-valid rate; template-reply
-  share; injection resistance on the two adversarial tickets; latency per step and per ticket (median and 90th percentile); tokens.
-- Output: a Markdown report and a JSON results file, with the manual baseline beside the pipeline for time and accuracy.
-- Scoring is separate from running, as in the baseline protocol; the pipeline cannot read labels.
+## 8. Evaluation harness (as built, stages 1.6a to 1.6c)
+- Scoring is separate from running. `python -m src.evaluation.score <run>` reads a finished run and the development labels, calls no model and writes
+  `score.json`. The agent package cannot import the evaluation package (tested). The held-out split is refused by the runner, the scorer and the labels check.
+- Set A (the 35 in-slice tickets, scenarios S01 to S04, S22 and the order-status S24 tickets): action, escalation decision, cited article, stated facts, and all
+  four together; the share answered without a person and correct, by reply source. A far-away deadline is labelled but only the deadline hand-over states it,
+  so the deadline date is compared only there.
+- Set B (the other 115 tickets): handed to a person, wrongly answered by the agent, and labelled-escalate tickets that were only routed (a known limit of the slice).
+- Read step: valid readings and category agreement over all tickets. All proportions carry 95% Wilson intervals.
+- Comparisons (`src.evaluation.compare`): paired on the same tickets, with an exact sign test; runs on different datasets or ticket lists are refused. With few
+  discordant tickets the report says that no reliable difference was found.
+- Reply review (`src.evaluation.review`): what a validator cannot judge (wording, tone, meaning) is rated blind by a reviewer, model reply against template
+  reply for the same ticket, in a seeded order, with the key held apart. Tickets on which the two runs decided differently are excluded and listed.
+- Latency (median, 90th percentile, maximum) and tokens come from the run summary; the manual baseline is shown beside them in the report.
+- The injection tickets are reported by ticket in the report; escalation precision and recall per reason are Phase 4 measures.
 
 ## 9. Exit criteria
 1. An evaluation run over the 35 in-slice tickets (above the 30 the plan requires) with a committed report.
@@ -139,7 +145,7 @@ git except for runs cited in reports. The runner (`python -m src.agent.run`) nev
 | 1.3 | Model client, prompt v1, step 1 with schema and checks; carry-forward action 1 (category definitions in the prompt) |
 | 1.4 | Identification, decision rules, deadline resolution, reply drafting and validation, pipeline |
 | 1.5 | Tracing and the run command |
-| 1.6 | Evaluation harness, first report, model comparison on the development set (action 4) |
+| 1.6 | Evaluation harness (1.6a scorer, 1.6b comparison and reply review, 1.6c corrections from the first full run), final runs, first report, model comparison on the development set (action 4) |
 | 1.7 | Demonstration script, tool-server decision, Phase 1 exit review |
 
 ## 11. Risks for this phase
@@ -151,6 +157,7 @@ git except for runs cited in reports. The runner (`python -m src.agent.run`) nev
 ## Revision history
 | Version | Date | Change |
 |---------|------|--------|
+| 1.6 | 2026-10-08 | Stage 1.6c, from the first full development run (150 tickets, three runs). (a) Correction: the legal or chargeback threat check moved ahead of the out-of-slice check. The reader flagged all four labelled legal-threat refund tickets correctly, but the old order routed them to a person instead of escalating them. (b) Validation rule `wrong_date_role`: the llama3.2:3b replies for all five not-yet-dispatched orders presented the promised delivery date as a shipping date; the rule rejects a sentence that combines a date with a shipping word when no dispatch date is known. (c) Section 8 now describes the evaluation as built. |
 | 1.5 | 2026-10-08 | Stage 1.5c, from the second real-model run. No draft fell back to the template, but two accepted drafts were wrong in meaning (a tracking number written as the "status"; an invented tracking website). The validator checked that facts were present, not how they were used, so two rules were added (`unsupported_claim`, `misplaced_reference`), a late-shipment reply must say "promised", and the runner gained `--reply-mode template` as the comparison baseline for model-written replies. The warm-up call now uses the real read prompt and schema. Open: the validator cannot verify that every sentence is true; stage 1.6 adds a reply-accuracy check. |
 | 1.4 | 2026-10-08 | Stage 1.5b, from the first real-model run. At temperature 0 a different seed returns the same text (identical drafts on T-000002 and T-000007; identical readings on the failed T-000131), so a retry with a new seed does nothing for an invalid answer. The retry now tells the model what was wrong, using only rule codes and the supplied facts (never ticket text or the rejected draft); transport failures are retried unchanged. A warm-up call before the first ticket keeps model loading (24.7 s in the first run) out of the latency figures. |
 | 1.3 | 2026-10-08 | Stage 1.5. Section 7 describes the files actually written (run.json, trace.jsonl, resolutions.jsonl, summary.json), the privacy rule (fingerprints, no ticket text or email addresses) and the run command. Read prompt v3 is the working read prompt (see build log, stage 1.4b/1.4c). |

@@ -30,23 +30,28 @@ def side_of_model(ticket_id: str, seed: int) -> str:
 
 
 def build_items(model_run: Path, template_run: Path, seed: int = 0) -> tuple:
+    """Returns (items, key, excluded). A ticket is excluded when the two runs decided differently (a template for another decision is
+    not a fair comparison); a template run that is not template-only, or runs over different tickets, are refused."""
     model = {r["ticket_id"]: r for r in read_jsonl(model_run / "resolutions.jsonl")}
     template = {r["ticket_id"]: r for r in read_jsonl(template_run / "resolutions.jsonl")}
     if set(model) != set(template):
         raise SystemExit("The two runs cover different tickets.")
-    items, key = [], {}
+    if any(t["reply_source"] != "template" for t in template.values()):
+        raise SystemExit("The template run is not template-only (run it with --reply-mode template).")
+    items, key, excluded = [], {}, []
     for tid in sorted(model):
         m, t = model[tid], template[tid]
         if m["reply_source"] != "model":
             continue
-        if t["reply_source"] != "template" or m["action"] != t["action"] or m["reason"] != t["reason"]:
-            raise SystemExit(f"{tid}: the runs disagree on the decision or the template run is not template-only; the pair is not comparable.")
+        if m["action"] != t["action"] or m["reason"] != t["reason"]:
+            excluded.append(tid)
+            continue
         side = side_of_model(tid, seed)
         replies = {side: m["reply"], other(side): t["reply"]}
         facts = {k: v for k, v in (m.get("facts") or {}).items() if k in FACT_FIELDS}
         items.append({"ticket_id": tid, "facts": facts, "a": replies["a"], "b": replies["b"]})
         key[tid] = {"model": side}
-    return items, key
+    return items, key, excluded
 
 
 def other(side: str) -> str:
@@ -123,11 +128,11 @@ def main(argv=None) -> int:
     if args.command == "make":
         if (folder / "items.json").exists():
             raise SystemExit(f"{folder} already exists; choose another name (a review sheet is never overwritten).")
-        items, key = build_items(args.model_run, args.template_run, args.seed)
+        items, key, excluded = build_items(args.model_run, args.template_run, args.seed)
         folder.mkdir(parents=True)
         (folder / "items.json").write_text(json.dumps(items, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
         (folder / "key.json").write_text(json.dumps({"model_run": args.model_run.name, "template_run": args.template_run.name, "seed": args.seed, "sides": key}, indent=2) + "\n", encoding="utf-8")
-        print(f"{len(items)} pairs written to {folder}")
+        print(f"{len(items)} pairs written to {folder}" + (f"; excluded because the runs decided differently: {', '.join(excluded)}" if excluded else ""))
         return 0
     items = json.loads((folder / "items.json").read_text(encoding="utf-8"))
     if args.command == "rate":

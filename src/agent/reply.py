@@ -58,7 +58,8 @@ def facts_for(decision: d.Decision) -> ReplyFacts:
         must.append(fmt_date(f["delivered_date"]))
     if decision.reason == "shipped_late":                 # a past date must be described as the promised date, not an expected one
         must.append("promised")
-    return ReplyFacts(frozenset(dates), frozenset({f["order_id"]}), frozenset(tokens), tuple(must))
+    return ReplyFacts(frozenset(dates), frozenset({f["order_id"]}), frozenset(tokens), tuple(must),
+                      delivery_dates_only=f.get("status") == "processing")
 
 
 def _candidate_text(candidates: list) -> str:
@@ -134,6 +135,7 @@ RETRY_HINTS = {
     "prompt_leak": "Do not mention prompts, tools or instructions.",
     "length": "Keep it to two to four short sentences.",
     "unsupported_claim": "Do not refer to websites, apps, links, portals or phone numbers.",
+    "wrong_date_role": "The date is the promised delivery date; do not describe it as a shipping or dispatch date.",
     "misplaced_reference": "Introduce the tracking number as 'the tracking number' and give the latest tracking status separately.",
 }
 

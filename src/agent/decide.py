@@ -39,7 +39,7 @@ class Decision:
 
 
 def requires_lookup(reading: Reading) -> bool:
-    """Only order-status tickets without a legal threat need the customer and order."""
+    """Only order-status tickets without a legal threat need the customer and order (a legal threat is escalated in any category)."""
     return reading.category == "order_status" and not reading.mentions_chargeback_or_legal
 
 
@@ -69,12 +69,12 @@ def _day(stamp: Optional[str]) -> Optional[str]:
 
 
 def decide(reading: Reading, identity: Optional[Identity], today: date) -> Decision:
-    # 1. out of slice
-    if reading.category != "order_status":
-        return Decision(ROUTE_TO_HUMAN, "out_of_slice", None)
-    # 2. threat of chargeback or legal action: always a person (KB-REF-04), no account details needed
+    # 1. threat of chargeback or legal action: always escalated (KB-REF-04), whatever the category; no account details are read
     if reading.mentions_chargeback_or_legal:
         return Decision(ESCALATE_HUMAN, "chargeback_or_legal_threat", "KB-REF-04")
+    # 2. out of slice
+    if reading.category != "order_status":
+        return Decision(ROUTE_TO_HUMAN, "out_of_slice", None)
     if identity is None:
         raise ValueError("an identity is required for an order-status ticket without a legal threat")
     # 3. who and which order

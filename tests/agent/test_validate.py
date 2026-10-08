@@ -98,3 +98,12 @@ def test_a_tracking_number_in_a_status_sentence_is_misplaced():
 def test_claims_about_channels_we_were_not_given_fail(phrase):
     # Traced draft for T-000002 contained the first sentence.
     assert "unsupported_claim" in codes(GOOD + " " + phrase)
+
+
+def test_a_shipping_word_in_a_sentence_with_a_delivery_date_fails_only_when_no_dispatch_date_is_known():
+    undispatched = ReplyFacts(FACTS.allowed_dates, FACTS.allowed_ids, FACTS.allowed_tokens, (), delivery_dates_only=True)
+    text = "Your order O-000123 has not been dispatched yet. We are expecting to ship it on October 10, 2026."
+    assert "wrong_date_role" in codes(text, undispatched)
+    assert "wrong_date_role" not in codes(text)                                  # a shipped order: the rule is off
+    assert "wrong_date_role" not in codes("Your order O-000123 has not been dispatched yet. The promised delivery date is October 10, 2026.", undispatched)
+    assert "wrong_date_role" not in codes("It has not been shipped. It will be delivered later. The delivery date is October 10, 2026.", undispatched)

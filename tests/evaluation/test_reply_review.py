@@ -25,7 +25,7 @@ def runs(tmp_path):
 
 
 def test_only_model_written_replies_are_paired_and_both_sides_are_used(runs):
-    items, key = rv.build_items(*runs[:2])
+    items, key, _ = rv.build_items(*runs[:2])
     assert len(items) == 6 and all(i["ticket_id"] in key for i in items)
     sides = {key[i["ticket_id"]]["model"] for i in items}
     assert sides == {"a", "b"}
@@ -34,20 +34,17 @@ def test_only_model_written_replies_are_paired_and_both_sides_are_used(runs):
 
 
 def test_the_assignment_is_fixed_by_seed_and_the_sheet_does_not_say_which_side_is_which(runs):
-    one, key_one = rv.build_items(*runs[:2], seed=1)
-    again, _ = rv.build_items(*runs[:2], seed=1)
-    other_seed, key_other = rv.build_items(*runs[:2], seed=2)
+    one, key_one, _ = rv.build_items(*runs[:2], seed=1)
+    again, _, _ = rv.build_items(*runs[:2], seed=1)
+    other_seed, key_other, _ = rv.build_items(*runs[:2], seed=2)
     assert one == again and key_one != key_other
     assert not any("model" in k or "template" in k for i in one for k in i)
 
 
-def test_runs_that_disagree_or_cover_other_tickets_are_refused(runs, tmp_path):
+def test_runs_over_other_tickets_or_a_template_run_with_model_replies_are_refused(runs, tmp_path):
     model, template, ids = runs
     with pytest.raises(SystemExit):
         rv.build_items(model, write_run(tmp_path / "x", [res(ids[0], "template", "t")]))
-    changed = write_run(tmp_path / "y", [res(t, "template", "t", reason="shipped_late") for t in ids])
-    with pytest.raises(SystemExit):
-        rv.build_items(model, changed)
     not_template = write_run(tmp_path / "z", [res(t, "model", "t") for t in ids])
     with pytest.raises(SystemExit):
         rv.build_items(model, not_template)
@@ -59,7 +56,7 @@ def answers(*given):
 
 
 def test_ratings_are_saved_at_once_and_a_session_can_be_resumed(runs, tmp_path):
-    items, _ = rv.build_items(*runs[:2])
+    items, _, _ = rv.build_items(*runs[:2])
     path = tmp_path / "r" / "ratings.jsonl"
     shown = []
     n = rv.run_review(items, path, answers("a", "n", "y", "", "", "q"), shown.append)      # rates one pair, then quits on the second
@@ -72,13 +69,13 @@ def test_ratings_are_saved_at_once_and_a_session_can_be_resumed(runs, tmp_path):
 
 
 def test_an_invalid_choice_is_asked_again(runs, tmp_path):
-    items, _ = rv.build_items(*runs[:2])
+    items, _, _ = rv.build_items(*runs[:2])
     rv.run_review(items[:1], tmp_path / "r.jsonl", answers("x", "?", "b", "", "", "", ""), lambda s: None)
     assert rv.load_ratings(tmp_path / "r.jsonl")[items[0]["ticket_id"]]["better"] == "b"
 
 
 def test_the_report_joins_ratings_and_key(runs):
-    items, key = rv.build_items(*runs[:2])
+    items, key, _ = rv.build_items(*runs[:2])
     sides = {i["ticket_id"]: key[i["ticket_id"]]["model"] for i in items}
     ids = list(sides)
     other = {"a": "b", "b": "a"}
@@ -105,3 +102,10 @@ def test_make_never_overwrites_a_sheet(runs, tmp_path):
     assert rv.main(args) == 0 and (tmp_path / "reviews" / "s" / "key.json").exists()
     with pytest.raises(SystemExit):
         rv.main(args)
+
+
+def test_tickets_decided_differently_are_excluded_not_fatal(runs, tmp_path):
+    model, _, ids = runs
+    changed = write_run(tmp_path / "y", [res(t, "template", "t", reason="shipped_late" if t == ids[0] else "shipped_on_time") for t in ids])
+    items, key, excluded = rv.build_items(model, changed)
+    assert excluded == [ids[0]] and ids[0] not in key and len(items) == 5

@@ -42,6 +42,13 @@ def test_a_legal_threat_escalates_even_without_an_identity():
     assert not requires_lookup(reading(legal=True))
 
 
+def test_a_legal_threat_escalates_in_every_category_and_never_needs_a_lookup():
+    for category in ("refund", "other", "product_info", "account", "order_status"):
+        out = decide(reading(category, legal=True), None, TODAY)
+        assert (out.action, out.reason, out.article) == (d.ESCALATE_HUMAN, "chargeback_or_legal_threat", "KB-REF-04"), category
+        assert not requires_lookup(reading(category, legal=True))
+
+
 def test_an_order_status_ticket_needs_an_identity():
     assert requires_lookup(reading())
     with pytest.raises(ValueError):
