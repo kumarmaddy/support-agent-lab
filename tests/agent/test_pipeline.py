@@ -143,3 +143,14 @@ def test_retry_hints_are_recorded_in_the_trace_steps(world):
     read_step = next(s for s in res.steps if s["step"] == "read_ticket")
     assert res.action == d.PROVIDE_INFO and read_step["retry_hints"] == ["category must be one of the allowed values."]
     assert [a["seed"] for a in read_step["attempts"]] == [0, 1]
+
+
+def test_template_reply_mode_makes_no_reply_call_for_any_in_slice_ticket(world):
+    box, by_id, internal = world
+    for ticket_id, label in by_id.items():
+        if not in_slice(label):
+            continue
+        model = ScriptedModel(read=lambda s, u, seed, t=ticket_id: oracle_read(by_id, box, t), reply=lambda s, u, seed: {"body": "x"})
+        res = run_ticket(box, model, READ, REPLY, internal, ticket_id, reply_mode="template")
+        assert all("body" not in c["schema"]["properties"] for c in model.calls), ticket_id
+        assert res.reply_source == "template", ticket_id

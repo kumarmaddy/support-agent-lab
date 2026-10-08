@@ -175,13 +175,14 @@ def test_select_ids_by_limit_and_by_file(world, tmp_path):
 
 def test_warm_up_makes_one_call_and_reports_milliseconds():
     model = ScriptedModel(read=lambda s, u, seed: {"ok": True})
-    assert isinstance(runner.warm_up(model), int) and len(model.calls) == 1
+    assert isinstance(runner.warm_up(model, READ), int) and len(model.calls) == 1
+    assert model.calls[0]["schema"] == runner.READ_SCHEMA and model.calls[0]["system"].startswith(READ.text[:20])
 
 
 def test_meta_names_the_model_prompts_dataset_and_seed(world):
     db = world[0]
-    meta = runner.build_meta(ScriptedModel(), READ, REPLY, db, 7, ["T-000001"], ["--limit", "1"], digest="abc", warmup_ms=1234)
-    assert meta["warmup_ms"] == 1234
+    meta = runner.build_meta(ScriptedModel(), READ, REPLY, db, 7, ["T-000001"], ["--limit", "1"], digest="abc", warmup_ms=1234, reply_mode="template")
+    assert meta["warmup_ms"] == 1234 and meta["reply_mode"] == "template"
     assert meta["model"] == {"tag": "scripted:1b", "digest": "abc"} and meta["seed"] == 7 and meta["tickets"] == 1
     assert meta["prompts"]["read"] == {"label": "read_ticket.v3", "sha256": READ.sha256}
     assert meta["dataset"]["db_sha256"] == runner.file_sha256(db) and len(meta["dataset"]["db_sha256"]) == 64

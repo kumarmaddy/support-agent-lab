@@ -13,6 +13,8 @@ Rules (each returns a short code):
   promise          refund, compensation, discount, credit, expedite, upgrade, guarantee, replacement, "will arrive"
   internal_text    a knowledge-base id, an internal-guidance marker, or six consecutive words copied from internal guidance
   prompt_leak      mentions of prompts, tools, instructions or the ticket delimiters
+  unsupported_claim  directs the customer to a channel nobody supplied (website, app, portal, phone, link)
+  misplaced_reference  a supplied reference (tracking number) that is not introduced as a number or reference
   missing_fact     a fact the reply must contain (for example the tracking number) is absent
 """
 import re
@@ -36,6 +38,8 @@ _AMOUNT = re.compile(r"[$€£]\s?\d|\b\d+(?:[.,]\d+)?\s?(?:usd|dollars?|euros?|
 _PROMISE = re.compile(r"\b(refund\w*|compensat\w*|voucher\w*|discount\w*|credit\w*|reimburs\w*|expedit\w*|upgrad\w*|guarantee\w*|"
                       r"replacement\w*|free of charge)\b|\bwill\s+(?:arrive|be\s+delivered|be\s+dispatched|ship|reach)\b", re.IGNORECASE)
 _INTERNAL = re.compile(r"\bKB-[A-Z]{3}-\d{2}\b|support guidance|\binternal\b", re.IGNORECASE)
+_CHANNEL = re.compile(r"\b(web\s?site|web\s?page|portal|app|online|click|links?|url|https?\S*|call (?:us|our)|phone|hotline|live chat|contact us|email us)\b", re.IGNORECASE)
+_REFERENCE_LABEL = re.compile(r"(?:number|no\.?|reference|ref\.?|id|code)\W*(?:is\W*)?$", re.IGNORECASE)
 _LEAK = re.compile(r"system prompt|\bprompt\b|\btools?\b|\binstructions?\b|</?ticket>|\bas an ai\b|\blanguage model\b", re.IGNORECASE)
 
 
@@ -86,6 +90,16 @@ def missing_facts(text: str, facts: ReplyFacts) -> list:
     return [item for item in facts.must_include if item.lower() not in lowered]
 
 
+def _misplaced_reference(text: str, facts: ReplyFacts) -> bool:
+    """True when a supplied reference appears without a label such as 'tracking number' just before it, which is how a
+    tracking number ends up in a sentence about the status."""
+    for token in facts.allowed_tokens:
+        for match in re.finditer(re.escape(token), text, re.IGNORECASE):
+            if not _REFERENCE_LABEL.search(text[max(0, match.start() - 30):match.start()]):
+                return True
+    return False
+
+
 def validate_reply(text: str, facts: ReplyFacts, internal: frozenset = frozenset()) -> list:
     """Return the codes of the rules the reply breaks; an empty list means it passes."""
     failures = []
@@ -107,6 +121,10 @@ def validate_reply(text: str, facts: ReplyFacts, internal: frozenset = frozenset
         failures.append("amount")
     if _PROMISE.search(text):
         failures.append("promise")
+    if _CHANNEL.search(text):
+        failures.append("unsupported_claim")
+    if _misplaced_reference(text, facts):
+        failures.append("misplaced_reference")
     if _INTERNAL.search(text) or (internal and _shingles(_words(text), SHINGLE_WORDS) & internal):
         failures.append("internal_text")
     if _LEAK.search(text):

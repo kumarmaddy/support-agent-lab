@@ -145,7 +145,8 @@ def test_retry_hints_use_only_codes_and_supplied_facts():
     facts = facts_for(DECISIONS["shipped_on_time"])
     assert retry_hint(["unknown_date", "promise"], GOOD_BODY, facts).count(".") >= 2
     assert retry_hint(["something_else"], GOOD_BODY, facts) == "Follow the facts exactly."
-    assert set(RETRY_HINTS) <= {"unknown_date", "relative_time", "unknown_order", "unknown_token", "amount", "promise", "internal_text", "prompt_leak", "length"}
+    assert set(RETRY_HINTS) <= {"unknown_date", "relative_time", "unknown_order", "unknown_token", "amount", "promise", "internal_text", "prompt_leak", "length",
+                                   "missing_fact", "unsupported_claim", "misplaced_reference"}
 
 
 def test_a_model_error_draft_is_retried_without_a_hint():
@@ -153,3 +154,28 @@ def test_a_model_error_draft_is_retried_without_a_hint():
     model = ScriptedModel(reply=lambda s, u, seed: next(answers))
     out = draft_reply(model, PROMPT, DECISIONS["shipped_on_time"], "Ada")
     assert out.source == "model" and model.calls[1]["user"] == "Write the email body now." and out.hints == []
+
+
+LATE_BODY = ("We apologise for the delay. Your order O-000123 is with TrailExpress, tracking number TR245437731580. "
+             "It was promised for October 10, 2026 and we are checking with the carrier.")
+
+
+def test_a_late_shipment_reply_must_say_promised():
+    late = DECISIONS["shipped_late"]
+    assert "promised" in facts_for(late).must_include
+    facts = facts_for(late)
+    assert "missing_fact" in validate_reply(LATE_BODY.replace("promised", "expected"), facts_to_reply_facts(late))
+
+
+def facts_to_reply_facts(decision):
+    from src.agent.validate import ReplyFacts
+    from datetime import date
+    f = decision.facts
+    return ReplyFacts(frozenset({date.fromisoformat(f["promised_date"])}), frozenset({f["order_id"]}),
+                      frozenset({f["tracking_no"]}), tuple(facts_for(decision).must_include))
+
+
+def test_template_mode_makes_no_model_call_and_uses_the_template():
+    model = ScriptedModel(reply=lambda s, u, seed: {"body": GOOD_BODY})
+    out = draft_reply(model, PROMPT, DECISIONS["shipped_on_time"], "Ada", use_model=False)
+    assert model.calls == [] and out.source == "template"

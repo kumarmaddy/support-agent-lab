@@ -24,7 +24,7 @@ TRACE, RESOLUTIONS, RUN, SUMMARY = "trace.jsonl", "resolutions.jsonl", "run.json
 
 def new_run_id(now: Optional[datetime] = None, token: Optional[str] = None) -> str:
     now = now or datetime.now(timezone.utc)
-    return f"run-{now:%Y%m%d-%H%M%S}-{token or secrets.token_hex(2)}"
+    return f"run-{now:%Y%m%d-%H%M%S}-{token or secrets.token_hex(3)}"
 
 
 def _line(record: dict) -> str:

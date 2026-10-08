@@ -518,3 +518,15 @@ in the v3 probe also repeated); (2) cold start inflated the latency maximum; (3)
 every error, reply hint not sent, missing facts not named, warm-up skipped, hints not traced) each failed a test.
 **Not yet evidenced:** whether the hinted retry lowers the template fallback share on the real model (2 of 4 in the smoke run). Compare on the next run.
 **Housekeeping:** commit before an official run; run.json records `dirty: true` when the working tree has uncommitted changes.
+
+## Stage 1.5c: Validator tightening, template reply mode, warm-up on the real prompt (2026-10-08)
+**Second smoke run (10 development tickets, llama3.2:3b, clean commit):** 0 of 4 model-drafted replies fell back to the template (first run: 2 of 4); median 5.4 s
+per ticket, p90 21 s; warm-up 7.5 s. Reading the accepted replies showed that a fallback share of zero hides quality problems: T-000007 wrote the tracking number as
+the "latest tracking status" and called the past promised date "expected"; T-000002 (second draft) told the customer to track the order on the carrier's website, which
+was not supplied. Both passed all ten rules because the rules checked that facts were present, not how they were used.
+**Changes:** `validate.py` (`unsupported_claim`, `misplaced_reference`), `reply.py` (retry hints for both; the missing-fact hint reads "It must include"; a late shipment
+must say "promised"; `use_model=False` gives the template-only reply), `pipeline.py` and `run.py` (`--reply-mode {model,template}`, recorded in run.json; the warm-up call
+uses the real read prompt and schema), `tracing.py` (run-id suffix widened to 6 hex characters: with 4, fifty ids in one second collided about 2% of the time, which made a
+test flaky and could have refused a run), design doc v1.5.
+**Evidence:** 539 tests passing (8 new, 2 updated). Regression tests use the traced texts of T-000007 and T-000002. Five mutation checks each failed a test: misplaced-reference rule disabled, channel rule disabled, label pattern without the optional "is", template mode ignored in `draft_reply`, and template mode ignored in the pipeline. The last one first survived (the pipeline wiring had no test); a test over all 35 in-slice tickets now covers it.
+**Not yet evidenced:** the hinted retry and the new rules on the real model (rerun the smoke test); how many accepted replies are inaccurate (stage 1.6 reply-accuracy check).

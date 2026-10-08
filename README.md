@@ -58,9 +58,9 @@ Refund approval limits are decided in advance (ADR-004). Until Phase 4 every pro
 |---------|--------|-------|
 | Manual handling baseline (40 development tickets, single handler) | mean 162 s, median 136 s per ticket; category accuracy 92.5% (37/40) | `docs/project/baseline-protocol.md`, baseline report |
 | Dataset | 150 development and 150 held-out tickets, 21 knowledge-base articles, frozen by SHA-256 manifest | `data/manifest.json` |
-| Read step, llama3.2:3b, development set (n = 149 readings) | category agreement 91.3% (95% interval about 86% to 95%); 1 reading rejected; chargeback or legal flag 149/149; all 5 labelled deadlines resolved correctly | build log, stage 1.4c |
+| Read step, llama3.2:3b, development set (n = 149 readings) | category agreement 91.3% (95% interval about 86% to 95%); 1 reading rejected; chargeback or legal flag 149/149; all 5 labelled deadlines resolved correctly | `docs/build_log.md` (stage 1.4c), `docs/evidence/probe-v3.txt` |
 | Decision rules with a perfect reader | 35 of 35 in-slice development tickets get the labelled action, escalation decision and article | `tests/agent/test_pipeline.py` |
-| Tests | 531 passing; mutation checks recorded per stage | `build-log.md` |
+| Tests | 539 passing; mutation checks recorded per stage | `docs/build_log.md` |
 
 End-to-end accuracy, autonomous resolution rate and the 3B versus 7B model comparison are produced by the evaluation
 harness (Phase 1, stage 1.6) and are not reported yet.
@@ -73,9 +73,9 @@ Requirements: Python 3.13, [Ollama](https://ollama.com) for the model. The agent
 ```bash
 python -m venv .venv
 .venv\Scripts\activate            # Windows PowerShell; on Linux or macOS: source .venv/bin/activate
-pip install pytest requests       # requests is used only by scripts/smoke_test_v2.py
+pip install pytest
 
-python -m pytest -q               # 531 tests, no model needed
+python -m pytest -q               # 539 tests, no model needed
 ```
 
 Generate and verify the synthetic data (written outside version control):
@@ -129,13 +129,12 @@ src/
     tracing.py     run directories and summaries
     run.py         command-line runner
     prompts/       versioned prompt files
-scripts/       measurement aids that read labels (kept outside the agent package)
+scripts/       measurement aids that read labels (probe_read_step.py); kept outside the agent package
 data/
   seed/kb/     knowledge-base articles
   manifest.json  frozen dataset hashes
 tests/         pytest suites mirroring src/
-docs/          charter, design documents, ADRs, risk register, baseline protocol and report
-build-log.md   chronological record of every delivery stage with its evidence
+docs/          charter, design documents, ADRs, risk register, baseline protocol and report, build_log.md, evidence/
 ```
 
 The agent package cannot reach labels, the dataset generator or the baseline tool; a test enforces this.
@@ -144,12 +143,12 @@ The agent package cannot reach labels, the dataset generator or the baseline too
 
 - **Charter and objectives** (O1 to O8): scope, success metrics, phases.
 - **Phase 1 design** (`docs/design/phase-1-design.md`): pipeline, decision rules, validation, tracing, evaluation design.
-- **Data design** (`docs/design/data-design.md`): taxonomy, boundary rules, label format, scenarios.
+- **Data design** (`docs/design/data_design.md`): taxonomy, boundary rules, label format, scenarios.
 - **Architecture decisions** (`docs/adr/`): model selection (ADR-003), refund approval thresholds (ADR-004), operational data store
   (ADR-005), fixed pipeline before an agent loop (ADR-006).
-- **Risk register** (`docs/project/risk-register.md`): risks with mitigations and measured evidence.
+- **Risk register** (`docs/project/risk_register.md`): risks with mitigations and measured evidence.
 - **Baseline protocol and review** (`docs/project/`): how the manual baseline was measured and how disagreements were classified.
-- **Build log** (`build-log.md`): what changed at each stage, why, and the evidence.
+- **Build log** (`docs/build_log.md`): what changed at each stage, why, and the evidence.
 
 ## Scope and limitations
 

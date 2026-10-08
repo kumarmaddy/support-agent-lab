@@ -2,10 +2,10 @@
 
 | | |
 |---|---|
-| Version | 1.4 |
+| Version | 1.5 |
 | Date | 2026-10-08 |
 | Owner | Kumar Maddipatla, Project Lead |
-| Phase | 1 (Thin vertical slice), stages 1.1, 1.3, 1.4 and 1.5 |
+| Phase | 1 (Thin vertical slice), stages 1.1, 1.3, 1.4, 1.5 and 1.5c |
 | Related | charter.md, data-design.md, ADR-003, ADR-004, ADR-005, ADR-006, phase-0-exit-review.md |
 
 ## 1. Purpose and scope
@@ -92,9 +92,11 @@ The body of a reply passes when none of these rules fails (each failure has a co
 - `promise`: no refund, compensation, voucher, discount, credit, expedite, upgrade, guarantee, replacement, or "will arrive";
 - `internal_text`: no knowledge-base id, no internal-guidance marker, and no run of six words copied from internal guidance;
 - `prompt_leak`: no mention of prompts, tools, instructions or the ticket delimiters;
-- `missing_fact`: facts the reply must give (for example the tracking number) are present;
+- `missing_fact`: facts the reply must give (for example the tracking number, and the word "promised" for a late shipment) are present;
+- `unsupported_claim`: no channel that was not supplied (website, app, portal, link, phone, live chat);
+- `misplaced_reference`: a supplied tracking number appears only directly after a label such as "tracking number" or "reference";
 - `length`: not empty and at most 700 characters.
-A failed draft is regenerated once; a second failure uses the template body, which passes the same validator (tested). The share of
+Rule count: twelve. A failed draft is regenerated once; a second failure uses the template body, which passes the same validator (tested). The share of
 template replies is reported.
 
 ## 7. Tracing
@@ -149,6 +151,7 @@ git except for runs cited in reports. The runner (`python -m src.agent.run`) nev
 ## Revision history
 | Version | Date | Change |
 |---------|------|--------|
+| 1.5 | 2026-10-08 | Stage 1.5c, from the second real-model run. No draft fell back to the template, but two accepted drafts were wrong in meaning (a tracking number written as the "status"; an invented tracking website). The validator checked that facts were present, not how they were used, so two rules were added (`unsupported_claim`, `misplaced_reference`), a late-shipment reply must say "promised", and the runner gained `--reply-mode template` as the comparison baseline for model-written replies. The warm-up call now uses the real read prompt and schema. Open: the validator cannot verify that every sentence is true; stage 1.6 adds a reply-accuracy check. |
 | 1.4 | 2026-10-08 | Stage 1.5b, from the first real-model run. At temperature 0 a different seed returns the same text (identical drafts on T-000002 and T-000007; identical readings on the failed T-000131), so a retry with a new seed does nothing for an invalid answer. The retry now tells the model what was wrong, using only rule codes and the supplied facts (never ticket text or the rejected draft); transport failures are retried unchanged. A warm-up call before the first ticket keeps model loading (24.7 s in the first run) out of the latency figures. |
 | 1.3 | 2026-10-08 | Stage 1.5. Section 7 describes the files actually written (run.json, trace.jsonl, resolutions.jsonl, summary.json), the privacy rule (fingerprints, no ticket text or email addresses) and the run command. Read prompt v3 is the working read prompt (see build log, stage 1.4b/1.4c). |
 | 1.2 | 2026-10-08 | Stage 1.4. (a) Correction: v1.0 and v1.1 said to escalate on any stated deadline for an undispatched order. That would escalate S03's far-away deadline, which the data design keeps as an information reply. Step 1 now returns the customer's wording (`deadline_phrase`) instead of a yes/no flag, and code resolves the date and applies the 3-day window; prompt read_ticket v2 replaces v1 for this field only. (b) Rules table: not-found and no-account give request_info with KB-ORD-02 (v1.0 listed KB-SEC-01 for both); another customer's order escalates with reason order_not_owned; two or more named orders ask which one. (c) Section 5 and 6: the reply model writes only the body and never sees the ticket; hand-overs use templates; validator rules listed with codes. (d) Locked accounts: no rule, recorded as an open question. |

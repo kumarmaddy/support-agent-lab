@@ -82,3 +82,19 @@ def test_missing_required_facts_fail():
 
 def test_failures_accumulate():
     assert {"promise", "unknown_date"} <= set(codes(GOOD + " We will refund you on 1 November."))
+
+
+def test_a_tracking_number_in_a_status_sentence_is_misplaced():
+    # Traced draft for T-000007: the number was written where the status belongs.
+    bad = GOOD.replace("The tracking number is TR245437731580.", "The latest tracking status is TR245437731580.")
+    assert "misplaced_reference" in codes(bad)
+    assert "misplaced_reference" not in codes(GOOD)
+    assert "misplaced_reference" not in codes(GOOD.replace("The tracking number is", "Tracking number:"))
+    assert "misplaced_reference" not in codes(GOOD.replace("The tracking number is", "Your reference no. is"))
+
+
+@pytest.mark.parametrize("phrase", ["You can track the status of your order on the TrailExpress website.",
+                                    "Use our app to follow it.", "Call us on the phone for more.", "Click the link below."])
+def test_claims_about_channels_we_were_not_given_fail(phrase):
+    # Traced draft for T-000002 contained the first sentence.
+    assert "unsupported_claim" in codes(GOOD + " " + phrase)

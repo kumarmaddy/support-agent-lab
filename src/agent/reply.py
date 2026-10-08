@@ -56,6 +56,8 @@ def facts_for(decision: d.Decision) -> ReplyFacts:
     if "delivered_date" in f:
         dates.add(date.fromisoformat(f["delivered_date"]))
         must.append(fmt_date(f["delivered_date"]))
+    if decision.reason == "shipped_late":                 # a past date must be described as the promised date, not an expected one
+        must.append("promised")
     return ReplyFacts(frozenset(dates), frozenset({f["order_id"]}), frozenset(tokens), tuple(must))
 
 
@@ -131,6 +133,8 @@ RETRY_HINTS = {
     "internal_text": "Do not mention internal guidance or article ids.",
     "prompt_leak": "Do not mention prompts, tools or instructions.",
     "length": "Keep it to two to four short sentences.",
+    "unsupported_claim": "Do not refer to websites, apps, links, portals or phone numbers.",
+    "misplaced_reference": "Introduce the tracking number as 'the tracking number' and give the latest tracking status separately.",
 }
 
 
@@ -141,7 +145,7 @@ def retry_hint(problems: list, body: str, facts: ReplyFacts) -> str:
     parts = []
     missing = missing_facts(body, facts) if "missing_fact" in problems else []
     if missing:
-        parts.append("It must contain exactly: " + "; ".join(missing) + ".")
+        parts.append("It must include: " + "; ".join(missing) + ".")
     parts += [RETRY_HINTS[code] for code in problems if code in RETRY_HINTS]
     return " ".join(parts) if parts else "Follow the facts exactly."
 
@@ -167,11 +171,12 @@ class ReplyOutcome:
 
 
 def draft_reply(model: ModelClient, prompt: Prompt, decision: d.Decision, customer_name: Optional[str],
-                internal: frozenset = frozenset(), seed: int = 0) -> ReplyOutcome:
+                internal: frozenset = frozenset(), seed: int = 0, use_model: bool = True) -> ReplyOutcome:
+    """``use_model=False`` gives the template-only reply, the comparison baseline for model-written replies."""
     name = first_name(customer_name)
     facts = facts_for(decision)
     outcome = ReplyOutcome("", "template", prompt=prompt.label, prompt_sha256=prompt.sha256)
-    if decision.action in (d.PROVIDE_INFO, d.REQUEST_INFO):
+    if use_model and decision.action in (d.PROVIDE_INFO, d.REQUEST_INFO):
         system, request = render_system(prompt, decision), "Write the email body now."
         for attempt in range(2):
             response: ModelResponse = model.chat(system, request, REPLY_SCHEMA, seed=seed + attempt, max_tokens=MAX_TOKENS)

@@ -59,7 +59,7 @@ def _model_usage(responses) -> dict:
 
 
 def run_ticket(box: Toolbox, model: ModelClient, read_prompt: Prompt, reply_prompt: Prompt, internal: frozenset,
-               ticket_id: str, seed: int = 0) -> Resolution:
+               ticket_id: str, seed: int = 0, reply_mode: str = "model") -> Resolution:
     steps: list = []
 
     def finish(action, reason, article, text, source, facts=None):
@@ -107,7 +107,7 @@ def run_ticket(box: Toolbox, model: ModelClient, read_prompt: Prompt, reply_prom
     # 5-6. draft and validate
     started = time.perf_counter()
     name = identity.customer.name if identity and identity.customer else None
-    outcome = rp.draft_reply(model, reply_prompt, decision, name, internal, seed=seed)
+    outcome = rp.draft_reply(model, reply_prompt, decision, name, internal, seed=seed, use_model=(reply_mode == "model"))
     steps.append(_step("draft_reply", started, input_hash=_hash(decision.reason, decision.facts), source=outcome.source, rejected_drafts=outcome.failures, retry_hints=outcome.hints,
                        prompt=outcome.prompt, prompt_sha256=outcome.prompt_sha256, **_model_usage(outcome.attempts)))
     return finish(decision.action, decision.reason, decision.article, outcome.text, outcome.source, decision.facts)
