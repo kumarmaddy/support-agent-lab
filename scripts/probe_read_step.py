@@ -12,8 +12,10 @@ import collections
 import json
 import sqlite3
 import statistics
+from datetime import date
 from pathlib import Path
 
+from src.agent.deadline import resolve_deadline
 from src.agent.model import OllamaClient
 from src.agent.prompting import load_prompt
 from src.agent.reading import read_ticket
@@ -24,7 +26,7 @@ def main(argv=None) -> int:
     p.add_argument("--db", type=Path, default=Path("data/generated/dev/support.db"))
     p.add_argument("--labels", type=Path, default=Path("data/labels/dev/labels.jsonl"))
     p.add_argument("--model", default="llama3.2:3b")
-    p.add_argument("--prompt-version", default="v1")
+    p.add_argument("--prompt-version", default="v2")
     p.add_argument("--limit", type=int, default=0, help="first N tickets only (0 = all)")
     p.add_argument("--show-misses", type=int, default=15)
     args = p.parse_args(argv)
@@ -39,10 +41,11 @@ def main(argv=None) -> int:
     prompt = load_prompt("read_ticket", args.prompt_version)
 
     hits, failed, misses, latencies, tokens = 0, 0, [], [], []
+    deadline_misses = []
     confusion = collections.Counter()
     flag_checks = collections.Counter()
     for lab in labels:
-        subject, body = conn.execute("SELECT subject, body FROM tickets WHERE ticket_id=?", (lab["ticket_id"],)).fetchone()
+        subject, body, received = conn.execute("SELECT subject, body, received_at FROM tickets WHERE ticket_id=?", (lab["ticket_id"],)).fetchone()
         out = read_ticket(model, prompt, subject, body)
         latencies += [a.latency_ms for a in out.attempts]
         tokens += [a.tokens_in + a.tokens_out for a in out.attempts]
@@ -57,15 +60,20 @@ def main(argv=None) -> int:
             misses.append((lab["ticket_id"], lab["scenario_id"], lab["category"], got))
         want_legal = bool(lab["priority_attributes"]["chargeback_or_legal_threat"])
         flag_checks["legal_agree"] += out.reading.mentions_chargeback_or_legal == want_legal
-        want_deadline = bool(lab["priority_attributes"]["deadline_within_3_days"])
-        flag_checks["deadline_agree"] += out.reading.states_hard_deadline == want_deadline
+        wanted = lab["expected_facts"].get("deadline_date")
+        resolved = resolve_deadline(out.reading.deadline_phrase, date.fromisoformat(received[:10]))
+        flag_checks["deadline_agree"] += (resolved.isoformat() if resolved else None) == wanted
+        flag_checks["deadline_labelled"] += wanted is not None
+        if (resolved.isoformat() if resolved else None) != wanted:
+            deadline_misses.append((lab["ticket_id"], lab["scenario_id"], wanted, out.reading.deadline_phrase, str(resolved)))
     n, scored = len(labels), len(labels) - failed
     print(f"model {args.model}  digest {model.digest()[:12] or 'unknown'}  prompt {prompt.label} sha256 {prompt.sha256[:12]}")
     print(f"tickets {n}  failed reading {failed}  category agreement {hits}/{scored}"
           + (f" = {hits / scored:.1%}" if scored else ""))
     if scored:
         print(f"chargeback/legal flag agrees with label: {flag_checks['legal_agree']}/{scored}")
-        print(f"deadline flag agrees with deadline_within_3_days label: {flag_checks['deadline_agree']}/{scored}  (approximate: the label is a 3-day window)")
+        print(f"deadline date (wording resolved in code) equals the labelled deadline, or both absent: "
+              f"{flag_checks['deadline_agree']}/{scored}  (tickets with a labelled deadline: {flag_checks['deadline_labelled']})")
     if latencies:
         print(f"latency ms per call: median {statistics.median(latencies):.0f}  max {max(latencies)}  "
               f"tokens per call: median {statistics.median(tokens):.0f}")
@@ -76,6 +84,10 @@ def main(argv=None) -> int:
     print(f"\nfirst {args.show_misses} misses (ticket, scenario, label, model):")
     for miss in misses[: args.show_misses]:
         print("  ", *miss)
+    if deadline_misses:
+        print("\ndeadline disagreements (ticket, scenario, labelled date, model wording, resolved date):")
+        for miss in deadline_misses[:args.show_misses]:
+            print("  ", *miss)
     return 0
 
 

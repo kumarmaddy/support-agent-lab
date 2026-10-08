@@ -2,10 +2,10 @@
 
 | | |
 |---|---|
-| Version | 1.1 |
+| Version | 1.2 |
 | Date | 2026-10-08 |
 | Owner | Kumar Maddipatla, Project Lead |
-| Phase | 1 (Thin vertical slice), stages 1.1 and 1.3 |
+| Phase | 1 (Thin vertical slice), stages 1.1, 1.3 and 1.4 |
 | Related | charter.md, data-design.md, ADR-003, ADR-004, ADR-005, ADR-006, phase-0-exit-review.md |
 
 ## 1. Purpose and scope
@@ -19,11 +19,11 @@ Out of scope: write actions, refunds, retrieval over the knowledge base (Phase 2
 ## 2. Pipeline
 | # | Step | Decided by | Input | Output | On failure |
 |---|------|------------|-------|--------|------------|
-| 1 | Read the ticket | Model, constrained by a JSON schema | Subject and body | category, states_hard_deadline, mentions_chargeback_or_legal from the model; order numbers found by a pattern in code (see revision 1.1) | One retry with a different seed; then route to a person |
-| 2 | Check the reading | Code | Step 1 output | Exactly the three fields; category in the taxonomy; both flags true/false | Route to a person |
+| 1 | Read the ticket | Model, constrained by a JSON schema | Subject and body | category, deadline_phrase (the customer's own words for a needed-by date, or empty) and mentions_chargeback_or_legal from the model; order numbers found by a pattern in code (revision 1.1); the date itself is resolved in code (revision 1.2) | One retry with a different seed; then route to a person |
+| 2 | Check the reading | Code | Step 1 output | Exactly the three fields; category in the taxonomy; the legal flag true/false; the deadline wording short and present in the ticket text | Route to a person |
 | 3 | Identify the customer and order | Code, read-only tools | Sender email, order_id | Customer record, the order, or the list of open orders | No account or order found: ask the customer for the order number |
 | 4 | Decide | Code | Category, order facts, step 1 flags | Action, reason code, article id | None; rules are total (section 3) |
-| 5 | Draft the reply | Model, constrained | Fixed facts, action, tone instructions | Reply text | One retry; then a template reply built by code |
+| 5 | Draft the reply | Model for information and information-request bodies; code for every hand-over | Verified facts and an instruction per reason (the model does not see the ticket) | Reply text: greeting and sign-off by code, body by the model or a template | One retry with a different seed; then the template body |
 | 6 | Validate the reply | Code | Reply, facts | Pass or fail | Fail twice: template reply |
 | 7 | Record | Code | All of the above | Resolution record and trace | None |
 
@@ -33,23 +33,35 @@ The model sees the ticket text only as data (risk R9). It receives no tools and 
 | Situation (facts from the database) | Action | Article |
 |-------------|--------|---------|
 | Category is not order_status | route_to_human (out of slice, reported separately) | none |
-| Order not found for the sender, or belongs to another customer | request_info if no match; escalate_human with reason privacy if it belongs to someone else | KB-SEC-01 |
+| Sender has no account, or the order number is not found | request_info (reasons no_account, order_not_found) | KB-ORD-02 |
+| The order belongs to another customer | escalate_human, reason order_not_owned; the reply confirms nothing about the order | KB-SEC-01 |
+| Two or more order numbers named | request_info (reason multiple_order_ids) | KB-ORD-02 |
 | No order number, customer has one open order | Use that order | per order state |
 | No order number, customer has two or more open orders, or none | request_info | KB-ORD-02 |
-| Hard deadline stated and order not dispatched | escalate_human, reason delivery_deadline_cannot_be_guaranteed | KB-SHP-03 |
-| Order processing, no deadline | provide_info (not dispatched; no tracking; promised date) | KB-ORD-01 |
-| Order shipped, today on or before the promised date | provide_info (status, carrier, tracking, promised date) | KB-SHP-01 |
-| Order shipped, today after the promised date | provide_info (delay acknowledged, latest tracking status, being checked with the carrier) | KB-SHP-02 |
+| Order not dispatched and a stated needed-by date at most 3 days after the ticket date (or already past) | escalate_human, reason delivery_deadline_cannot_be_guaranteed | KB-SHP-03 |
+| Order processing, no deadline, or a deadline more than 3 days away, or wording that names no date | provide_info (not dispatched; no tracking; promised date) | KB-ORD-01 |
+| Order shipped, ticket date on or before the promised date | provide_info (status, carrier, tracking, promised date) | KB-SHP-01 |
+| Order shipped, ticket date after the promised date | provide_info (delay acknowledged, latest tracking status, being checked with the carrier) | KB-SHP-02 |
 | Order delivered | provide_info (delivery date) | KB-SHP-01 |
 | Ticket threatens a chargeback or legal action | escalate_human, reason chargeback_or_legal_threat | KB-REF-04 |
+| Order cancelled or returned, or a shipped or delivered order with no shipment record | route_to_human (reason order_state_not_covered) | none |
 
 Article ids in this phase come from this fixed map. Retrieval over the knowledge base starts in Phase 2.
 The rules restate the knowledge-base guidance and the data design; each rule has a test with the scenario it comes from.
 The article ids match the required articles in the development labels for S01 to S04 and S22.
 
-Simplification, stated openly: step 1 reports whether the customer states a hard deadline. The generator only creates
-deadlines within three days for S22 (data design, section 7). The pipeline therefore escalates on any stated deadline for an
-undispatched order and does not resolve dates. A deadline in another scenario would be escalated conservatively.
+Order of the rules: out of slice, then a legal or chargeback threat (no account details are read for either), then who and which
+order, then the order state. "Today" means the day the ticket arrived, so a replay of a ticket always gives the same decision.
+
+Deadlines (revision 1.2). The data design has a far-away deadline in S03 ("before my trip on October 15", nine days after the
+ticket) that must stay a plain information reply, and S22 deadlines one to three days away that must escalate. The rule therefore
+needs the date. The model quotes the customer's wording and code resolves it (`deadline.py`): month and day in either order,
+weekday names (the next such day), today and tomorrow, ISO dates, bare ordinals. Wording that names no date ("as soon as possible")
+is not a hard deadline. Numeric forms such as 9/10 are ambiguous and not interpreted; a ticket that uses one is answered as an
+ordinary status question, which is a stated limitation.
+
+Locked accounts. The development labels expect order-status questions from locked accounts to be answered like any other. No rule
+overrides that in this phase; whether a locked account should see order details is an open policy question for Phase 2.
 
 ## 4. Tools
 Read-only functions with typed input and output, defined once and used by the pipeline; they are the interface an agent loop would
@@ -69,16 +81,21 @@ interface so the choice does not change its code.
 - Ollama on the local machine; development model llama3.2:3b (ADR-003). The model tag and digest are recorded in every trace.
 - Structured output through the JSON-schema format option; temperature 0; fixed seed; a token limit per step.
 - Prompts are files in the repository with a version string; the version is recorded in every trace.
-- The reply prompt contains only the verified facts, the action and the tone instruction. It does not contain the internal
-  support guidance.
+- The reply prompt contains only the verified facts and an instruction for the reason. It does not contain the ticket text or the internal
+  support guidance, so text in a ticket cannot reach the reply model. Hand-overs to a person use fixed template replies and make no model call.
 
 ## 6. Reply validation
-A reply passes when:
-- every date, order number, tracking number and amount in it appears in the facts supplied;
-- it contains no promise of compensation, refund, dispatch date or delivery date other than the promised date on the order;
-- it contains none of the internal guidance text;
-- it is under the length limit.
-A failed reply is regenerated once; a second failure uses a template reply built by code. The share of template replies is reported.
+The body of a reply passes when none of these rules fails (each failure has a code, recorded in the trace):
+- `unknown_date`: every calendar date is one of the supplied dates; `relative_time`: no weekday names, today/tomorrow or "within N days";
+- `unknown_order`, `unknown_token`: every order number, tracking number and other long reference was supplied;
+- `amount`: no money amounts (none are supplied in this phase);
+- `promise`: no refund, compensation, voucher, discount, credit, expedite, upgrade, guarantee, replacement, or "will arrive";
+- `internal_text`: no knowledge-base id, no internal-guidance marker, and no run of six words copied from internal guidance;
+- `prompt_leak`: no mention of prompts, tools, instructions or the ticket delimiters;
+- `missing_fact`: facts the reply must give (for example the tracking number) are present;
+- `length`: not empty and at most 700 characters.
+A failed draft is regenerated once; a second failure uses the template body, which passes the same validator (tested). The share of
+template replies is reported.
 
 ## 7. Tracing
 One JSON Lines file per run under `data/runs/<run_id>/`, ignored by git except for the runs cited in reports. Each line is one step:
@@ -110,7 +127,7 @@ derived from the files is added if a report needs it.
 | 1.1 | This design and ADR-006 |
 | 1.2 | Read-only tools and tests |
 | 1.3 | Model client, prompt v1, step 1 with schema and checks; carry-forward action 1 (category definitions in the prompt) |
-| 1.4 | Decision rules, reply drafting and validation |
+| 1.4 | Identification, decision rules, deadline resolution, reply drafting and validation, pipeline |
 | 1.5 | Tracing |
 | 1.6 | Evaluation harness, first report, model comparison on the development set (action 4) |
 | 1.7 | Demonstration script, tool-server decision, Phase 1 exit review |
@@ -124,5 +141,6 @@ derived from the files is added if a report needs it.
 ## Revision history
 | Version | Date | Change |
 |---------|------|--------|
+| 1.2 | 2026-10-08 | Stage 1.4. (a) Correction: v1.0 and v1.1 said to escalate on any stated deadline for an undispatched order. That would escalate S03's far-away deadline, which the data design keeps as an information reply. Step 1 now returns the customer's wording (`deadline_phrase`) instead of a yes/no flag, and code resolves the date and applies the 3-day window; prompt read_ticket v2 replaces v1 for this field only. (b) Rules table: not-found and no-account give request_info with KB-ORD-02 (v1.0 listed KB-SEC-01 for both); another customer's order escalates with reason order_not_owned; two or more named orders ask which one. (c) Section 5 and 6: the reply model writes only the body and never sees the ticket; hand-overs use templates; validator rules listed with codes. (d) Locked accounts: no rule, recorded as an open question. |
 | 1.1 | 2026-10-08 | Order numbers are extracted by code (`\bO-\d{6}\b`, case-insensitive, upper-cased, de-duplicated) instead of being returned by the model. Reason: the format is fixed, a pattern is exact and cannot be steered by ticket text, and it removes one model output to validate. On the 150 development tickets the pattern finds the labelled order on all 119 identifiable tickets and nothing on the other 31. If a ticket names more than one order, step 3 treats the order as not identified and asks the customer which one (KB-ORD-02). |
 | 1.0 | 2026-10-08 | First version. |

@@ -1,6 +1,8 @@
 """Pipeline steps 1 and 2: read the ticket, then check the reading (phase-1-design.md, section 2).
 
-Step 1 asks the model for three things: the category and two yes/no flags. Order numbers are NOT taken from the model:
+Step 1 asks the model for three things: the category, the exact words the customer used for a date by which the order is
+needed (empty if none), and whether a chargeback or legal action is threatened. The date itself is worked out in code
+(``deadline.py``), as are order numbers. are NOT taken from the model:
 they follow a fixed format and are found by a pattern in code, which is exact and cannot be talked into a different
 number (design change recorded in phase-1-design.md v1.1).
 
@@ -19,8 +21,8 @@ from src.agent.taxonomy import BOUNDARY_RULES, CATEGORIES, DEFINITIONS
 
 MAX_TICKET_CHARS = 4000
 MAX_TOKENS = 80
-FLAGS = ("states_hard_deadline", "mentions_chargeback_or_legal")
-FIELDS = ("category",) + FLAGS
+MAX_PHRASE_CHARS = 60
+FIELDS = ("category", "deadline_phrase", "mentions_chargeback_or_legal")
 ORDER_ID_PATTERN = re.compile(r"\bO-\d{6}\b", re.IGNORECASE)
 _DELIMITER = re.compile(r"<\s*/?\s*ticket\s*>", re.IGNORECASE)
 
@@ -28,7 +30,7 @@ READ_SCHEMA = {
     "type": "object",
     "properties": {
         "category": {"type": "string", "enum": list(CATEGORIES)},
-        "states_hard_deadline": {"type": "boolean"},
+        "deadline_phrase": {"type": "string", "maxLength": MAX_PHRASE_CHARS},
         "mentions_chargeback_or_legal": {"type": "boolean"},
     },
     "required": list(FIELDS),
@@ -39,7 +41,7 @@ READ_SCHEMA = {
 @dataclass(frozen=True)
 class Reading:
     category: str
-    states_hard_deadline: bool
+    deadline_phrase: str                    # the customer's own words, verified to appear in the ticket; "" if none
     mentions_chargeback_or_legal: bool
     order_ids: tuple
 
@@ -76,15 +78,24 @@ def render_user(subject: str, body: str) -> str:
     return f"<ticket>\n{text}\n</ticket>"
 
 
-def check_reading(content: object, order_ids: tuple) -> Optional[Reading]:
-    """Step 2. Returns the validated reading, or None if the model's answer is not acceptable."""
+def check_reading(content: object, order_ids: tuple, ticket_text: str = "") -> Optional[Reading]:
+    """Step 2. Returns the validated reading, or None if the model's answer is not acceptable.
+
+    The deadline wording must be a short string that really occurs in the ticket, so the model cannot invent a date.
+    """
     if not isinstance(content, dict) or set(content) != set(FIELDS):
         return None
     if content["category"] not in CATEGORIES:
         return None
-    if not all(type(content[name]) is bool for name in FLAGS):
+    if type(content["mentions_chargeback_or_legal"]) is not bool:
         return None
-    return Reading(content["category"], content["states_hard_deadline"], content["mentions_chargeback_or_legal"], order_ids)
+    phrase = content["deadline_phrase"]
+    if not isinstance(phrase, str) or len(phrase) > MAX_PHRASE_CHARS:
+        return None
+    phrase = " ".join(phrase.split())
+    if phrase and " ".join(ticket_text.split()).lower().find(phrase.lower()) < 0:
+        return None
+    return Reading(content["category"], phrase, content["mentions_chargeback_or_legal"], order_ids)
 
 
 # ------------------------------------------------------------------ steps 1 and 2
@@ -98,7 +109,7 @@ def read_ticket(model: ModelClient, prompt: Prompt, subject: str, body: str, see
         if not response.ok:
             outcome.reason = "model_error"
             continue
-        reading = check_reading(response.content, order_ids)
+        reading = check_reading(response.content, order_ids, f"{subject}\n{body}")
         if reading is not None:
             outcome.ok, outcome.reading, outcome.reason = True, reading, None
             return outcome

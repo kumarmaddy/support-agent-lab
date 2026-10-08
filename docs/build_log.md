@@ -435,3 +435,34 @@ word boundary removed from the pattern) each failed a test.
 **Not yet evidenced:** behaviour of the real model. The probe script (`python -m scripts.probe_read_step`) measures category agreement with the
 development labels, the two flags, latency and tokens; the results feed prompt v2 and the model comparison in stage 1.6.
 **Known limitations:** the deadline flag is compared with `deadline_within_3_days`, which is a narrower label, so that agreement figure is indicative only.
+
+## Stage 1.4: Identification, decision rules, reply drafting and validation, pipeline (2026-10-08)
+**Files (new):** `src/agent/deadline.py`, `decide.py`, `validate.py`, `reply.py`, `pipeline.py`, `src/agent/prompts/read_ticket.v2.md`,
+`src/agent/prompts/reply.v1.md`, `tests/agent/support.py`, `test_deadline.py`, `test_decide.py`, `test_validate.py`, `test_reply.py`,
+`test_pipeline.py`. **Changed:** `src/agent/reading.py`, `src/agent/prompting.py`, `scripts/probe_read_step.py`, `tests/agent/test_reading.py`,
+`docs/design/phase-1-design.md` (v1.2), `docs/project/risk-register.md` (v1.2). `read_ticket.v1.md` is unchanged and kept as the record of the first run.
+**Design correction found while building:** design v1.0 said to escalate on any stated deadline for an undispatched order. The data design keeps
+S03's far-away deadline (T-000058, a trip nine days after the ticket) as an information reply, so the rule needs the date. Step 1 now returns the
+customer's own wording and code resolves it and applies the 3-day window. Prompt read_ticket v2 changes only this field; the category wording is
+unchanged, so category results from v1 remain comparable.
+**Key decisions:**
+- Rules are a pure function of reading, identity and the ticket date; "today" is the ticket's arrival date so replays are exact. A legal threat
+  or a non-order-status category is handed over before any customer record is read (tested).
+- The reply model writes only the body of an information or information-request reply, from verified facts; it never receives the ticket text.
+  Greeting and sign-off are code. Hand-overs use fixed templates and make no model call.
+- The validator has ten named rules (design section 6). Templates pass the same validator (tested for every reason).
+- An account-status rule I first added (locked account to a person) disagreed with the labels on 2 of 35 tickets and has no basis in the design
+  table, so it was removed; recorded as an open policy question.
+- Prompt hashing normalises line endings (CRLF and LF alike, one trailing newline). The v1 hash first reported (`1915f1eeab1e`) was the hash of
+  Windows file bytes; the normalised hash of the same text is `3e0d4c25df06`. Hashes are now identical on every machine. The v1 probe runs used the
+  Windows (CRLF) text as input.
+**Evidence:** 491 tests passing (135 new since stage 1.3).
+With a perfect reader and template replies, all 35 in-slice development tickets get the labelled action, escalation decision, escalation reason and
+article. The deadline resolver reproduces all 5 labelled deadline dates (4 within the window, 1 outside). Thirteen mutation checks (window boundary,
+weekday arithmetic, late comparison, deadline rule, privacy facts, legal rule, promise rule, relative-time rule, order-id digits in tokens,
+guidance shingle size, retry seed, model use for hand-overs, phrase-in-ticket check) each failed a test; one further mutation (lookup for every
+ticket) survived until a test was added.
+**Defects found by testing:** (1) the validator read the digits of order numbers as unknown references; (2) the "delivered" template was
+required to state the promised date; (3) no development ticket exercises "no order number and exactly one open order", so that path is tested with a customer taken from the database.
+**Not yet evidenced:** real-model behaviour of read prompt v2 and of the reply prompt (draft acceptance rate, template share, latency). These are the first measurements of stage 1.6; the probe now reports deadline-date agreement.
+**Known limitations:** numeric day/month wording (9/10) is not interpreted; order-status wording about several orders is answered with a question; locked accounts are not treated differently.

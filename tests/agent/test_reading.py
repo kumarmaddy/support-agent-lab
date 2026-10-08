@@ -11,8 +11,8 @@ from src.agent.reading import (MAX_TICKET_CHARS, READ_SCHEMA, check_reading, ext
 from src.agent.taxonomy import BOUNDARY_RULES, CATEGORIES
 from src.agent.tools import Toolbox
 
-GOOD = {"category": "order_status", "states_hard_deadline": False, "mentions_chargeback_or_legal": False}
-PROMPT = load_prompt("read_ticket", "v1")
+GOOD = {"category": "order_status", "deadline_phrase": "", "mentions_chargeback_or_legal": False}
+PROMPT = load_prompt("read_ticket", "v2")
 
 
 class FakeModel:
@@ -99,7 +99,8 @@ def test_order_id_extraction_agrees_with_every_dev_label(dev_dataset):
 # ------------------------------------------------------------------ step 2
 @pytest.mark.parametrize("bad", [
     None, [], "x", {}, {**GOOD, "category": "shipping"}, {**GOOD, "category": None},
-    {**GOOD, "states_hard_deadline": "yes"}, {**GOOD, "states_hard_deadline": 1}, {**GOOD, "extra": True},
+    {**GOOD, "mentions_chargeback_or_legal": "yes"}, {**GOOD, "mentions_chargeback_or_legal": 1}, {**GOOD, "extra": True},
+    {**GOOD, "deadline_phrase": None}, {**GOOD, "deadline_phrase": 5}, {**GOOD, "deadline_phrase": "x" * 61},
     {k: v for k, v in GOOD.items() if k != "category"},
 ])
 def test_check_rejects_anything_outside_the_form(bad):
@@ -108,7 +109,14 @@ def test_check_rejects_anything_outside_the_form(bad):
 
 def test_check_accepts_a_good_form():
     r = check_reading(GOOD, ("O-000001",))
-    assert r.category == "order_status" and r.order_ids == ("O-000001",) and r.states_hard_deadline is False
+    assert r.category == "order_status" and r.order_ids == ("O-000001",) and r.deadline_phrase == ""
+
+
+def test_a_deadline_phrase_must_occur_in_the_ticket():
+    text = "I need it by Friday  October 9 please"
+    assert check_reading({**GOOD, "deadline_phrase": "friday october 9"}, (), text).deadline_phrase == "friday october 9"
+    assert check_reading({**GOOD, "deadline_phrase": "October 12"}, (), text) is None      # invented date
+    assert check_reading({**GOOD, "deadline_phrase": "October 12"}, ()) is None
 
 
 # ------------------------------------------------------------------ step 1 with retry
@@ -116,7 +124,7 @@ def test_first_good_answer_is_used_with_one_call():
     m = FakeModel(GOOD)
     out = read_ticket(m, PROMPT, "Where is O-000010", "please help", seed=5)
     assert out.ok and len(m.calls) == 1 and m.calls[0]["seed"] == 5
-    assert out.reading.order_ids == ("O-000010",) and out.prompt == "read_ticket.v1" and out.prompt_sha256 == PROMPT.sha256
+    assert out.reading.order_ids == ("O-000010",) and out.prompt == "read_ticket.v2" and out.prompt_sha256 == PROMPT.sha256
     assert m.calls[0]["schema"] is READ_SCHEMA and m.calls[0]["max_tokens"] == reading.MAX_TOKENS
 
 

@@ -1,0 +1,164 @@
+"""Pipeline step 5: draft the reply (phase-1-design.md, sections 2, 5 and 6).
+
+Who writes what:
+- Code writes the greeting and the sign-off, and the whole reply whenever the action is to hand the ticket to a person.
+- The model writes only the short body of an information or information-request reply, from verified facts and an
+  instruction. It never sees the ticket text, so ticket text cannot steer the reply (risk R9).
+- Every body is validated (``validate.py``). A failed draft is retried once with a different seed; a second failure uses the
+  template body built by code. The template passes the same validator, which a test enforces.
+"""
+import re
+from dataclasses import dataclass, field
+from datetime import date
+from typing import Optional
+
+from src.agent import decide as d
+from src.agent.model import ModelClient, ModelResponse
+from src.agent.prompting import Prompt
+from src.agent.validate import MAX_CHARS, ReplyFacts, validate_reply
+
+MAX_TOKENS = 220
+SIGN_OFF = "Kind regards,\nCustomer Support"
+REPLY_SCHEMA = {
+    "type": "object",
+    "properties": {"body": {"type": "string", "maxLength": MAX_CHARS}},
+    "required": ["body"],
+    "additionalProperties": False,
+}
+_MONTH_NAMES = ("January", "February", "March", "April", "May", "June", "July", "August", "September", "October",
+                "November", "December")
+
+
+def fmt_date(iso: str) -> str:
+    day = date.fromisoformat(iso[:10])
+    return f"{_MONTH_NAMES[day.month - 1]} {day.day}, {day.year}"
+
+
+def first_name(full_name: Optional[str]) -> str:
+    words = re.sub(r"[^A-Za-z' -]", "", full_name or "").split()
+    return words[0][:30] if words else ""
+
+
+# ------------------------------------------------------------------ what each decision may say
+def facts_for(decision: d.Decision) -> ReplyFacts:
+    f = decision.facts
+    if decision.action not in (d.PROVIDE_INFO, d.REQUEST_INFO):
+        return ReplyFacts()
+    if decision.action == d.REQUEST_INFO:
+        ids = frozenset(c["order_id"] for c in f.get("candidates", []))
+        return ReplyFacts(allowed_ids=ids, must_include=tuple(sorted(ids)))
+    dates, tokens, must = {date.fromisoformat(f["promised_date"])}, set(), [f["order_id"]]
+    if "delivered_date" not in f:                       # a delivered order is reported by its delivery date alone
+        must.append(fmt_date(f["promised_date"]))
+    if "tracking_no" in f:
+        tokens.add(f["tracking_no"])
+        must += [f["carrier"], f["tracking_no"]]
+    if "delivered_date" in f:
+        dates.add(date.fromisoformat(f["delivered_date"]))
+        must.append(fmt_date(f["delivered_date"]))
+    return ReplyFacts(frozenset(dates), frozenset({f["order_id"]}), frozenset(tokens), tuple(must))
+
+
+def _candidate_text(candidates: list) -> str:
+    return "; ".join(f'{c["order_id"]} ({", ".join(c["items"])})' if c.get("items") else c["order_id"] for c in candidates)
+
+
+def render_facts(decision: d.Decision) -> str:
+    f, lines = decision.facts, []
+    if "order_id" in f:
+        lines.append(f"Order number: {f['order_id']}")
+        lines.append(f"Promised delivery date: {fmt_date(f['promised_date'])}")
+    if "tracking_no" in f:
+        lines += [f"Carrier: {f['carrier']}", f"Tracking number: {f['tracking_no']}", f"Latest tracking status: {f['last_status']}"]
+    if "delivered_date" in f:
+        lines.append(f"Delivered on: {fmt_date(f['delivered_date'])}")
+    if f.get("candidates"):
+        lines.append(f"Orders to choose from: {_candidate_text(f['candidates'])}")
+    return "\n".join(lines) if lines else "(none)"
+
+
+INSTRUCTIONS = {
+    "order_processing": "The order has not been dispatched yet, so there is no tracking number. Give the promised delivery date.",
+    "shipped_on_time": "The order has been dispatched. Give the carrier, the tracking number, the latest tracking status and the promised delivery date.",
+    "shipped_late": ("The order is taking longer than promised. Apologise briefly. Give the carrier, the tracking number, the latest "
+                     "tracking status and the promised delivery date, and say we are checking with the carrier. Do not give a new date."),
+    "delivered": "Our records show the order was delivered. Give the delivery date.",
+    "needs_order_number": "Ask which order they mean. List the orders to choose from, and ask them to reply with the order number.",
+    "multiple_order_ids": "They mentioned more than one order. Ask which one they mean, naming the orders listed.",
+    "order_not_found": "We could not find that order on the account. Ask them to check the order number in their confirmation email and reply with it.",
+    "no_account": "We could not match the email address to an account. Ask them to reply with their order number.",
+}
+
+# Template bodies: used for every hand-over, and as the fallback when a drafted body fails validation.
+def template_body(decision: d.Decision) -> str:
+    f, reason = decision.facts, decision.reason
+    if reason == "order_processing":
+        return (f"Your order {f['order_id']} has not been dispatched yet, so there is no tracking number at the moment. "
+                f"The promised delivery date is {fmt_date(f['promised_date'])}.")
+    if reason in ("shipped_on_time", "shipped_late"):
+        lead = (f"Thank you for your patience, and we are sorry that order {f['order_id']} is taking longer than promised. "
+                f"The promised delivery date was {fmt_date(f['promised_date'])}. We are checking with the carrier."
+                if reason == "shipped_late" else
+                f"Your order {f['order_id']} has been dispatched. The promised delivery date is {fmt_date(f['promised_date'])}.")
+        return (f"{lead} The carrier is {f['carrier']}, the tracking number is {f['tracking_no']} "
+                f"and the latest status is: {f['last_status']}.")
+    if reason == "delivered":
+        return f"Our records show that order {f['order_id']} was delivered on {fmt_date(f['delivered_date'])}."
+    if reason in ("needs_order_number", "multiple_order_ids"):
+        return (f"So that we look at the right order, please reply with the order number you mean. "
+                f"The orders we can see are: {_candidate_text(f['candidates'])}.")
+    if reason in ("order_not_found", "no_account"):
+        return ("We could not find that order. Please check the order number in your confirmation email and reply with it, "
+                "so that we can look into it.")
+    if reason == "delivery_deadline_cannot_be_guaranteed":
+        return ("Thank you for telling us about your date. We are not able to confirm delivery by a particular date, so we have "
+                "passed your request to a colleague who will review what is possible and reply to you.")
+    if reason == "order_not_owned":
+        return ("For security we cannot share order details in this conversation. We have passed your message to a colleague "
+                "who will follow up with you.")
+    if reason == "chargeback_or_legal_threat":
+        return ("We are sorry for the trouble. We have passed your message to a senior colleague, who will contact you about it.")
+    return "Thank you for your message. We have passed it to a colleague, who will reply to you."
+
+
+def compose(name: str, body: str) -> str:
+    return f"Hello {name},\n\n{body}\n\n{SIGN_OFF}" if name else f"Hello,\n\n{body}\n\n{SIGN_OFF}"
+
+
+def render_system(prompt: Prompt, decision: d.Decision) -> str:
+    return (prompt.text.replace("{instruction}", INSTRUCTIONS[decision.reason])
+            .replace("{facts}", render_facts(decision)))
+
+
+@dataclass
+class ReplyOutcome:
+    text: str
+    source: str                                        # "model" or "template"
+    failures: list = field(default_factory=list)       # one list of failed rule codes per rejected draft
+    attempts: list = field(default_factory=list)       # ModelResponse for each model call
+    prompt: str = ""
+    prompt_sha256: str = ""
+
+
+def draft_reply(model: ModelClient, prompt: Prompt, decision: d.Decision, customer_name: Optional[str],
+                internal: frozenset = frozenset(), seed: int = 0) -> ReplyOutcome:
+    name = first_name(customer_name)
+    facts = facts_for(decision)
+    outcome = ReplyOutcome("", "template", prompt=prompt.label, prompt_sha256=prompt.sha256)
+    if decision.action in (d.PROVIDE_INFO, d.REQUEST_INFO):
+        system = render_system(prompt, decision)
+        for attempt in range(2):
+            response: ModelResponse = model.chat(system, "Write the email body now.", REPLY_SCHEMA, seed=seed + attempt, max_tokens=MAX_TOKENS)
+            outcome.attempts.append(response)
+            body = response.content.get("body") if response.ok and isinstance(response.content, dict) else None
+            if not isinstance(body, str):
+                outcome.failures.append(["model_error"])
+                continue
+            body = " ".join(body.split())
+            problems = validate_reply(body, facts, internal)
+            if not problems:
+                outcome.text, outcome.source = compose(name, body), "model"
+                return outcome
+            outcome.failures.append(problems)
+    outcome.text = compose(name, template_body(decision))
+    return outcome
