@@ -2,10 +2,10 @@
 
 | | |
 |---|---|
-| Version | 1.2 |
+| Version | 1.3 |
 | Date | 2026-10-08 |
 | Owner | Kumar Maddipatla, Project Lead |
-| Phase | 1 (Thin vertical slice), stages 1.1, 1.3 and 1.4 |
+| Phase | 1 (Thin vertical slice), stages 1.1, 1.3, 1.4 and 1.5 |
 | Related | charter.md, data-design.md, ADR-003, ADR-004, ADR-005, ADR-006, phase-0-exit-review.md |
 
 ## 1. Purpose and scope
@@ -98,10 +98,18 @@ A failed draft is regenerated once; a second failure uses the template body, whi
 template replies is reported.
 
 ## 7. Tracing
-One JSON Lines file per run under `data/runs/<run_id>/`, ignored by git except for the runs cited in reports. Each line is one step:
-run id, ticket id, step name, prompt version, model tag and digest, input hash, output, latency in milliseconds, tokens in and out,
-outcome. Traces are kept outside the operational database so that every tool can keep opening it read-only. A summary table
-derived from the files is added if a report needs it.
+One directory per run, `data/runs/<run_id>/`, never reused. It holds:
+- `run.json`: model tag and digest, read and reply prompt labels with SHA-256, seed, dataset file hash, number of tickets, code commit and
+  whether the working tree was clean, Python version, command line;
+- `trace.jsonl`: one line per step per ticket: run id, ticket id, sequence number, step name, outcome, latency in milliseconds, an input
+  fingerprint, and for model steps the prompt, the digest, every attempt (seed, parsed answer or error, tokens, latency) and rejected drafts with
+  their rule codes;
+- `resolutions.jsonl`: one line per ticket with the action, reason, article, reply source, reply text and facts;
+- `summary.json`: counts and timings derived from the two files above (per-step and per-ticket median, 90th percentile and maximum; model calls;
+  tokens; template fallback share; read outcomes), rebuildable at any time.
+Files are flushed line by line, so an interrupted run leaves a readable trace and a summary. Traces store fingerprints of inputs, not ticket text and
+not email addresses. They are kept outside the operational database so that every tool can keep opening it read-only (ADR-005), and are ignored by
+git except for runs cited in reports. The runner (`python -m src.agent.run`) never reads labels and refuses the held-out split.
 
 ## 8. Evaluation harness v0
 - Reads the development split only. A guard refuses the held-out split unless a Phase 4 flag is given; a test covers the guard.
@@ -128,7 +136,7 @@ derived from the files is added if a report needs it.
 | 1.2 | Read-only tools and tests |
 | 1.3 | Model client, prompt v1, step 1 with schema and checks; carry-forward action 1 (category definitions in the prompt) |
 | 1.4 | Identification, decision rules, deadline resolution, reply drafting and validation, pipeline |
-| 1.5 | Tracing |
+| 1.5 | Tracing and the run command |
 | 1.6 | Evaluation harness, first report, model comparison on the development set (action 4) |
 | 1.7 | Demonstration script, tool-server decision, Phase 1 exit review |
 
@@ -141,6 +149,7 @@ derived from the files is added if a report needs it.
 ## Revision history
 | Version | Date | Change |
 |---------|------|--------|
+| 1.3 | 2026-10-08 | Stage 1.5. Section 7 describes the files actually written (run.json, trace.jsonl, resolutions.jsonl, summary.json), the privacy rule (fingerprints, no ticket text or email addresses) and the run command. Read prompt v3 is the working read prompt (see build log, stage 1.4b/1.4c). |
 | 1.2 | 2026-10-08 | Stage 1.4. (a) Correction: v1.0 and v1.1 said to escalate on any stated deadline for an undispatched order. That would escalate S03's far-away deadline, which the data design keeps as an information reply. Step 1 now returns the customer's wording (`deadline_phrase`) instead of a yes/no flag, and code resolves the date and applies the 3-day window; prompt read_ticket v2 replaces v1 for this field only. (b) Rules table: not-found and no-account give request_info with KB-ORD-02 (v1.0 listed KB-SEC-01 for both); another customer's order escalates with reason order_not_owned; two or more named orders ask which one. (c) Section 5 and 6: the reply model writes only the body and never sees the ticket; hand-overs use templates; validator rules listed with codes. (d) Locked accounts: no rule, recorded as an open question. |
 | 1.1 | 2026-10-08 | Order numbers are extracted by code (`\bO-\d{6}\b`, case-insensitive, upper-cased, de-duplicated) instead of being returned by the model. Reason: the format is fixed, a pattern is exact and cannot be steered by ticket text, and it removes one model output to validate. On the 150 development tickets the pattern finds the labelled order on all 119 identifiable tickets and nothing on the other 31. If a ticket names more than one order, step 3 treats the order as not identified and asks the customer which one (KB-ORD-02). |
 | 1.0 | 2026-10-08 | First version. |

@@ -58,6 +58,7 @@ cover/
 #data
 data/generated/
 data/labels/
+data/runs/
 
 # Translations
 *.mo

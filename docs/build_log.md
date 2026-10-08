@@ -477,3 +477,28 @@ is an empty string); `reading.py` treats "none", "n/a", "no deadline" and simila
 reading with its reason and the model's raw output, and defaults to v3. v1 and v2 files are kept as records.
 **Evidence:** 501 tests passing (10 new); one mutation (null-word handling removed) fails a test.
 **Not yet evidenced:** the effect of v3 on the 12 misquoted dates and the 4 failed readings; to be read from the next probe run.
+
+## Stage 1.4c: Read prompt v3 measured (2026-10-08)
+**Probe of read_ticket v3 on the 150 development tickets:** category agreement 136/149 = 91.3% (95% interval about 86% to 95%); 1 reading failed
+(v2: 4); chargeback or legal flag 149/149; all 5 labelled deadlines resolved to the labelled date. The failed reading (T-000131) is the validity
+check working: the model returned the wording "Thursday" for a ticket that contains no date, the check rejected it on both tries, and the ticket went to a person.
+Six past dates quoted by customers (due or placed dates on shipped orders) still differ from the labels; the deadline rule applies only to unshipped
+orders and a past date resolves to next year, so none changes an outcome. Known limitation: a quoted promised date on an unshipped order could
+trigger a false escalation. The read step can cost at most 3 of the 35 in-slice tickets (T-000072 injection, T-000048 vague ticket, T-000131); all go to a person.
+**Decision:** prompt v3 (sha256 475f773cdfe6, line-ending-normalised) is frozen as the working read prompt until the model comparison in stage 1.6.
+
+## Stage 1.5: Tracing and the run command (2026-10-08)
+**Files (new):** `src/agent/tracing.py`, `src/agent/run.py`, `tests/agent/test_tracing.py`. **Changed:** `src/agent/pipeline.py` (input fingerprints, per-attempt
+detail in each model step), `docs/design/phase-1-design.md` (v1.3, section 7).
+**Key decisions:**
+- One directory per run with run.json, trace.jsonl, resolutions.jsonl and summary.json; a run id is never reused (creating it twice fails).
+- Lines are flushed per ticket, so an interrupted run is still readable and still gets a summary.
+- Privacy: traces carry short hashes of each step's input, not ticket text or email addresses (tested against five tickets).
+- The summary is derived only from the files, so it can be rebuilt; the template fallback share counts only tickets where a model draft was attempted (hand-overs use
+  templates by design and are not fallbacks).
+- The run command takes ticket ids from the caller (`--limit` or `--ids-file`), never from labels, and refuses the held-out split; it records the model digest, prompt hashes, dataset file hash and git commit.
+**Evidence:** 520 tests passing (19 new). Eight mutation checks (run id reuse, flushing, held-out guard, closing on error, email stored in the trace,
+fallback share counting hand-overs, percentile rounding, read fingerprint ignoring the ticket text); two survived at first (percentile rounding and the
+fingerprint source) and tests were added for both.
+**Not yet evidenced:** real-model reply drafting (acceptance rate, fallback share, latency per ticket); the first run with `python -m src.agent.run` is the first measurement.
+**Housekeeping:** add `data/runs/` to `.gitignore`.
