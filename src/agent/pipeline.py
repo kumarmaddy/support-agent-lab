@@ -77,7 +77,7 @@ def run_ticket(box: Toolbox, model: ModelClient, read_prompt: Prompt, reply_prom
     read = r.read_ticket(model, read_prompt, ticket.subject, ticket.body, seed=seed)
     steps.append(_step("read_ticket", started, outcome="ok" if read.ok else read.reason, input_hash=_hash(ticket.subject, ticket.body),
                        prompt=read.prompt,
-                       prompt_sha256=read.prompt_sha256, **_model_usage(read.attempts),
+                       prompt_sha256=read.prompt_sha256, retry_hints=read.hints, **_model_usage(read.attempts),
                        reading=None if not read.ok else {"category": read.reading.category,
                                                           "deadline_phrase": read.reading.deadline_phrase,
                                                           "legal": read.reading.mentions_chargeback_or_legal,
@@ -108,6 +108,6 @@ def run_ticket(box: Toolbox, model: ModelClient, read_prompt: Prompt, reply_prom
     started = time.perf_counter()
     name = identity.customer.name if identity and identity.customer else None
     outcome = rp.draft_reply(model, reply_prompt, decision, name, internal, seed=seed)
-    steps.append(_step("draft_reply", started, input_hash=_hash(decision.reason, decision.facts), source=outcome.source, rejected_drafts=outcome.failures,
+    steps.append(_step("draft_reply", started, input_hash=_hash(decision.reason, decision.facts), source=outcome.source, rejected_drafts=outcome.failures, retry_hints=outcome.hints,
                        prompt=outcome.prompt, prompt_sha256=outcome.prompt_sha256, **_model_usage(outcome.attempts)))
     return finish(decision.action, decision.reason, decision.article, outcome.text, outcome.source, decision.facts)

@@ -11,6 +11,7 @@ import hashlib
 import platform
 import subprocess
 import sys
+import time
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Callable, Optional
@@ -48,14 +49,22 @@ def code_version() -> dict:
         return {"commit": None, "dirty": None}
 
 
+def warm_up(model: ModelClient) -> int:
+    """One throwaway call so that loading the model into memory is not counted in any ticket's latency. Returns milliseconds."""
+    started = time.perf_counter()
+    model.chat("Reply with JSON only.", "Say ok.", {"type": "object", "properties": {"ok": {"type": "boolean"}}, "required": ["ok"]}, seed=0, max_tokens=10)
+    return int((time.perf_counter() - started) * 1000)
+
+
 def build_meta(model: ModelClient, read_prompt: Prompt, reply_prompt: Prompt, db_path: Path, seed: int, ticket_ids: list,
-               argv: Optional[list] = None, digest: str = "") -> dict:
+               argv: Optional[list] = None, digest: str = "", warmup_ms: int = 0) -> dict:
     return {
         "started_at": datetime.now(timezone.utc).isoformat(timespec="seconds"),
         "model": {"tag": model.model, "digest": digest},
         "prompts": {"read": {"label": read_prompt.label, "sha256": read_prompt.sha256},
                     "reply": {"label": reply_prompt.label, "sha256": reply_prompt.sha256}},
         "seed": seed,
+        "warmup_ms": warmup_ms,
         "dataset": {"db_file": Path(db_path).name, "db_sha256": file_sha256(db_path)},
         "tickets": len(ticket_ids),
         "code": code_version(),
@@ -103,7 +112,8 @@ def main(argv=None) -> int:
     model = OllamaClient(model=args.model)
     read_prompt, reply_prompt = load_prompt("read_ticket", args.read_prompt), load_prompt("reply", args.reply_prompt)
     ids = select_ids(box, args.limit, args.ids_file)
-    meta = build_meta(model, read_prompt, reply_prompt, args.db, args.seed, ids, argv if argv is not None else sys.argv[1:], model.digest())
+    warmup_ms = warm_up(model)
+    meta = build_meta(model, read_prompt, reply_prompt, args.db, args.seed, ids, argv if argv is not None else sys.argv[1:], model.digest(), warmup_ms)
     with TraceWriter(args.out, new_run_id(), meta) as writer:
         run_tickets(box, model, read_prompt, reply_prompt, internal_guidance(load_articles(args.kb)), ids, writer, args.seed,
                     progress=lambda i, n, r: print(f"[{i}/{n}] {r.ticket_id} {r.action} ({r.reason}) reply by {r.reply_source}", flush=True))

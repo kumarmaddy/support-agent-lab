@@ -81,6 +81,11 @@ def dates_in(text: str) -> list:
     return found
 
 
+def missing_facts(text: str, facts: ReplyFacts) -> list:
+    lowered = text.lower()
+    return [item for item in facts.must_include if item.lower() not in lowered]
+
+
 def validate_reply(text: str, facts: ReplyFacts, internal: frozenset = frozenset()) -> list:
     """Return the codes of the rules the reply breaks; an empty list means it passes."""
     failures = []
@@ -106,7 +111,6 @@ def validate_reply(text: str, facts: ReplyFacts, internal: frozenset = frozenset
         failures.append("internal_text")
     if _LEAK.search(text):
         failures.append("prompt_leak")
-    lowered = text.lower()
-    if any(item.lower() not in lowered for item in facts.must_include):
+    if missing_facts(text, facts):
         failures.append("missing_fact")
     return failures

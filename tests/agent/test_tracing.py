@@ -173,9 +173,15 @@ def test_select_ids_by_limit_and_by_file(world, tmp_path):
     assert runner.select_ids(box, ids_file=ids_file) == ["T-000010", "T-000005"]
 
 
+def test_warm_up_makes_one_call_and_reports_milliseconds():
+    model = ScriptedModel(read=lambda s, u, seed: {"ok": True})
+    assert isinstance(runner.warm_up(model), int) and len(model.calls) == 1
+
+
 def test_meta_names_the_model_prompts_dataset_and_seed(world):
     db = world[0]
-    meta = runner.build_meta(ScriptedModel(), READ, REPLY, db, 7, ["T-000001"], ["--limit", "1"], digest="abc")
+    meta = runner.build_meta(ScriptedModel(), READ, REPLY, db, 7, ["T-000001"], ["--limit", "1"], digest="abc", warmup_ms=1234)
+    assert meta["warmup_ms"] == 1234
     assert meta["model"] == {"tag": "scripted:1b", "digest": "abc"} and meta["seed"] == 7 and meta["tickets"] == 1
     assert meta["prompts"]["read"] == {"label": "read_ticket.v3", "sha256": READ.sha256}
     assert meta["dataset"]["db_sha256"] == runner.file_sha256(db) and len(meta["dataset"]["db_sha256"]) == 64
@@ -193,11 +199,14 @@ def test_run_tickets_writes_one_resolution_per_ticket_and_reports_progress(world
 
 
 def test_main_runs_end_to_end_with_a_fake_client(world, tmp_path, monkeypatch, capsys):
+    created = []
+
     class FakeClient(ScriptedModel):
         def __init__(self, model):
             super().__init__(read=lambda s, u, seed: {"category": "order_status", "deadline_phrase": "", "mentions_chargeback_or_legal": False},
                              reply=lambda s, u, seed: "request_failed")
             self.model = model
+            created.append(self)
         def digest(self):
             return "fakedigest"
     monkeypatch.setattr(runner, "OllamaClient", FakeClient)
@@ -205,7 +214,10 @@ def test_main_runs_end_to_end_with_a_fake_client(world, tmp_path, monkeypatch, c
     assert code == 0
     run_dir = next(tmp_path.iterdir())
     meta = json.loads((run_dir / RUN).read_text(encoding="utf-8"))
-    assert meta["model"] == {"tag": "fake:1b", "digest": "fakedigest"} and meta["tickets"] == 4
+    assert meta["model"] == {"tag": "fake:1b", "digest": "fakedigest"} and meta["tickets"] == 4 and meta["warmup_ms"] >= 0
+    summary = json.loads((run_dir / SUMMARY).read_text(encoding="utf-8"))
+    assert len(created[0].calls) == summary["model_calls"] + 1                          # the warm-up call is in no ticket's trace
+    assert {s["ticket_id"] for s in read_jsonl(run_dir / TRACE)} <= set(world[2])
     assert json.loads((run_dir / SUMMARY).read_text(encoding="utf-8"))["tickets"] == 4
     assert "written to" in capsys.readouterr().out
 

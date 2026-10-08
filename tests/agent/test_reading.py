@@ -176,3 +176,37 @@ def test_prompt_v3_excludes_placed_and_promised_dates():
     text = load_prompt("read_ticket", "v3").text
     assert "placed, dispatched, delivered or promised is never a needed-by date" in text
     assert "placed" not in load_prompt("read_ticket", "v2").text.split("3. mentions")[0].split("2. deadline_phrase")[1]
+
+
+# ------------------------------------------------------------------ the retry tells the model what was wrong
+def test_a_retry_after_an_invalid_answer_names_the_problem():
+    m = FakeModel({**GOOD, "category": "bogus"}, GOOD)
+    out = read_ticket(m, PROMPT, "s", "b")
+    first, second = m.calls[0]["user"], m.calls[1]["user"]
+    assert out.ok and second.startswith(first) and "category must be one of the allowed values" in second
+    assert out.hints == ["category must be one of the allowed values."]
+    assert second.endswith("Answer again.") and m.calls[1]["system"] == m.calls[0]["system"]
+
+
+def test_an_invented_deadline_phrase_is_challenged_on_the_retry():
+    m = FakeModel({**GOOD, "deadline_phrase": "Thursday"}, GOOD)
+    out = read_ticket(m, PROMPT, "Where is it", "No date here.")
+    assert out.ok and out.reading.deadline_phrase == "" and "copied exactly from the ticket" in m.calls[1]["user"]
+
+
+def test_a_transport_failure_is_retried_unchanged():
+    m = FakeModel("request_failed", GOOD)
+    out = read_ticket(m, PROMPT, "s", "b")
+    assert out.ok and m.calls[1]["user"] == m.calls[0]["user"] and out.hints == []
+
+
+def test_unparseable_output_is_retried_with_a_json_reminder():
+    m = FakeModel("invalid_json", GOOD)
+    out = read_ticket(m, PROMPT, "s", "b")
+    assert out.ok and "not a valid JSON object" in m.calls[1]["user"]
+
+
+def test_two_invalid_answers_record_one_hint_and_the_reason():
+    m = FakeModel({}, {})
+    out = read_ticket(m, PROMPT, "s", "b")
+    assert not out.ok and out.reason == "invalid_reading" and len(out.hints) == 1 and len(m.calls) == 2

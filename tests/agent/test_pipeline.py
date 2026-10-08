@@ -133,3 +133,13 @@ def test_no_customer_lookup_happens_for_tickets_that_do_not_need_one(world):
     legal, _ = run(world, ticket_id, read=lambda s, u, seed: {"category": "order_status", "deadline_phrase": "", "mentions_chargeback_or_legal": True})
     assert (legal.action, legal.reason) == (d.ESCALATE_HUMAN, "chargeback_or_legal_threat")
     assert "identify" not in [s["step"] for s in legal.steps]
+
+
+def test_retry_hints_are_recorded_in_the_trace_steps(world):
+    box, by_id, _ = world
+    ticket_id = next(t for t, l in by_id.items() if l["scenario_id"] == "S01")
+    answers = iter([{"category": "bogus", "deadline_phrase": "", "mentions_chargeback_or_legal": False}, oracle_read(by_id, box, ticket_id)])
+    res, _ = run(world, ticket_id, read=lambda s, u, seed: next(answers))
+    read_step = next(s for s in res.steps if s["step"] == "read_ticket")
+    assert res.action == d.PROVIDE_INFO and read_step["retry_hints"] == ["category must be one of the allowed values."]
+    assert [a["seed"] for a in read_step["attempts"]] == [0, 1]

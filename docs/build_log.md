@@ -502,3 +502,19 @@ fallback share counting hand-overs, percentile rounding, read fingerprint ignori
 fingerprint source) and tests were added for both.
 **Not yet evidenced:** real-model reply drafting (acceptance rate, fallback share, latency per ticket); the first run with `python -m src.agent.run` is the first measurement.
 **Housekeeping:** add `data/runs/` to `.gitignore`.
+
+## Stage 1.5b: Retries that change the request, and a warm-up call (2026-10-08)
+**Smoke run (10 development tickets, llama3.2:3b, read v3, reply v1):** 10 of 10 readings valid; the 4 out-of-slice tickets, the not-owned order
+(T-000005, read as order status and stopped by the ownership check) and the deadline ticket (T-000010, "Thursday" resolved to the 8th) were decided as expected;
+4 replies were drafted by the model, 2 accepted and 2 replaced by the template after the validator found a missing fact (T-000002 omitted the tracking number;
+T-000007 omitted the promised date and put the tracking number in the status sentence). The 24.7 s maximum latency was the first call loading the model.
+**Findings:** (1) at temperature 0 the seed has no effect, so the retries returned identical text and doubled the draft time for nothing (the failed reading
+in the v3 probe also repeated); (2) cold start inflated the latency maximum; (3) the model sometimes returns a sentence instead of a date in `deadline_phrase`
+(T-000002, T-000007); it is verbatim in the ticket so it passes the check, and the resolver ignores it because it names no date.
+**Changes:** `reading.py` (`diagnose_reading` returns the problem in words; the retry shows it to the model; transport failures are retried unchanged),
+`reply.py` (`retry_hint` from rule codes and the missing facts; the rejected draft is not fed back), `validate.py` (`missing_facts`), `pipeline.py`
+(retry hints are traced), `run.py` (`warm_up`, `warmup_ms` in run.json), design doc v1.4.
+**Evidence:** 531 tests passing (11 new). Seven mutation checks (hint removed from the read retry, hint recorded but not sent, JSON reminder applied to
+every error, reply hint not sent, missing facts not named, warm-up skipped, hints not traced) each failed a test.
+**Not yet evidenced:** whether the hinted retry lowers the template fallback share on the real model (2 of 4 in the smoke run). Compare on the next run.
+**Housekeeping:** commit before an official run; run.json records `dirty: true` when the working tree has uncommitted changes.

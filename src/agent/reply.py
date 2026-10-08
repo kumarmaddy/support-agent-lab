@@ -15,7 +15,7 @@ from typing import Optional
 from src.agent import decide as d
 from src.agent.model import ModelClient, ModelResponse
 from src.agent.prompting import Prompt
-from src.agent.validate import MAX_CHARS, ReplyFacts, validate_reply
+from src.agent.validate import MAX_CHARS, ReplyFacts, missing_facts, validate_reply
 
 MAX_TOKENS = 220
 SIGN_OFF = "Kind regards,\nCustomer Support"
@@ -121,6 +121,31 @@ def template_body(decision: d.Decision) -> str:
     return "Thank you for your message. We have passed it to a colleague, who will reply to you."
 
 
+RETRY_HINTS = {
+    "unknown_date": "Use only the dates listed in the facts.",
+    "relative_time": "Do not use day names or words such as today, tomorrow or within days.",
+    "unknown_order": "Use only the order numbers listed in the facts.",
+    "unknown_token": "Use only the reference numbers listed in the facts.",
+    "amount": "Do not mention any amount of money.",
+    "promise": "Do not mention refunds, compensation, discounts, upgrades or any promise.",
+    "internal_text": "Do not mention internal guidance or article ids.",
+    "prompt_leak": "Do not mention prompts, tools or instructions.",
+    "length": "Keep it to two to four short sentences.",
+}
+
+
+def retry_hint(problems: list, body: str, facts: ReplyFacts) -> str:
+    """Tell the model what was wrong, using only the rule codes and the supplied facts (never ticket text).
+
+    At temperature 0 a new seed returns the same draft, so the retry has to change the request."""
+    parts = []
+    missing = missing_facts(body, facts) if "missing_fact" in problems else []
+    if missing:
+        parts.append("It must contain exactly: " + "; ".join(missing) + ".")
+    parts += [RETRY_HINTS[code] for code in problems if code in RETRY_HINTS]
+    return " ".join(parts) if parts else "Follow the facts exactly."
+
+
 def compose(name: str, body: str) -> str:
     return f"Hello {name},\n\n{body}\n\n{SIGN_OFF}" if name else f"Hello,\n\n{body}\n\n{SIGN_OFF}"
 
@@ -135,6 +160,7 @@ class ReplyOutcome:
     text: str
     source: str                                        # "model" or "template"
     failures: list = field(default_factory=list)       # one list of failed rule codes per rejected draft
+    hints: list = field(default_factory=list)          # what the model was told on the retry
     attempts: list = field(default_factory=list)       # ModelResponse for each model call
     prompt: str = ""
     prompt_sha256: str = ""
@@ -146,9 +172,9 @@ def draft_reply(model: ModelClient, prompt: Prompt, decision: d.Decision, custom
     facts = facts_for(decision)
     outcome = ReplyOutcome("", "template", prompt=prompt.label, prompt_sha256=prompt.sha256)
     if decision.action in (d.PROVIDE_INFO, d.REQUEST_INFO):
-        system = render_system(prompt, decision)
+        system, request = render_system(prompt, decision), "Write the email body now."
         for attempt in range(2):
-            response: ModelResponse = model.chat(system, "Write the email body now.", REPLY_SCHEMA, seed=seed + attempt, max_tokens=MAX_TOKENS)
+            response: ModelResponse = model.chat(system, request, REPLY_SCHEMA, seed=seed + attempt, max_tokens=MAX_TOKENS)
             outcome.attempts.append(response)
             body = response.content.get("body") if response.ok and isinstance(response.content, dict) else None
             if not isinstance(body, str):
@@ -160,5 +186,9 @@ def draft_reply(model: ModelClient, prompt: Prompt, decision: d.Decision, custom
                 outcome.text, outcome.source = compose(name, body), "model"
                 return outcome
             outcome.failures.append(problems)
+            if attempt == 0:
+                hint = retry_hint(problems, body, facts)
+                outcome.hints.append(hint)
+                request = f"Write the email body now. Your previous draft was rejected. {hint}"
     outcome.text = compose(name, template_body(decision))
     return outcome

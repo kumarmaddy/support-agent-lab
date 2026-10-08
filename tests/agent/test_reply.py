@@ -118,3 +118,38 @@ def test_hand_overs_use_templates_and_never_call_the_model(reason):
     model = ScriptedModel(reply=lambda s, u, seed: {"body": "ignored"})
     out = draft_reply(model, PROMPT, DECISIONS[reason], "Ada")
     assert out.source == "template" and model.calls == []
+
+
+# ------------------------------------------------------------------ the retry tells the model what was wrong
+def test_a_retry_names_the_facts_the_draft_left_out():
+    short = "Your order O-000123 has been dispatched with TrailExpress and is in transit."
+    answers = iter([{"body": short}, {"body": GOOD_BODY}])
+    model = ScriptedModel(reply=lambda s, u, seed: next(answers))
+    out = draft_reply(model, PROMPT, DECISIONS["shipped_on_time"], "Ada")
+    first, second = model.calls[0]["user"], model.calls[1]["user"]
+    assert out.source == "model" and out.failures == [["missing_fact"]] and first == "Write the email body now."
+    assert "TR245437731580" in second and "October 10, 2026" in second and "TrailExpress" not in second
+    assert short not in second                                   # the rejected draft itself is not fed back
+    assert out.hints == [second.split("rejected. ", 1)[1]]
+
+
+def test_a_retry_after_a_promise_says_not_to_promise():
+    answers = iter([{"body": GOOD_BODY + " We will refund you."}, {"body": GOOD_BODY}])
+    model = ScriptedModel(reply=lambda s, u, seed: next(answers))
+    draft_reply(model, PROMPT, DECISIONS["shipped_on_time"], "Ada")
+    assert "Do not mention refunds" in model.calls[1]["user"]
+
+
+def test_retry_hints_use_only_codes_and_supplied_facts():
+    from src.agent.reply import RETRY_HINTS, retry_hint
+    facts = facts_for(DECISIONS["shipped_on_time"])
+    assert retry_hint(["unknown_date", "promise"], GOOD_BODY, facts).count(".") >= 2
+    assert retry_hint(["something_else"], GOOD_BODY, facts) == "Follow the facts exactly."
+    assert set(RETRY_HINTS) <= {"unknown_date", "relative_time", "unknown_order", "unknown_token", "amount", "promise", "internal_text", "prompt_leak", "length"}
+
+
+def test_a_model_error_draft_is_retried_without_a_hint():
+    answers = iter(["request_failed", {"body": GOOD_BODY}])
+    model = ScriptedModel(reply=lambda s, u, seed: next(answers))
+    out = draft_reply(model, PROMPT, DECISIONS["shipped_on_time"], "Ada")
+    assert out.source == "model" and model.calls[1]["user"] == "Write the email body now." and out.hints == []

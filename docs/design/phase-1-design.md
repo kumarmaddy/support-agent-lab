@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| Version | 1.3 |
+| Version | 1.4 |
 | Date | 2026-10-08 |
 | Owner | Kumar Maddipatla, Project Lead |
 | Phase | 1 (Thin vertical slice), stages 1.1, 1.3, 1.4 and 1.5 |
@@ -19,11 +19,11 @@ Out of scope: write actions, refunds, retrieval over the knowledge base (Phase 2
 ## 2. Pipeline
 | # | Step | Decided by | Input | Output | On failure |
 |---|------|------------|-------|--------|------------|
-| 1 | Read the ticket | Model, constrained by a JSON schema | Subject and body | category, deadline_phrase (the customer's own words for a needed-by date, or empty) and mentions_chargeback_or_legal from the model; order numbers found by a pattern in code (revision 1.1); the date itself is resolved in code (revision 1.2) | One retry with a different seed; then route to a person |
+| 1 | Read the ticket | Model, constrained by a JSON schema | Subject and body | category, deadline_phrase (the customer's own words for a needed-by date, or empty) and mentions_chargeback_or_legal from the model; order numbers found by a pattern in code (revision 1.1); the date itself is resolved in code (revision 1.2) | One retry that tells the model what was wrong; then route to a person |
 | 2 | Check the reading | Code | Step 1 output | Exactly the three fields; category in the taxonomy; the legal flag true/false; the deadline wording short and present in the ticket text | Route to a person |
 | 3 | Identify the customer and order | Code, read-only tools | Sender email, order_id | Customer record, the order, or the list of open orders | No account or order found: ask the customer for the order number |
 | 4 | Decide | Code | Category, order facts, step 1 flags | Action, reason code, article id | None; rules are total (section 3) |
-| 5 | Draft the reply | Model for information and information-request bodies; code for every hand-over | Verified facts and an instruction per reason (the model does not see the ticket) | Reply text: greeting and sign-off by code, body by the model or a template | One retry with a different seed; then the template body |
+| 5 | Draft the reply | Model for information and information-request bodies; code for every hand-over | Verified facts and an instruction per reason (the model does not see the ticket) | Reply text: greeting and sign-off by code, body by the model or a template | One retry that names the failed rules and the missing facts; then the template body |
 | 6 | Validate the reply | Code | Reply, facts | Pass or fail | Fail twice: template reply |
 | 7 | Record | Code | All of the above | Resolution record and trace | None |
 
@@ -99,11 +99,11 @@ template replies is reported.
 
 ## 7. Tracing
 One directory per run, `data/runs/<run_id>/`, never reused. It holds:
-- `run.json`: model tag and digest, read and reply prompt labels with SHA-256, seed, dataset file hash, number of tickets, code commit and
+- `run.json`: model tag and digest, warm-up time (a throwaway call before the first ticket, so loading the model is in no ticket's latency), read and reply prompt labels with SHA-256, seed, dataset file hash, number of tickets, code commit and
   whether the working tree was clean, Python version, command line;
 - `trace.jsonl`: one line per step per ticket: run id, ticket id, sequence number, step name, outcome, latency in milliseconds, an input
-  fingerprint, and for model steps the prompt, the digest, every attempt (seed, parsed answer or error, tokens, latency) and rejected drafts with
-  their rule codes;
+  fingerprint, and for model steps the prompt, the digest, every attempt (seed, parsed answer or error, tokens, latency), rejected drafts with
+  their rule codes, and what the model was told on the retry;
 - `resolutions.jsonl`: one line per ticket with the action, reason, article, reply source, reply text and facts;
 - `summary.json`: counts and timings derived from the two files above (per-step and per-ticket median, 90th percentile and maximum; model calls;
   tokens; template fallback share; read outcomes), rebuildable at any time.
@@ -149,6 +149,7 @@ git except for runs cited in reports. The runner (`python -m src.agent.run`) nev
 ## Revision history
 | Version | Date | Change |
 |---------|------|--------|
+| 1.4 | 2026-10-08 | Stage 1.5b, from the first real-model run. At temperature 0 a different seed returns the same text (identical drafts on T-000002 and T-000007; identical readings on the failed T-000131), so a retry with a new seed does nothing for an invalid answer. The retry now tells the model what was wrong, using only rule codes and the supplied facts (never ticket text or the rejected draft); transport failures are retried unchanged. A warm-up call before the first ticket keeps model loading (24.7 s in the first run) out of the latency figures. |
 | 1.3 | 2026-10-08 | Stage 1.5. Section 7 describes the files actually written (run.json, trace.jsonl, resolutions.jsonl, summary.json), the privacy rule (fingerprints, no ticket text or email addresses) and the run command. Read prompt v3 is the working read prompt (see build log, stage 1.4b/1.4c). |
 | 1.2 | 2026-10-08 | Stage 1.4. (a) Correction: v1.0 and v1.1 said to escalate on any stated deadline for an undispatched order. That would escalate S03's far-away deadline, which the data design keeps as an information reply. Step 1 now returns the customer's wording (`deadline_phrase`) instead of a yes/no flag, and code resolves the date and applies the 3-day window; prompt read_ticket v2 replaces v1 for this field only. (b) Rules table: not-found and no-account give request_info with KB-ORD-02 (v1.0 listed KB-SEC-01 for both); another customer's order escalates with reason order_not_owned; two or more named orders ask which one. (c) Section 5 and 6: the reply model writes only the body and never sees the ticket; hand-overs use templates; validator rules listed with codes. (d) Locked accounts: no rule, recorded as an open question. |
 | 1.1 | 2026-10-08 | Order numbers are extracted by code (`\bO-\d{6}\b`, case-insensitive, upper-cased, de-duplicated) instead of being returned by the model. Reason: the format is fixed, a pattern is exact and cannot be steered by ticket text, and it removes one model output to validate. On the 150 development tickets the pattern finds the labelled order on all 119 identifiable tickets and nothing on the other 31. If a ticket names more than one order, step 3 treats the order as not identified and asks the customer which one (KB-ORD-02). |
