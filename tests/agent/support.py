@@ -3,12 +3,8 @@ import calendar
 from datetime import date
 
 from src.agent.model import ModelResponse
+from src.evaluation.slice import IN_SLICE, in_slice  # noqa: F401  (re-exported for the agent tests)
 
-IN_SLICE = ("S01", "S02", "S03", "S04", "S22")
-
-
-def in_slice(label) -> bool:
-    return label["scenario_id"] in IN_SLICE or (label["scenario_id"] == "S24" and label["category"] == "order_status")
 
 
 class ScriptedModel:
