@@ -22,6 +22,7 @@ from src.agent.taxonomy import BOUNDARY_RULES, CATEGORIES, DEFINITIONS
 MAX_TICKET_CHARS = 4000
 MAX_TOKENS = 80
 MAX_PHRASE_CHARS = 60
+NO_DATE_WORDS = frozenset({"", "none", "n/a", "na", "null", "no", "no deadline", "not specified", "not stated", "unknown"})
 FIELDS = ("category", "deadline_phrase", "mentions_chargeback_or_legal")
 ORDER_ID_PATTERN = re.compile(r"\bO-\d{6}\b", re.IGNORECASE)
 _DELIMITER = re.compile(r"<\s*/?\s*ticket\s*>", re.IGNORECASE)
@@ -93,6 +94,8 @@ def check_reading(content: object, order_ids: tuple, ticket_text: str = "") -> O
     if not isinstance(phrase, str) or len(phrase) > MAX_PHRASE_CHARS:
         return None
     phrase = " ".join(phrase.split())
+    if phrase.lower().strip(" .") in NO_DATE_WORDS:         # the model said "none" instead of leaving it empty
+        phrase = ""
     if phrase and " ".join(ticket_text.split()).lower().find(phrase.lower()) < 0:
         return None
     return Reading(content["category"], phrase, content["mentions_chargeback_or_legal"], order_ids)

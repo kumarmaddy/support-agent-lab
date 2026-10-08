@@ -158,3 +158,21 @@ def test_agent_reading_module_does_not_import_datagen_or_baseline():
     src = Path(reading.__file__).read_text(encoding="utf-8")
     names = {n.module for n in ast.walk(ast.parse(src)) if isinstance(n, ast.ImportFrom)}
     assert not any(m and (m.startswith("src.datagen") or m.startswith("src.baseline")) for m in names)
+
+
+@pytest.mark.parametrize("word", ["none", "None", "N/A", "n/a.", "no deadline", "null", "  unknown "])
+def test_none_like_wording_is_an_empty_phrase_not_a_failure(word):
+    r = check_reading({**GOOD, "deadline_phrase": word}, (), "Where is my order?")
+    assert r is not None and r.deadline_phrase == ""
+
+
+@pytest.mark.parametrize("version", ["v2", "v3"])
+def test_each_read_prompt_version_renders_fully(version):
+    text = render_system(load_prompt("read_ticket", version))
+    assert all(name in text for name in CATEGORIES) and all(rule in text for rule in BOUNDARY_RULES) and "{" not in text
+
+
+def test_prompt_v3_excludes_placed_and_promised_dates():
+    text = load_prompt("read_ticket", "v3").text
+    assert "placed, dispatched, delivered or promised is never a needed-by date" in text
+    assert "placed" not in load_prompt("read_ticket", "v2").text.split("3. mentions")[0].split("2. deadline_phrase")[1]

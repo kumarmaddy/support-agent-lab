@@ -26,7 +26,7 @@ def main(argv=None) -> int:
     p.add_argument("--db", type=Path, default=Path("data/generated/dev/support.db"))
     p.add_argument("--labels", type=Path, default=Path("data/labels/dev/labels.jsonl"))
     p.add_argument("--model", default="llama3.2:3b")
-    p.add_argument("--prompt-version", default="v2")
+    p.add_argument("--prompt-version", default="v3")
     p.add_argument("--limit", type=int, default=0, help="first N tickets only (0 = all)")
     p.add_argument("--show-misses", type=int, default=15)
     args = p.parse_args(argv)
@@ -41,7 +41,7 @@ def main(argv=None) -> int:
     prompt = load_prompt("read_ticket", args.prompt_version)
 
     hits, failed, misses, latencies, tokens = 0, 0, [], [], []
-    deadline_misses = []
+    deadline_misses, failures = [], []
     confusion = collections.Counter()
     flag_checks = collections.Counter()
     for lab in labels:
@@ -51,6 +51,7 @@ def main(argv=None) -> int:
         tokens += [a.tokens_in + a.tokens_out for a in out.attempts]
         if not out.ok:
             failed += 1
+            failures.append((lab["ticket_id"], lab["scenario_id"], out.reason, [a.error or a.raw[:90] for a in out.attempts]))
             continue
         got = out.reading.category
         confusion[(lab["category"], got)] += 1
@@ -84,6 +85,10 @@ def main(argv=None) -> int:
     print(f"\nfirst {args.show_misses} misses (ticket, scenario, label, model):")
     for miss in misses[: args.show_misses]:
         print("  ", *miss)
+    if failures:
+        print("\nfailed readings (ticket, scenario, reason, what the model returned on each try):")
+        for item in failures:
+            print("  ", *item)
     if deadline_misses:
         print("\ndeadline disagreements (ticket, scenario, labelled date, model wording, resolved date):")
         for miss in deadline_misses[:args.show_misses]:

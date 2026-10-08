@@ -466,3 +466,14 @@ ticket) survived until a test was added.
 required to state the promised date; (3) no development ticket exercises "no order number and exactly one open order", so that path is tested with a customer taken from the database.
 **Not yet evidenced:** real-model behaviour of read prompt v2 and of the reply prompt (draft acceptance rate, template share, latency). These are the first measurements of stage 1.6; the probe now reports deadline-date agreement.
 **Known limitations:** numeric day/month wording (9/10) is not interpreted; order-status wording about several orders is answered with a question; locked accounts are not treated differently.
+
+## Stage 1.4b: Read prompt v3 and probe diagnostics (2026-10-08)
+**Finding (probe of prompt v2, 150 development tickets):** category agreement 132/146 = 90.4% (v1: 135/150 = 90.0%), so the v2 change did not
+affect category reading; all 5 labelled deadlines resolved to the correct date. Two defects: (1) 12 tickets (S01, S02, S23) had the order-placed
+date quoted as a needed-by date, which the resolver rolled into 2027; the outcome was safe here but a misquoted promised date on an unshipped
+order could cause a false escalation; (2) 4 of 150 readings failed (v1: 0), cause not recorded by the probe.
+**Changes:** `read_ticket.v3.md` (deadline paragraph only: placed, dispatched, delivered and promised dates are never a needed-by date; "no date"
+is an empty string); `reading.py` treats "none", "n/a", "no deadline" and similar as an empty phrase; `probe_read_step.py` lists each failed
+reading with its reason and the model's raw output, and defaults to v3. v1 and v2 files are kept as records.
+**Evidence:** 501 tests passing (10 new); one mutation (null-word handling removed) fails a test.
+**Not yet evidenced:** the effect of v3 on the 12 misquoted dates and the 4 failed readings; to be read from the next probe run.
