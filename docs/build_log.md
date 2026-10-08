@@ -388,3 +388,28 @@ unescaped, empty evidence accepted, log ignored) each failed a test; one survive
   guard against the held-out split.
 **Evidence:** document stage. Scenario counts and the order-status profile were taken from the development labels.
 **Open item settled in a later stage:** whether the tools are also served over MCP (1.7).
+
+---
+
+## Stage 1.2: Read-only tools (2026-10-08)
+**Objective:** build the only door from the agent to the operational database, as specified in the Phase 1 design (section 4).
+**Files (new):** `src/agent/__init__.py`, `src/agent/tools.py`, `tests/agent/conftest.py`, `tests/agent/test_tools.py`.
+**Key decisions:**
+- Four tools (`get_ticket`, `find_customer`, `list_open_orders`, `get_order`) with typed results and one JSON-schema table
+  (`TOOL_SCHEMAS`) so the fixed pipeline and a later agent loop share one interface (ADR-006). `Toolbox.call(name, arguments)`
+  dispatches by name and returns plain JSON.
+- Read-only twice over: the file is opened with `mode=ro` and the connection also sets `PRAGMA query_only`, so a writable connection
+  passed in is made read-only too.
+- Every argument is validated before SQL; SQL uses bound parameters. Expected conditions (`not_found`, `not_owned`,
+  `invalid_argument`) are returned as a status, not raised.
+- `get_order` refuses another customer's order and returns nothing about it, not even the order id or the owner.
+- Results exclude addresses, card digits and payment records (NFR-3).
+- The agent package may not import the data generator or the baseline tool, and may not mention the labels path (tested).
+**Defect found by testing:** the id patterns used `match` with `$`, which also accepts a trailing newline (`"T-000001\n"` was
+treated as a valid id and returned "not found"). Patterns now use `fullmatch`; the email pattern has a test for the same case.
+**Evidence:** 309 tests passing (27 new). Agreement test: for all in-slice development tickets with an order, the tools return the same
+status, promised date and, for shipped orders, carrier, tracking number and last status as the labelled facts. Six mutation checks
+(ownership check removed, closed orders counted as open, read-only pragma removed, case-sensitive email, extra arguments allowed,
+owner leaked in the refusal) each failed a test.
+**Known limitations:** `Order` carries one shipment because the dataset has at most one per order (guarded by a test); the fixture
+module for `tests/agent` imports the shared fixtures from `tests/baseline`, to be consolidated when a third test package needs them.
