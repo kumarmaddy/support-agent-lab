@@ -15,6 +15,12 @@ from src.agent.reading import Reading
 
 # actions
 PROVIDE_INFO, REQUEST_INFO, ESCALATE_HUMAN, ROUTE_TO_HUMAN = "provide_info", "request_info", "escalate_human", "route_to_human"
+# proposals and refusals for transactional tickets (phase-2-design.md, section 6): the agent proposes, a person acts
+PROPOSE_CANCELLATION, PROPOSE_ADDRESS_CHANGE, DECLINE_POLICY = "propose_cancellation", "propose_address_change", "decline_policy"
+
+# the ticket categories the agent handles. Phase 1 handled order status only; --transactions adds the rest, one stage at a time.
+PHASE1_SCOPE = frozenset({"order_status"})
+TRANSACTION_SCOPE = PHASE1_SCOPE | {"cancellation", "address_change"}
 
 # identification outcomes
 IDENTIFIED, NO_ACCOUNT, ORDER_NOT_FOUND, ORDER_NOT_OWNED = "identified", "no_account", "order_not_found", "order_not_owned"
@@ -38,9 +44,9 @@ class Decision:
     facts: dict = field(default_factory=dict)       # verified facts only; the reply may use nothing else
 
 
-def requires_lookup(reading: Reading) -> bool:
-    """Only order-status tickets without a legal threat need the customer and order (a legal threat is escalated in any category)."""
-    return reading.category == "order_status" and not reading.mentions_chargeback_or_legal
+def requires_lookup(reading: Reading, scope: frozenset = PHASE1_SCOPE) -> bool:
+    """Only tickets in scope without a legal threat need the customer and order (a legal threat is escalated in any category)."""
+    return reading.category in scope and not reading.mentions_chargeback_or_legal
 
 
 def identify(box: tools.Toolbox, ticket: tools.Ticket, reading: Reading) -> Identity:
@@ -68,15 +74,16 @@ def _day(stamp: Optional[str]) -> Optional[str]:
     return stamp[:10] if stamp else None
 
 
-def decide(reading: Reading, identity: Optional[Identity], today: date) -> Decision:
+def decide(reading: Reading, identity: Optional[Identity], today: date, scope: frozenset = PHASE1_SCOPE,
+           requested_address: str = "") -> Decision:
     # 1. threat of chargeback or legal action: always escalated (KB-REF-04), whatever the category; no account details are read
     if reading.mentions_chargeback_or_legal:
         return Decision(ESCALATE_HUMAN, "chargeback_or_legal_threat", "KB-REF-04")
     # 2. out of slice
-    if reading.category != "order_status":
+    if reading.category not in scope:
         return Decision(ROUTE_TO_HUMAN, "out_of_slice", None)
     if identity is None:
-        raise ValueError("an identity is required for an order-status ticket without a legal threat")
+        raise ValueError("an identity is required for a ticket in scope without a legal threat")
     # 3. who and which order
     if identity.outcome == NO_ACCOUNT:
         return Decision(REQUEST_INFO, "no_account", "KB-ORD-02")
@@ -91,6 +98,10 @@ def decide(reading: Reading, identity: Optional[Identity], today: date) -> Decis
         return Decision(REQUEST_INFO, "needs_order_number", "KB-ORD-02", {"candidates": candidates})
     order, shipment = identity.order, identity.order.shipment
     base = {"order_id": order.order_id, "status": order.status, "promised_date": order.promised_date}
+    if reading.category == "cancellation":
+        return _cancellation(order, shipment, base)
+    if reading.category == "address_change":
+        return _address_change(order, shipment, base, requested_address)
     # 4. by order state
     if order.status == "processing":
         deadline = resolve_deadline(reading.deadline_phrase, today)
@@ -106,3 +117,28 @@ def decide(reading: Reading, identity: Optional[Identity], today: date) -> Decis
     if order.status == "delivered" and shipment is not None and _day(shipment.delivered_at):
         return Decision(PROVIDE_INFO, "delivered", "KB-SHP-01", {**base, "delivered_date": _day(shipment.delivered_at)})
     return Decision(ROUTE_TO_HUMAN, "order_state_not_covered", None)           # cancelled, returned, or an inconsistent record
+
+
+def _shipment_facts(base: dict, shipment) -> dict:
+    return {**base, "carrier": shipment.carrier, "tracking_no": shipment.tracking_no, "last_status": shipment.last_status}
+
+
+def _cancellation(order, shipment, base: dict) -> Decision:
+    """KB-CAN-01: an order can be cancelled only before dispatch. The agent proposes; a person cancels."""
+    if order.status == "processing":
+        return Decision(PROPOSE_CANCELLATION, "cancellation_before_dispatch", "KB-CAN-01", base)
+    if order.status == "shipped" and shipment is not None:
+        return Decision(DECLINE_POLICY, "cancellation_after_dispatch", "KB-CAN-01", _shipment_facts(base, shipment))
+    return Decision(ROUTE_TO_HUMAN, "order_state_not_covered", None)
+
+
+def _address_change(order, shipment, base: dict, requested_address: str) -> Decision:
+    """KB-ADR-01: the address can be changed only before dispatch. The address to propose is the customer's own wording, verified
+    against the ticket (transactions.py); without one the customer is asked for it."""
+    if order.status == "processing":
+        if not requested_address:
+            return Decision(REQUEST_INFO, "address_missing", "KB-ADR-01", {"candidates": [{"order_id": order.order_id}]})
+        return Decision(PROPOSE_ADDRESS_CHANGE, "address_change_before_dispatch", "KB-ADR-01", {**base, "requested_address": requested_address})
+    if order.status == "shipped" and shipment is not None:
+        return Decision(DECLINE_POLICY, "address_change_after_dispatch", "KB-ADR-01", _shipment_facts(base, shipment))
+    return Decision(ROUTE_TO_HUMAN, "order_state_not_covered", None)

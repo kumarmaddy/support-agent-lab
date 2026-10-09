@@ -90,6 +90,7 @@ INSTRUCTIONS = {
     "multiple_order_ids": "They mentioned more than one order. Ask which one they mean, naming the orders listed.",
     "order_not_found": "We could not find that order on the account. Ask them to check the order number in their confirmation email and reply with it.",
     "no_account": "We could not match the email address to an account. Ask them to reply with their order number.",
+    "address_missing": "Ask them to reply with the complete new delivery address for the order listed.",
 }
 
 # Template bodies: used for every hand-over, and as the fallback when a drafted body fails validation.
@@ -113,6 +114,20 @@ def template_body(decision: d.Decision) -> str:
     if reason in ("order_not_found", "no_account"):
         return ("We could not find that order. Please check the order number in your confirmation email and reply with it, "
                 "so that we can look into it.")
+    if reason == "address_missing":
+        return f"So that we can change the delivery address, please reply with the complete new address for order {f['candidates'][0]['order_id']}."
+    if reason == "cancellation_before_dispatch":
+        return (f"Thank you for your message. Order {f['order_id']} has not been dispatched yet, so it can still be cancelled. "
+                "We have passed your request to a colleague, who will confirm the cancellation with you.")
+    if reason == "cancellation_after_dispatch":
+        return (f"Thank you for your message. Order {f['order_id']} has already been dispatched, so it can no longer be cancelled. "
+                f"When it arrives you can return it under our return policy. The carrier is {f['carrier']} and the tracking number is {f['tracking_no']}.")
+    if reason == "address_change_before_dispatch":
+        return (f"Thank you for your message. Order {f['order_id']} has not been dispatched yet, so the delivery address can still be changed. "
+                f"We have passed your request to change it to {f['requested_address']} to a colleague, who will confirm the change with you.")
+    if reason == "address_change_after_dispatch":
+        return (f"Thank you for your message. Order {f['order_id']} has already been dispatched and is with {f['carrier']} "
+                f"(tracking number {f['tracking_no']}), so the delivery address can no longer be changed.")
     if reason == "delivery_deadline_cannot_be_guaranteed":
         return ("Thank you for telling us about your date. We are not able to confirm delivery by a particular date, so we have "
                 "passed your request to a colleague who will review what is possible and reply to you.")

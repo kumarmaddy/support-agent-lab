@@ -22,6 +22,7 @@ from src.agent.pipeline import Resolution, internal_guidance, run_ticket
 from src.agent.prompting import Prompt, load_prompt
 from src.agent.reading import MAX_TOKENS, READ_SCHEMA, render_system, render_user
 from src.agent.tools import Toolbox
+from src.agent.transactions import Transactions
 from src.agent.tracing import TraceWriter, new_run_id
 from src.kb.embed import model_digest
 from src.kb.articles import load_articles
@@ -67,7 +68,7 @@ def warm_up(model: ModelClient, read_prompt: Prompt) -> int:
 
 def build_meta(model: ModelClient, read_prompt: Prompt, reply_prompt: Prompt, db_path: Path, seed: int, ticket_ids: list,
                argv: Optional[list] = None, digest: str = "", warmup_ms: int = 0, reply_mode: str = "model", knowledge: Optional[Knowledge] = None,
-               embed_model: str = "", embed_digest: str = "") -> dict:
+               embed_model: str = "", embed_digest: str = "", transactions: Optional[Transactions] = None) -> dict:
     return {
         "started_at": datetime.now(timezone.utc).isoformat(timespec="seconds"),
         "model": {"tag": model.model, "digest": digest},
@@ -82,6 +83,8 @@ def build_meta(model: ModelClient, read_prompt: Prompt, reply_prompt: Prompt, db
         "knowledge": None if knowledge is None else {"embed_model": embed_model, "embed_digest": embed_digest, "min_score": knowledge.min_score,
                                                        "check_prompt": {"label": knowledge.check_prompt.label, "sha256": knowledge.check_prompt.sha256},
                                                        "reply_prompt": {"label": knowledge.reply_prompt.label, "sha256": knowledge.reply_prompt.sha256}},
+        "transactions": None if transactions is None else {"address_prompt": {"label": transactions.address_prompt.label,
+                                                                             "sha256": transactions.address_prompt.sha256}},
         "python": platform.python_version(),
         "argv": argv or [],
     }
@@ -89,10 +92,10 @@ def build_meta(model: ModelClient, read_prompt: Prompt, reply_prompt: Prompt, db
 
 def run_tickets(box: Toolbox, model: ModelClient, read_prompt: Prompt, reply_prompt: Prompt, internal: frozenset,
                 ticket_ids: list, writer: TraceWriter, seed: int = 0, reply_mode: str = "model", knowledge: Optional[Knowledge] = None,
-                progress: Optional[Callable[[int, int, Resolution], None]] = None) -> list:
+                transactions: Optional[Transactions] = None, progress: Optional[Callable[[int, int, Resolution], None]] = None) -> list:
     results = []
     for index, ticket_id in enumerate(ticket_ids, 1):
-        resolution = run_ticket(box, model, read_prompt, reply_prompt, internal, ticket_id, seed, reply_mode, knowledge)
+        resolution = run_ticket(box, model, read_prompt, reply_prompt, internal, ticket_id, seed, reply_mode, knowledge, transactions)
         writer.write(resolution)
         results.append(resolution)
         if progress:
@@ -120,6 +123,7 @@ def main(argv=None) -> int:
     p.add_argument("--reply-mode", choices=["model", "template"], default="model",
                    help="template: every reply is built by code (the comparison baseline for model-written replies)")
     p.add_argument("--knowledge", action="store_true", help="answer policy questions from the knowledge base (needs the embedding model; ADR-009)")
+    p.add_argument("--transactions", action="store_true", help="handle cancellation and address-change tickets (read-only; proposals go to a person)")
     p.add_argument("--embed-model", default="nomic-embed-text")
     p.add_argument("--min-score", type=float, default=DEFAULT_MIN_SCORE)
     p.add_argument("--check-prompt", default="v1", help="version of the knowledge check prompt (v1 default)")
@@ -139,11 +143,12 @@ def main(argv=None) -> int:
         from src.kb.embed import EmbeddingIndex
         knowledge = Knowledge(EmbeddingIndex(articles, args.embed_model), articles, load_prompt("knowledge_check", args.check_prompt),
                               load_prompt("knowledge_reply", "v1"), args.min_score)
+    transactions = Transactions(load_prompt("extract_address", "v1")) if args.transactions else None
     meta = build_meta(model, read_prompt, reply_prompt, args.db, args.seed, ids, argv if argv is not None else sys.argv[1:], model.digest(), warmup_ms,
                       args.reply_mode, knowledge, args.embed_model if knowledge else "",
-                      model_digest(args.embed_model) if knowledge else "")
+                      model_digest(args.embed_model) if knowledge else "", transactions)
     with TraceWriter(args.out, new_run_id(), meta) as writer:
-        run_tickets(box, model, read_prompt, reply_prompt, internal_guidance(articles), ids, writer, args.seed, args.reply_mode, knowledge,
+        run_tickets(box, model, read_prompt, reply_prompt, internal_guidance(articles), ids, writer, args.seed, args.reply_mode, knowledge, transactions,
                     progress=lambda i, n, r: print(f"[{i}/{n}] {r.ticket_id} {r.action} ({r.reason}) reply by {r.reply_source}", flush=True))
         summary = writer.close()
     print(f"\nrun {writer.run_id}: {summary['tickets']} tickets, {summary['model_calls']} model calls")

@@ -14,9 +14,10 @@ from pathlib import Path
 from typing import Optional
 
 from src.baseline.scoring import wilson_interval
-from src.evaluation.slice import in_slice
+from src.evaluation.slice import in_scope
 
-ANSWERS = ("provide_info", "request_info")          # actions that reply to the customer without a person
+ANSWERS = ("provide_info", "request_info", "decline_policy")     # actions that reply to the customer without a person
+PROPOSALS = ("propose_cancellation", "propose_address_change")   # the agent proposes, a person acts
 HAND_OVERS = ("route_to_human", "escalate_human")
 FACT_KEYS = {"order_status": "status", "promised_date": "promised_date", "carrier": "carrier", "tracking_no": "tracking_no",
              "last_status": "last_status", "deadline_date": "deadline_date"}
@@ -41,6 +42,9 @@ def facts_agree(resolution: dict, label: dict) -> bool:
             continue                    # a far-away deadline is labelled but only the hand-over states it
         if label_key in want and got.get(fact_key) != want[label_key]:
             return False
+    if "requested_address" in want and resolution.get("reason") == "address_change_before_dispatch":
+        if got.get("requested_address") != want["requested_address"]:      # the address must be copied exactly
+            return False
     if "candidate_order_ids" in want:
         got_ids = sorted(c["order_id"] for c in got.get("candidates", []))
         if got_ids != sorted(want["candidate_order_ids"]):
@@ -48,9 +52,10 @@ def facts_agree(resolution: dict, label: dict) -> bool:
     return True
 
 
-def score_ticket(resolution: dict, label: dict, read_category: Optional[str], read_legal: Optional[bool] = None) -> dict:
+def score_ticket(resolution: dict, label: dict, read_category: Optional[str], read_legal: Optional[bool] = None,
+                 transactions: bool = False) -> dict:
     expected_action = label["expected_actions"][0]
-    row = {"ticket_id": label["ticket_id"], "in_slice": in_slice(label), "scenario_id": label["scenario_id"],
+    row = {"ticket_id": label["ticket_id"], "in_slice": in_scope(label, transactions), "scenario_id": label["scenario_id"],
            "label_category": label["category"], "read_category": read_category, "category_ok": read_category == label["category"],
            "read_legal": read_legal, "label_legal": bool(label["priority_attributes"]["chargeback_or_legal_threat"]),
            "action": resolution["action"], "reason": resolution["reason"], "reply_source": resolution["reply_source"],
@@ -63,7 +68,7 @@ def score_ticket(resolution: dict, label: dict, read_category: Optional[str], re
         row["end_to_end_ok"] = all(row[k] for k in ("action_ok", "escalation_ok", "article_ok", "facts_ok"))
     else:
         row["handed_to_person"] = resolution["action"] in HAND_OVERS
-        row["wrongly_answered"] = resolution["action"] in ANSWERS
+        row["wrongly_answered"] = resolution["action"] in ANSWERS + PROPOSALS
         row["should_escalate_but_routed"] = bool(label["expected_escalate"]) and resolution["action"] != "escalate_human"
         row["escalated_unnecessarily"] = resolution["action"] == "escalate_human" and not label["expected_escalate"]
     return row
@@ -102,10 +107,11 @@ def score_run(run_dir: Path, labels: list) -> dict:
     unknown = [r["ticket_id"] for r in resolutions if r["ticket_id"] not in by_id]
     if unknown:
         raise SystemExit(f"Tickets in the run without a development label: {unknown[:5]}")
-    rows = [score_ticket(r, by_id[r["ticket_id"]], *results.get(r["ticket_id"], (None, None))) for r in resolutions]
+    meta = json.loads((run_dir / "run.json").read_text(encoding="utf-8")) if (run_dir / "run.json").exists() else {}
+    transactions = bool(meta.get("transactions"))                  # the scope is whatever the run was switched on to handle
+    rows = [score_ticket(r, by_id[r["ticket_id"]], *results.get(r["ticket_id"], (None, None)), transactions) for r in resolutions]
     a, b = [r for r in rows if r["in_slice"]], [r for r in rows if not r["in_slice"]]
     summary = json.loads((run_dir / "summary.json").read_text(encoding="utf-8")) if (run_dir / "summary.json").exists() else {}
-    meta = json.loads((run_dir / "run.json").read_text(encoding="utf-8")) if (run_dir / "run.json").exists() else {}
     answered_correctly = [r for r in a if r["end_to_end_ok"] and r["action"] in ANSWERS]
     return {
         "schema": 1, "run_id": run_dir.name, "model": meta.get("model"), "reply_mode": meta.get("reply_mode"),

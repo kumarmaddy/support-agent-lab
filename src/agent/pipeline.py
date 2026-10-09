@@ -20,6 +20,7 @@ from src.agent.knowledge import KNOWLEDGE_ANSWER, Knowledge, answer_or_hand_over
 from src.agent.model import ModelClient
 from src.agent.prompting import Prompt
 from src.agent.tools import Toolbox
+from src.agent.transactions import Transactions, extract_address
 from src.agent.validate import internal_shingles
 from src.kb.articles import SECTION_GUIDANCE, Article
 
@@ -60,8 +61,10 @@ def _model_usage(responses) -> dict:
 
 
 def run_ticket(box: Toolbox, model: ModelClient, read_prompt: Prompt, reply_prompt: Prompt, internal: frozenset,
-               ticket_id: str, seed: int = 0, reply_mode: str = "model", knowledge: Optional[Knowledge] = None) -> Resolution:
+               ticket_id: str, seed: int = 0, reply_mode: str = "model", knowledge: Optional[Knowledge] = None,
+               transactions: Optional[Transactions] = None) -> Resolution:
     steps: list = []
+    scope = d.TRANSACTION_SCOPE if transactions is not None else d.PHASE1_SCOPE
 
     def finish(action, reason, article, text, source, facts=None):
         return Resolution(ticket_id, action, reason, article, text, source, facts or {}, steps)
@@ -100,16 +103,25 @@ def run_ticket(box: Toolbox, model: ModelClient, read_prompt: Prompt, reply_prom
         decision = ko.decision
     else:
         identity = None
-        if d.requires_lookup(reading):
+        if d.requires_lookup(reading, scope):
             started = time.perf_counter()
             identity = d.identify(box, ticket, reading)
             steps.append(_step("identify", started, outcome=identity.outcome,
                                input_hash=_hash(ticket.customer_email.lower(), reading.order_ids)))
+        requested_address = ""
+        if (transactions is not None and reading.category == "address_change" and identity is not None
+                and identity.outcome == d.IDENTIFIED and identity.order.status == "processing"):
+            started = time.perf_counter()
+            found = extract_address(model, transactions.address_prompt, ticket.subject, ticket.body, seed)
+            requested_address = found.address
+            steps.append(_step("extract_address", started, outcome=found.reason, input_hash=_hash(ticket.subject, ticket.body),
+                               prompt=transactions.address_prompt.label, prompt_sha256=transactions.address_prompt.sha256,
+                               address=found.address, **_model_usage(found.attempts)))
         started = time.perf_counter()
         today = date.fromisoformat(ticket.received_at[:10])
-        decision = d.decide(reading, identity, today)
+        decision = d.decide(reading, identity, today, scope, requested_address)
         steps.append(_step("decide", started, input_hash=_hash(reading.category, reading.deadline_phrase, reading.mentions_chargeback_or_legal,
-                                                           identity.outcome if identity else None, str(today)),
+                                                           identity.outcome if identity else None, str(today), *([requested_address] if requested_address else [])),
                            action=decision.action, reason=decision.reason, article=decision.article))
         name = identity.customer.name if identity and identity.customer else None
 

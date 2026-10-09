@@ -1,6 +1,6 @@
 # Phase 2 Design: Knowledge-Base Answers and More Ticket Types
 
-- Version: 0.3 (draft for review)
+- Version: 0.4 (draft for review)
 - Date: 2026-10-09
 - Owner: Kumar Maddipatla, Project Lead
 - Builds on: phase-1-design.md v1.6, ADR-006 (fixed pipeline), ADR-007 (qwen2.5:7b, read prompt v4)
@@ -72,6 +72,16 @@ With embeddings the best score separates unanswerable from answerable questions 
 | 2.5 | Returns, refunds, cancellations, address changes: reading, decision rules, reply facts (read-only; proposed actions go to a person) |
 | 2.6 | Escalation summary for the person who receives a ticket |
 | 2.7 | Phase 2 evaluation (3B and 7B), citation validity, blind review, report, exit review |
+
+## 5a. Cancellations and address changes (stage 2.5a)
+Opt-in with `--transactions`; without it these tickets go to a person as in Phase 1. The agent proposes and a person acts: no tool writes.
+- **Identify.** Same read-only lookup as order status (customer by email, order by number or the single open order). The same request-for-information and escalation outcomes apply when the account or order cannot be established.
+- **Cancellation (KB-CAN-01).** Order processing: `propose_cancellation`. Order shipped: `decline_policy`, stating the carrier and tracking number. Any other state goes to a person.
+- **Address change (KB-ADR-01).** Order processing with a usable address: `propose_address_change`. Without one: `request_info` (`address_missing`). Order shipped: `decline_policy`. Any other state goes to a person.
+- **The address is the customer's own text.** A second small model call copies it from the ticket (prompt `extract_address.v1`). Code accepts it only if it appears word for word in the ticket after white space is normalised, is at most 100 characters, has at least two words and a digit, and uses only letters, digits and `, . \' # / -`. Anything else is treated as no address. The call is made only when the order is processing, so it is never made when its result would not be used.
+- **Replies are written by code** (templates). A proposal tells the customer that a colleague will confirm the change; no reply says that anything has been cancelled or changed. This removes model-wording risk from the first transactional actions; model-written wording can be compared later.
+- **Scoring.** A run made with `--transactions` records it in `run.json`; the scorer then counts scenarios S13-S16 and the S24 cancellation as in scope and compares the proposed address with the labelled one exactly. `decline_policy` counts as an answer; a proposal for an out-of-scope ticket counts as wrongly answered.
+- **Not covered here.** Returns, exchanges, replacements and refunds (2.5b, 2.5c); the final state of a delivered, cancelled or returned order is left to a person.
 
 ## 6. Safety rules carried over
 Ticket and article text are data, not instructions; the reply model sees only verified facts and article key facts; every reply passes the validator; any failure falls back to a template or a hand-over; write actions stay disabled until Phase 3.

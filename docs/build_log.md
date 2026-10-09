@@ -635,3 +635,20 @@ and not a tuned threshold; the final runs are the test of it.
 **Result.** Coverage 58% (v1) vs 64% (v2); the difference is within noise (3 gained, 1 lost). Wrong answers 0 and unanswerable answered 0 under both. The v2 false-yes rate on non-answering articles rose from 1/48 to 4/48.
 
 **Decision.** v1 remains the default. v2 is kept as a documented alternative. The check is the main coverage limit; eight answerable probes with the right article are handed over under both prompts. Further prompt tuning on the 36 development probes is not pursued, to avoid fitting to them. Thresholds and the check prompt are confirmed once in Phase 4 on held-out data.
+
+### 2.5a Cancellations and address changes
+
+**Scope.** Scenarios S13-S16 (23 development tickets) plus the S24 cancellation. Opt-in with `--transactions`; the default is unchanged (Phase 1 behaviour and tests are intact).
+
+
+**Changes.**
+- `decide.py`: scope sets (`PHASE1_SCOPE`, `TRANSACTION_SCOPE`); actions `propose_cancellation`, `propose_address_change`, `decline_policy`; rules for cancellation and address change by order state.
+- `transactions.py` and `extract_address.v1.md`: copies the new address from the ticket and accepts it only if it is verified (word for word in the ticket, character set, length).
+- `reply.py`: code-written reply bodies for the new reasons (no model wording); `address_missing` request.
+- `pipeline.py`, `run.py`: the extra step and the `--transactions` switch; the prompt hash is recorded in `run.json`.
+- `score.py`, `slice.py`: scope follows the run; exact address comparison; proposals out of scope count as wrongly answered.
+- ADR-009 accepted; `phase-2-design.md` v0.4 (section 5a).
+
+**Tests.** 674 passed (40 new). A perfect reader and scripted address extractor reproduce every labelled action, article and fact for the 24 tickets. Four mutations of the new rules (state check, address verification, proposal action, digit rule) were each caught.
+
+**Not yet measured.** Results with the real models (read step on cancellation and address-change tickets, address copying by qwen2.5:7b).

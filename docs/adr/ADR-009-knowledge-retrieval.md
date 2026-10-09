@@ -1,6 +1,6 @@
 # ADR-009: Knowledge-base retrieval method
 
-- Status: Proposed
+- Status: Accepted (2026-10-09, project lead)
 - Date: 2026-10-09
 - Owner: Kumar Maddipatla, Project Lead
 
