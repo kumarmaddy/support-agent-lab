@@ -605,3 +605,9 @@ and not a tuned threshold; the final runs are the test of it.
 **Decided (ADR-009, Proposed):** embeddings for knowledge questions, BM25 kept as baseline, no hybrid, no vector database. Design v0.2: "I don't know" uses three gates (score at least 0.65, model check that the article answers the question, validated cited reply).
 **Limitations:** probes written by the system's author; threshold and method chosen on development data; embedding scores for all tickets are not meaningful for order-status tickets, where articles follow from the decision rules.
 **Next:** stage 2.4, knowledge-question path in the pipeline.
+
+
+## Stage 2.4: Knowledge-question path (2026-10-09)
+**Built:** `src/agent/knowledge.py` (three gates: similarity score at least 0.65, a yes/no model check that the article's key facts answer the question, and a validated reply; failing any gate hands the ticket over); prompts `knowledge_check.v1` and `knowledge_reply.v1`; `validate_knowledge_reply` and `draft_knowledge_reply` (writer sees only the key facts; fallback is the key facts themselves; template passes the validator for all 21 articles); pipeline step `knowledge` behind `--knowledge`; run metadata records the embedding model, threshold and prompt hashes; `src/evaluation/knowledge.py` measures the path on the probe file. Probe labels widened for four duplicate-fact cases (design 4.1). 630 tests (33 new); six mutation checks each failed a test (one survivor found and covered).
+**Not yet measured:** the path has been run only against scripted models. The probe run and the product_info tickets need the real models (stage 2.4 results).
+**Next:** run `python -m src.evaluation.knowledge`, then fold product_info tickets into the scorer in stage 2.7.

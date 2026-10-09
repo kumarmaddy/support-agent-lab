@@ -16,6 +16,7 @@ from typing import Optional
 from src.agent import decide as d
 from src.agent import reading as r
 from src.agent import reply as rp
+from src.agent.knowledge import KNOWLEDGE_ANSWER, Knowledge, answer_or_hand_over
 from src.agent.model import ModelClient
 from src.agent.prompting import Prompt
 from src.agent.tools import Toolbox
@@ -59,7 +60,7 @@ def _model_usage(responses) -> dict:
 
 
 def run_ticket(box: Toolbox, model: ModelClient, read_prompt: Prompt, reply_prompt: Prompt, internal: frozenset,
-               ticket_id: str, seed: int = 0, reply_mode: str = "model") -> Resolution:
+               ticket_id: str, seed: int = 0, reply_mode: str = "model", knowledge: Optional[Knowledge] = None) -> Resolution:
     steps: list = []
 
     def finish(action, reason, article, text, source, facts=None):
@@ -88,26 +89,36 @@ def run_ticket(box: Toolbox, model: ModelClient, read_prompt: Prompt, reply_prom
         return finish(decision.action, decision.reason, None, text, "template")
     reading = read.reading
 
-    # 3. identify
-    identity = None
-    if d.requires_lookup(reading):
+    # 3-4. identify and decide; a policy question (product_info) takes the knowledge path when it is switched on
+    name = None
+    if knowledge is not None and reading.category == "product_info" and not reading.mentions_chargeback_or_legal:
         started = time.perf_counter()
-        identity = d.identify(box, ticket, reading)
-        steps.append(_step("identify", started, outcome=identity.outcome,
-                           input_hash=_hash(ticket.customer_email.lower(), reading.order_ids)))
-
-    # 4. decide
-    started = time.perf_counter()
-    today = date.fromisoformat(ticket.received_at[:10])
-    decision = d.decide(reading, identity, today)
-    steps.append(_step("decide", started, input_hash=_hash(reading.category, reading.deadline_phrase, reading.mentions_chargeback_or_legal,
-                                                       identity.outcome if identity else None, str(today)),
-                       action=decision.action, reason=decision.reason, article=decision.article))
+        ko = answer_or_hand_over(knowledge, model, ticket.subject, ticket.body, seed)
+        steps.append(_step("knowledge", started, outcome=ko.gate, input_hash=_hash(ticket.subject, ticket.body), hits=ko.hits,
+                           prompt=knowledge.check_prompt.label, prompt_sha256=knowledge.check_prompt.sha256,
+                           **_model_usage([ko.check] if ko.check else [])))
+        decision = ko.decision
+    else:
+        identity = None
+        if d.requires_lookup(reading):
+            started = time.perf_counter()
+            identity = d.identify(box, ticket, reading)
+            steps.append(_step("identify", started, outcome=identity.outcome,
+                               input_hash=_hash(ticket.customer_email.lower(), reading.order_ids)))
+        started = time.perf_counter()
+        today = date.fromisoformat(ticket.received_at[:10])
+        decision = d.decide(reading, identity, today)
+        steps.append(_step("decide", started, input_hash=_hash(reading.category, reading.deadline_phrase, reading.mentions_chargeback_or_legal,
+                                                           identity.outcome if identity else None, str(today)),
+                           action=decision.action, reason=decision.reason, article=decision.article))
+        name = identity.customer.name if identity and identity.customer else None
 
     # 5-6. draft and validate
     started = time.perf_counter()
-    name = identity.customer.name if identity and identity.customer else None
-    outcome = rp.draft_reply(model, reply_prompt, decision, name, internal, seed=seed, use_model=(reply_mode == "model"))
+    if decision.reason == KNOWLEDGE_ANSWER:
+        outcome = rp.draft_knowledge_reply(model, knowledge.reply_prompt, decision, internal, seed=seed, use_model=(reply_mode == "model"))
+    else:
+        outcome = rp.draft_reply(model, reply_prompt, decision, name, internal, seed=seed, use_model=(reply_mode == "model"))
     steps.append(_step("draft_reply", started, input_hash=_hash(decision.reason, decision.facts), source=outcome.source, rejected_drafts=outcome.failures, retry_hints=outcome.hints,
                        prompt=outcome.prompt, prompt_sha256=outcome.prompt_sha256, **_model_usage(outcome.attempts)))
     return finish(decision.action, decision.reason, decision.article, outcome.text, outcome.source, decision.facts)

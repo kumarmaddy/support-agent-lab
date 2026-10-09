@@ -141,3 +141,59 @@ def validate_reply(text: str, facts: ReplyFacts, internal: frozenset = frozenset
     if missing_facts(text, facts):
         failures.append("missing_fact")
     return failures
+
+
+# ------------------------------------------------------------------ knowledge answers (phase-2-design.md, section 4, gate 3)
+_NUMBER = re.compile(r"\b\d+\b")
+MIN_SHARED_WORDS = 2
+
+
+def _content_words(text: str) -> set:
+    from src.kb.retrieve import tokens        # the same stemming and stop words as retrieval
+    return set(tokens(text))
+
+
+def validate_knowledge_reply(text: str, key_facts: list, internal: frozenset = frozenset()) -> list:
+    """Rules for a reply that restates a knowledge-base article. The article's key facts are the only source of content.
+
+    Policy words such as refund, within 30 days or contact us are fine when the key facts themselves use them, and not otherwise.
+      length               empty or too long
+      unsupported_term     a promise, channel or relative-time word that no key fact uses
+      unknown_number       a number that no key fact contains
+      unknown_order        an order number that no key fact contains (no date or amount is ever supplied)
+      amount, unknown_date money or a calendar date (articles contain neither)
+      internal_text        a knowledge-base id, an internal-guidance marker or six words copied from internal guidance
+      prompt_leak          mentions of prompts, tools or instructions
+      unsupported_sentence a sentence that shares fewer than two content words with the key facts (and is not a short courtesy line)
+    The last rule is a weak support test: it catches invented content, not a claim that reverses a fact. A person reviews that."""
+    facts_text = " ".join(key_facts)
+    lowered = facts_text.lower()
+    failures = []
+    if not text.strip() or len(text) > MAX_CHARS:
+        failures.append("length")
+    for pattern in (_PROMISE, _CHANNEL, _RELATIVE):
+        if any(m.group(0).lower() not in lowered for m in pattern.finditer(text)):
+            failures.append("unsupported_term")
+            break
+    fact_numbers = set(_NUMBER.findall(facts_text))
+    if any(n not in fact_numbers for n in _NUMBER.findall(_ORDER_ID.sub(" ", text))):
+        failures.append("unknown_number")
+    allowed_orders = {m.group(0).upper() for m in _ORDER_ID.finditer(facts_text)}
+    if any(m.group(0).upper() not in allowed_orders for m in _ORDER_ID.finditer(text)):
+        failures.append("unknown_order")
+    if _AMOUNT.search(text):
+        failures.append("amount")
+    if dates_in(text):
+        failures.append("unknown_date")
+    own = _shingles(_words(facts_text), SHINGLE_WORDS)
+    if _INTERNAL.search(text) or (internal and _shingles(_words(text), SHINGLE_WORDS) & (internal - own)):
+        failures.append("internal_text")
+    if _LEAK.search(text):
+        failures.append("prompt_leak")
+    fact_words = _content_words(facts_text)
+    for sentence in re.split(r"(?<=[.!?])\s+", text.strip()):
+        words = _content_words(sentence)
+        if len(words) > 2 and len(words & fact_words) < MIN_SHARED_WORDS:
+            failures.append("unsupported_sentence")
+            break
+    return failures

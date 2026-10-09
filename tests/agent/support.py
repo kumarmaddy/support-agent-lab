@@ -11,12 +11,12 @@ class ScriptedModel:
     """A model stand-in. ``read`` and ``reply`` are callables (system, user, seed) -> dict or an error string."""
     model = "scripted:1b"
 
-    def __init__(self, read=None, reply=None):
-        self.read, self.reply, self.calls = read, reply, []
+    def __init__(self, read=None, reply=None, check=None):
+        self.read, self.reply, self.check, self.calls = read, reply, check, []
 
     def chat(self, system, user, schema, seed=0, max_tokens=200):
         self.calls.append({"system": system, "user": user, "schema": schema, "seed": seed})
-        handler = self.reply if "body" in schema["properties"] else self.read
+        handler = self.reply if "body" in schema["properties"] else self.check if "answers_question" in schema["properties"] else self.read
         out = handler(system, user, seed) if handler else "no_handler"
         return ModelResponse(error=out, seed=seed) if isinstance(out, str) else ModelResponse(content=out, seed=seed, model=self.model)
 

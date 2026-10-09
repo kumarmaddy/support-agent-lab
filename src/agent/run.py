@@ -16,6 +16,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Callable, Optional
 
+from src.agent.knowledge import DEFAULT_MIN_SCORE, Knowledge
 from src.agent.model import ModelClient, OllamaClient
 from src.agent.pipeline import Resolution, internal_guidance, run_ticket
 from src.agent.prompting import Prompt, load_prompt
@@ -64,7 +65,8 @@ def warm_up(model: ModelClient, read_prompt: Prompt) -> int:
 
 
 def build_meta(model: ModelClient, read_prompt: Prompt, reply_prompt: Prompt, db_path: Path, seed: int, ticket_ids: list,
-               argv: Optional[list] = None, digest: str = "", warmup_ms: int = 0, reply_mode: str = "model") -> dict:
+               argv: Optional[list] = None, digest: str = "", warmup_ms: int = 0, reply_mode: str = "model", knowledge: Optional[Knowledge] = None,
+               embed_model: str = "") -> dict:
     return {
         "started_at": datetime.now(timezone.utc).isoformat(timespec="seconds"),
         "model": {"tag": model.model, "digest": digest},
@@ -76,17 +78,20 @@ def build_meta(model: ModelClient, read_prompt: Prompt, reply_prompt: Prompt, db
         "dataset": {"db_file": Path(db_path).name, "db_sha256": file_sha256(db_path)},
         "tickets": len(ticket_ids),
         "code": code_version(),
+        "knowledge": None if knowledge is None else {"embed_model": embed_model, "min_score": knowledge.min_score,
+                                                       "check_prompt": {"label": knowledge.check_prompt.label, "sha256": knowledge.check_prompt.sha256},
+                                                       "reply_prompt": {"label": knowledge.reply_prompt.label, "sha256": knowledge.reply_prompt.sha256}},
         "python": platform.python_version(),
         "argv": argv or [],
     }
 
 
 def run_tickets(box: Toolbox, model: ModelClient, read_prompt: Prompt, reply_prompt: Prompt, internal: frozenset,
-                ticket_ids: list, writer: TraceWriter, seed: int = 0, reply_mode: str = "model",
+                ticket_ids: list, writer: TraceWriter, seed: int = 0, reply_mode: str = "model", knowledge: Optional[Knowledge] = None,
                 progress: Optional[Callable[[int, int, Resolution], None]] = None) -> list:
     results = []
     for index, ticket_id in enumerate(ticket_ids, 1):
-        resolution = run_ticket(box, model, read_prompt, reply_prompt, internal, ticket_id, seed, reply_mode)
+        resolution = run_ticket(box, model, read_prompt, reply_prompt, internal, ticket_id, seed, reply_mode, knowledge)
         writer.write(resolution)
         results.append(resolution)
         if progress:
@@ -113,6 +118,9 @@ def main(argv=None) -> int:
     p.add_argument("--seed", type=int, default=0)
     p.add_argument("--reply-mode", choices=["model", "template"], default="model",
                    help="template: every reply is built by code (the comparison baseline for model-written replies)")
+    p.add_argument("--knowledge", action="store_true", help="answer policy questions from the knowledge base (needs the embedding model; ADR-009)")
+    p.add_argument("--embed-model", default="nomic-embed-text")
+    p.add_argument("--min-score", type=float, default=DEFAULT_MIN_SCORE)
     p.add_argument("--limit", type=int, default=0, help="first N tickets by id (0 = all)")
     p.add_argument("--ids-file", type=Path, help="text file with one ticket id per line")
     args = p.parse_args(argv)
@@ -123,9 +131,16 @@ def main(argv=None) -> int:
     read_prompt, reply_prompt = load_prompt("read_ticket", args.read_prompt), load_prompt("reply", args.reply_prompt)
     ids = select_ids(box, args.limit, args.ids_file)
     warmup_ms = warm_up(model, read_prompt)
-    meta = build_meta(model, read_prompt, reply_prompt, args.db, args.seed, ids, argv if argv is not None else sys.argv[1:], model.digest(), warmup_ms, args.reply_mode)
+    articles = load_articles(args.kb)
+    knowledge = None
+    if args.knowledge:
+        from src.kb.embed import EmbeddingIndex
+        knowledge = Knowledge(EmbeddingIndex(articles, args.embed_model), articles, load_prompt("knowledge_check", "v1"),
+                              load_prompt("knowledge_reply", "v1"), args.min_score)
+    meta = build_meta(model, read_prompt, reply_prompt, args.db, args.seed, ids, argv if argv is not None else sys.argv[1:], model.digest(), warmup_ms,
+                      args.reply_mode, knowledge, args.embed_model if knowledge else "")
     with TraceWriter(args.out, new_run_id(), meta) as writer:
-        run_tickets(box, model, read_prompt, reply_prompt, internal_guidance(load_articles(args.kb)), ids, writer, args.seed, args.reply_mode,
+        run_tickets(box, model, read_prompt, reply_prompt, internal_guidance(articles), ids, writer, args.seed, args.reply_mode, knowledge,
                     progress=lambda i, n, r: print(f"[{i}/{n}] {r.ticket_id} {r.action} ({r.reason}) reply by {r.reply_source}", flush=True))
         summary = writer.close()
     print(f"\nrun {writer.run_id}: {summary['tickets']} tickets, {summary['model_calls']} model calls")

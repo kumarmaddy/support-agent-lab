@@ -1,6 +1,6 @@
 # Phase 2 Design: Knowledge-Base Answers and More Ticket Types
 
-- Version: 0.2 (draft for review)
+- Version: 0.3 (draft for review)
 - Date: 2026-10-09
 - Owner: Kumar Maddipatla, Project Lead
 - Builds on: phase-1-design.md v1.6, ADR-006 (fixed pipeline), ADR-007 (qwen2.5:7b, read prompt v4)
@@ -56,12 +56,19 @@ With embeddings the best score separates unanswerable from answerable questions 
    - Gate 3: the reply is validated against the article's key facts and must cite the article; any failure uses the template hand-over.
    Any failed gate means a hand-over to a person with no answer sent.
 
+### 4.1 As built (stage 2.4)
+- The path is opt-in (`python -m src.agent.run --knowledge`) so that the Phase 1 results stay reproducible; it applies only to tickets the reader calls product_info and that carry no legal threat. Other categories and every legal threat behave as before.
+- The reply writer sees only the article's key facts (without the internal cross-references), never the ticket or the question. The reply therefore restates the article and does not tailor itself to the question; the model check in gate 2 decides whether that article is the right one to send.
+- The citation is the article id on the resolution; the customer-facing text carries no article id.
+- A separate validator (`validate_knowledge_reply`) applies to knowledge replies because policy text legitimately contains words that the order-status rules forbid (refund, within 30 days, contact us). Those words are allowed only when a key fact uses them; numbers must appear in the key facts; no dates, amounts, order numbers, article ids, internal-guidance wording or prompt wording; each sentence must share two content words with the key facts. The last rule catches invented content, not a reversed claim, so a person reviews the answers.
+- Four probe labels were widened after the retrieval comparison, because two articles state the same fact (P-005 and P-008 also accept KB-ORD-01, P-029 also KB-SHP-03, P-030 also KB-ORD-01, P-024 also KB-RET-01). They apply to every method alike; the retrieval figures in section 3 use the original labels.
+
 ## 5. Stages
 | Stage | Content |
 |---|---|
 | 2.2 | This design; BM25 retriever; retrieval evaluation; baseline numbers (done) |
 | 2.3 | Knowledge-question probe set; embedding and hybrid comparison; ADR-009 (done) |
-| 2.4 | Knowledge-question path in the pipeline: retrieve, three gates, reply from article key facts, citation validator rule |
+| 2.4 | Knowledge-question path in the pipeline: retrieve, three gates, reply from article key facts, knowledge validator (built; measured on the probes by the project lead's run) |
 | 2.5 | Returns, refunds, cancellations, address changes: reading, decision rules, reply facts (read-only; proposed actions go to a person) |
 | 2.6 | Escalation summary for the person who receives a ticket |
 | 2.7 | Phase 2 evaluation (3B and 7B), citation validity, blind review, report, exit review |

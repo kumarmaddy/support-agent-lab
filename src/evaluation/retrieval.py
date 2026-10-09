@@ -71,7 +71,7 @@ def evaluate_probes(index, probes: list, top: int = 3) -> dict:
     rows = []
     for probe in probes:
         hits = index.search(probe["question"], top)
-        rows.append({"id": probe["id"], "answerable": probe["answerable"], "required": set(probe["required_kb_ids"]),
+        rows.append({"id": probe["id"], "answerable": probe["answerable"], "required": set(probe["required_kb_ids"]), "acceptable": set(probe.get("also_acceptable_kb_ids", [])),
                      "ranked": [h.kb_id for h in hits], "best": hits[0].score if hits else 0.0})
     return {"rows": rows}
 
@@ -85,8 +85,8 @@ def threshold_table(rows: list, points: int = 8) -> list:
     chosen = sorted({values[min(int(i * (len(values) - 1) / (points - 1)), len(values) - 1)] for i in range(points)}) if values else []
     table = []
     for t in chosen:
-        right = sum(1 for r in answerable if r["best"] >= t and r["ranked"][:1] and r["ranked"][0] in r["required"])
-        wrong = sum(1 for r in answerable if r["best"] >= t and not (r["ranked"][:1] and r["ranked"][0] in r["required"]))
+        right = sum(1 for r in answerable if r["best"] >= t and r["ranked"][:1] and r["ranked"][0] in r["required"] | r.get("acceptable", set()))
+        wrong = sum(1 for r in answerable if r["best"] >= t and not (r["ranked"][:1] and r["ranked"][0] in r["required"] | r.get("acceptable", set())))
         table.append({"threshold": t, "right": right / max(len(answerable), 1), "wrong": wrong / max(len(answerable), 1),
                       "answers_unanswerable": sum(1 for r in unanswerable if r["best"] >= t) / max(len(unanswerable), 1)})
     return table
@@ -96,8 +96,8 @@ def render_probes(result: dict, top: int) -> str:
     rows = result["rows"]
     answerable = [r for r in rows if r["answerable"]]
     n = len(answerable)
-    hit1 = sum(1 for r in answerable if r["ranked"][:1] and r["ranked"][0] in r["required"])
-    hitk = sum(1 for r in answerable if any(x in r["required"] for x in r["ranked"]))
+    hit1 = sum(1 for r in answerable if r["ranked"][:1] and r["ranked"][0] in r["required"] | r.get("acceptable", set()))
+    hitk = sum(1 for r in answerable if any(x in r["required"] | r.get("acceptable", set()) for x in r["ranked"]))
     lo1, hi1 = wilson_interval(hit1, n)
     lok, hik = wilson_interval(hitk, n)
     lines = [f"answerable probes {n}: hit@1 {hit1}/{n} = {hit1 / n:.0%} ({lo1:.0%}-{hi1:.0%}); hit@{top} {hitk}/{n} = {hitk / n:.0%} ({lok:.0%}-{hik:.0%})",
@@ -105,7 +105,7 @@ def render_probes(result: dict, top: int) -> str:
     for row in threshold_table(rows):
         lines.append(f"  {row['threshold']:>9.4f}  {row['right']:>6.0%}  {row['wrong']:>6.0%}  {row['answers_unanswerable']:>6.0%}")
     lines.append("\nfirst-place misses (id, required, ranked, best score):")
-    lines += [f"  {r['id']} {sorted(r['required'])} -> {r['ranked']} {r['best']:.3f}" for r in answerable if not (r["ranked"][:1] and r["ranked"][0] in r["required"])]
+    lines += [f"  {r['id']} {sorted(r['required'])} -> {r['ranked']} {r['best']:.3f}" for r in answerable if not (r["ranked"][:1] and r["ranked"][0] in r["required"] | r.get("acceptable", set()))]
     lines.append("\nunanswerable questions with the highest best score:")
     lines += [f"  {r['id']} {r['ranked'][:1]} {r['best']:.3f}" for r in sorted((r for r in rows if not r["answerable"]), key=lambda r: -r["best"])[:5]]
     return "\n".join(lines)

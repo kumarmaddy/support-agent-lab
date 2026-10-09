@@ -15,7 +15,7 @@ from typing import Optional
 from src.agent import decide as d
 from src.agent.model import ModelClient, ModelResponse
 from src.agent.prompting import Prompt
-from src.agent.validate import MAX_CHARS, ReplyFacts, missing_facts, validate_reply
+from src.agent.validate import MAX_CHARS, ReplyFacts, missing_facts, validate_knowledge_reply, validate_reply
 
 MAX_TOKENS = 220
 SIGN_OFF = "Kind regards,\nCustomer Support"
@@ -137,6 +137,9 @@ RETRY_HINTS = {
     "unsupported_claim": "Do not refer to websites, apps, links, portals or phone numbers.",
     "wrong_date_role": "The date is the promised delivery date; do not describe it as a shipping or dispatch date.",
     "misplaced_reference": "Introduce the tracking number as 'the tracking number' and give the latest tracking status separately.",
+    "unsupported_term": "Do not add promises, offers, contact channels or time words that the facts do not state.",
+    "unknown_number": "Use only the numbers that appear in the facts.",
+    "unsupported_sentence": "Every sentence must restate one of the facts; add nothing else.",
 }
 
 
@@ -198,4 +201,38 @@ def draft_reply(model: ModelClient, prompt: Prompt, decision: d.Decision, custom
                 outcome.hints.append(hint)
                 request = f"Write the email body now. Your previous draft was rejected. {hint}"
     outcome.text = compose(name, template_body(decision))
+    return outcome
+
+
+# ------------------------------------------------------------------ knowledge answers
+def knowledge_template_body(key_facts: list) -> str:
+    return "Thank you for your question. " + " ".join(key_facts)
+
+
+def draft_knowledge_reply(model: ModelClient, prompt: Prompt, decision: d.Decision, internal: frozenset = frozenset(),
+                          seed: int = 0, use_model: bool = True) -> ReplyOutcome:
+    """The reply to a knowledge question. The writer sees only the article's key facts, never the ticket. A draft must pass
+    ``validate_knowledge_reply``; the fallback is the key facts themselves, which pass the same rules."""
+    facts = decision.facts["key_facts"]
+    outcome = ReplyOutcome("", "template", prompt=prompt.label, prompt_sha256=prompt.sha256)
+    if use_model:
+        system, request = prompt.text.replace("{facts}", "\n".join(f"- {f}" for f in facts)), "Write the email body now."
+        for attempt in range(2):
+            response: ModelResponse = model.chat(system, request, REPLY_SCHEMA, seed=seed + attempt, max_tokens=MAX_TOKENS)
+            outcome.attempts.append(response)
+            body = response.content.get("body") if response.ok and isinstance(response.content, dict) else None
+            if not isinstance(body, str):
+                outcome.failures.append(["model_error"])
+                continue
+            body = " ".join(body.split())
+            problems = validate_knowledge_reply(body, facts, internal)
+            if not problems:
+                outcome.text, outcome.source = compose("", body), "model"
+                return outcome
+            outcome.failures.append(problems)
+            if attempt == 0:
+                hint = " ".join(RETRY_HINTS[c] for c in problems if c in RETRY_HINTS) or "Follow the facts exactly."
+                outcome.hints.append(hint)
+                request = f"Write the email body now. Your previous draft was rejected. {hint}"
+    outcome.text = compose("", knowledge_template_body(facts))
     return outcome

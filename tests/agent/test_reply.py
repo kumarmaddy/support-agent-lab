@@ -146,7 +146,8 @@ def test_retry_hints_use_only_codes_and_supplied_facts():
     assert retry_hint(["unknown_date", "promise"], GOOD_BODY, facts).count(".") >= 2
     assert retry_hint(["something_else"], GOOD_BODY, facts) == "Follow the facts exactly."
     assert set(RETRY_HINTS) <= {"unknown_date", "relative_time", "unknown_order", "unknown_token", "amount", "promise", "internal_text", "prompt_leak", "length",
-                                   "missing_fact", "unsupported_claim", "misplaced_reference", "wrong_date_role"}
+                                   "missing_fact", "unsupported_claim", "misplaced_reference", "wrong_date_role",
+                                   "unsupported_term", "unknown_number", "unsupported_sentence"}
 
 
 def test_a_model_error_draft_is_retried_without_a_hint():

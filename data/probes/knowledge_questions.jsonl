@@ -1,48 +1,48 @@
-{"id": "P-001", "question": "I forgot my password, how do I get back in?", "required_kb_ids": ["KB-ACC-01"], "answerable": true}
-{"id": "P-002", "question": "I never received the password reset email. What should I check?", "required_kb_ids": ["KB-ACC-01"], "answerable": true}
-{"id": "P-003", "question": "My account says it is locked after I typed the wrong password a few times. How do I unlock it?", "required_kb_ids": ["KB-ACC-02"], "answerable": true}
-{"id": "P-004", "question": "I think someone else has been using my account. What should I do?", "required_kb_ids": ["KB-ACC-03"], "answerable": true}
-{"id": "P-005", "question": "Can I send my parcel to a different address if I have not had a shipping email yet?", "required_kb_ids": ["KB-ADR-01"], "answerable": true}
-{"id": "P-006", "question": "I have moved house. Is it too late to change where an order goes once it has left your warehouse?", "required_kb_ids": ["KB-ADR-01"], "answerable": true}
-{"id": "P-007", "question": "Can I cancel an order that has already shipped?", "required_kb_ids": ["KB-CAN-01"], "answerable": true}
-{"id": "P-008", "question": "How do I cancel something I ordered an hour ago?", "required_kb_ids": ["KB-CAN-01"], "answerable": true}
-{"id": "P-009", "question": "Can I put my down sleeping bag in the dryer?", "required_kb_ids": ["KB-CAR-01"], "answerable": true}
-{"id": "P-010", "question": "How should I store my sleeping bag between trips?", "required_kb_ids": ["KB-CAR-01"], "answerable": true}
-{"id": "P-011", "question": "What does 'processing' mean on my order?", "required_kb_ids": ["KB-ORD-01"], "answerable": true}
-{"id": "P-012", "question": "Where can I find my order number?", "required_kb_ids": ["KB-ORD-02"], "answerable": true}
-{"id": "P-013", "question": "When will the money from my return reach my card?", "required_kb_ids": ["KB-REF-01"], "answerable": true}
-{"id": "P-014", "question": "Does the refund timer start when I post the parcel?", "required_kb_ids": ["KB-REF-01"], "answerable": true}
-{"id": "P-015", "question": "I was billed twice for the same order. Will I get the extra payment back?", "required_kb_ids": ["KB-REF-02"], "answerable": true}
-{"id": "P-016", "question": "My jacket arrived with a broken zip. Can I get a replacement?", "required_kb_ids": ["KB-REF-03"], "answerable": true}
-{"id": "P-017", "question": "You sent me the wrong colour. How long do I have to tell you?", "required_kb_ids": ["KB-REF-03"], "answerable": true}
-{"id": "P-018", "question": "Am I allowed to dispute a charge with my bank?", "required_kb_ids": ["KB-REF-04"], "answerable": true}
-{"id": "P-019", "question": "How many days do I have to send something back?", "required_kb_ids": ["KB-RET-01"], "answerable": true}
-{"id": "P-020", "question": "I received my item 31 days ago. Can I still return it?", "required_kb_ids": ["KB-RET-01"], "answerable": true}
-{"id": "P-021", "question": "Does day 30 still count as inside the return window?", "required_kb_ids": ["KB-RET-01"], "answerable": true}
-{"id": "P-022", "question": "How do I start a return?", "required_kb_ids": ["KB-RET-02"], "answerable": true}
-{"id": "P-023", "question": "What do I need to have ready to get a return label?", "required_kb_ids": ["KB-RET-02"], "answerable": true}
-{"id": "P-024", "question": "Can I return a final sale item if it is within 30 days?", "required_kb_ids": ["KB-RET-03"], "answerable": true}
-{"id": "P-025", "question": "Can I swap my boots for a different size?", "required_kb_ids": ["KB-RET-04"], "answerable": true}
-{"id": "P-026", "question": "Is it possible to exchange an item for another colour?", "required_kb_ids": ["KB-RET-04"], "answerable": true}
-{"id": "P-027", "question": "My husband ordered this for me. Can you tell me about his order?", "required_kb_ids": ["KB-SEC-01"], "answerable": true}
-{"id": "P-028", "question": "Can my assistant contact you about my order?", "required_kb_ids": ["KB-SEC-01"], "answerable": true}
-{"id": "P-029", "question": "How long does standard delivery take?", "required_kb_ids": ["KB-SHP-01"], "answerable": true}
-{"id": "P-030", "question": "Why does my order have no tracking number?", "required_kb_ids": ["KB-SHP-01"], "answerable": true}
-{"id": "P-031", "question": "My order has not turned up by the date it was promised. What do you do about delays?", "required_kb_ids": ["KB-SHP-02"], "answerable": true}
-{"id": "P-032", "question": "Can you guarantee that my order arrives by Friday?", "required_kb_ids": ["KB-SHP-03"], "answerable": true}
-{"id": "P-033", "question": "Is there an express shipping option?", "required_kb_ids": ["KB-SHP-03"], "answerable": true}
-{"id": "P-034", "question": "What sizes do your jackets come in?", "required_kb_ids": ["KB-SIZ-01"], "answerable": true}
-{"id": "P-035", "question": "Do your hiking boots run big or small?", "required_kb_ids": ["KB-SIZ-01"], "answerable": true}
-{"id": "P-036", "question": "I normally take a size nine and a half in boots. Should I go up or down?", "required_kb_ids": ["KB-SIZ-01"], "answerable": true}
-{"id": "P-037", "question": "Do you have a shop in Munich where I can try things on?", "required_kb_ids": [], "answerable": false}
-{"id": "P-038", "question": "Do you sell gift cards?", "required_kb_ids": [], "answerable": false}
-{"id": "P-039", "question": "I would like to buy your jackets wholesale. Who do I speak to?", "required_kb_ids": [], "answerable": false}
-{"id": "P-040", "question": "Which tent would you recommend for a winter expedition?", "required_kb_ids": [], "answerable": false}
-{"id": "P-041", "question": "Will you match a lower price from another shop?", "required_kb_ids": [], "answerable": false}
-{"id": "P-042", "question": "Do you ship to Canada and what does it cost?", "required_kb_ids": [], "answerable": false}
-{"id": "P-043", "question": "What warranty do you give on stitching?", "required_kb_ids": [], "answerable": false}
-{"id": "P-044", "question": "Is there a student discount code?", "required_kb_ids": [], "answerable": false}
-{"id": "P-045", "question": "What is your customer service phone number?", "required_kb_ids": [], "answerable": false}
-{"id": "P-046", "question": "Can you gift wrap an order?", "required_kb_ids": [], "answerable": false}
-{"id": "P-047", "question": "Is the down in your sleeping bags sourced ethically?", "required_kb_ids": [], "answerable": false}
-{"id": "P-048", "question": "What time does customer support open?", "required_kb_ids": [], "answerable": false}
+{"id": "P-001", "question": "I forgot my password, how do I get back in?", "required_kb_ids": ["KB-ACC-01"], "answerable": true, "also_acceptable_kb_ids": []}
+{"id": "P-002", "question": "I never received the password reset email. What should I check?", "required_kb_ids": ["KB-ACC-01"], "answerable": true, "also_acceptable_kb_ids": []}
+{"id": "P-003", "question": "My account says it is locked after I typed the wrong password a few times. How do I unlock it?", "required_kb_ids": ["KB-ACC-02"], "answerable": true, "also_acceptable_kb_ids": []}
+{"id": "P-004", "question": "I think someone else has been using my account. What should I do?", "required_kb_ids": ["KB-ACC-03"], "answerable": true, "also_acceptable_kb_ids": []}
+{"id": "P-005", "question": "Can I send my parcel to a different address if I have not had a shipping email yet?", "required_kb_ids": ["KB-ADR-01"], "answerable": true, "also_acceptable_kb_ids": ["KB-ORD-01"]}
+{"id": "P-006", "question": "I have moved house. Is it too late to change where an order goes once it has left your warehouse?", "required_kb_ids": ["KB-ADR-01"], "answerable": true, "also_acceptable_kb_ids": []}
+{"id": "P-007", "question": "Can I cancel an order that has already shipped?", "required_kb_ids": ["KB-CAN-01"], "answerable": true, "also_acceptable_kb_ids": []}
+{"id": "P-008", "question": "How do I cancel something I ordered an hour ago?", "required_kb_ids": ["KB-CAN-01"], "answerable": true, "also_acceptable_kb_ids": ["KB-ORD-01"]}
+{"id": "P-009", "question": "Can I put my down sleeping bag in the dryer?", "required_kb_ids": ["KB-CAR-01"], "answerable": true, "also_acceptable_kb_ids": []}
+{"id": "P-010", "question": "How should I store my sleeping bag between trips?", "required_kb_ids": ["KB-CAR-01"], "answerable": true, "also_acceptable_kb_ids": []}
+{"id": "P-011", "question": "What does 'processing' mean on my order?", "required_kb_ids": ["KB-ORD-01"], "answerable": true, "also_acceptable_kb_ids": []}
+{"id": "P-012", "question": "Where can I find my order number?", "required_kb_ids": ["KB-ORD-02"], "answerable": true, "also_acceptable_kb_ids": []}
+{"id": "P-013", "question": "When will the money from my return reach my card?", "required_kb_ids": ["KB-REF-01"], "answerable": true, "also_acceptable_kb_ids": []}
+{"id": "P-014", "question": "Does the refund timer start when I post the parcel?", "required_kb_ids": ["KB-REF-01"], "answerable": true, "also_acceptable_kb_ids": []}
+{"id": "P-015", "question": "I was billed twice for the same order. Will I get the extra payment back?", "required_kb_ids": ["KB-REF-02"], "answerable": true, "also_acceptable_kb_ids": []}
+{"id": "P-016", "question": "My jacket arrived with a broken zip. Can I get a replacement?", "required_kb_ids": ["KB-REF-03"], "answerable": true, "also_acceptable_kb_ids": []}
+{"id": "P-017", "question": "You sent me the wrong colour. How long do I have to tell you?", "required_kb_ids": ["KB-REF-03"], "answerable": true, "also_acceptable_kb_ids": []}
+{"id": "P-018", "question": "Am I allowed to dispute a charge with my bank?", "required_kb_ids": ["KB-REF-04"], "answerable": true, "also_acceptable_kb_ids": []}
+{"id": "P-019", "question": "How many days do I have to send something back?", "required_kb_ids": ["KB-RET-01"], "answerable": true, "also_acceptable_kb_ids": []}
+{"id": "P-020", "question": "I received my item 31 days ago. Can I still return it?", "required_kb_ids": ["KB-RET-01"], "answerable": true, "also_acceptable_kb_ids": []}
+{"id": "P-021", "question": "Does day 30 still count as inside the return window?", "required_kb_ids": ["KB-RET-01"], "answerable": true, "also_acceptable_kb_ids": []}
+{"id": "P-022", "question": "How do I start a return?", "required_kb_ids": ["KB-RET-02"], "answerable": true, "also_acceptable_kb_ids": []}
+{"id": "P-023", "question": "What do I need to have ready to get a return label?", "required_kb_ids": ["KB-RET-02"], "answerable": true, "also_acceptable_kb_ids": []}
+{"id": "P-024", "question": "Can I return a final sale item if it is within 30 days?", "required_kb_ids": ["KB-RET-03"], "answerable": true, "also_acceptable_kb_ids": ["KB-RET-01"]}
+{"id": "P-025", "question": "Can I swap my boots for a different size?", "required_kb_ids": ["KB-RET-04"], "answerable": true, "also_acceptable_kb_ids": []}
+{"id": "P-026", "question": "Is it possible to exchange an item for another colour?", "required_kb_ids": ["KB-RET-04"], "answerable": true, "also_acceptable_kb_ids": []}
+{"id": "P-027", "question": "My husband ordered this for me. Can you tell me about his order?", "required_kb_ids": ["KB-SEC-01"], "answerable": true, "also_acceptable_kb_ids": []}
+{"id": "P-028", "question": "Can my assistant contact you about my order?", "required_kb_ids": ["KB-SEC-01"], "answerable": true, "also_acceptable_kb_ids": []}
+{"id": "P-029", "question": "How long does standard delivery take?", "required_kb_ids": ["KB-SHP-01"], "answerable": true, "also_acceptable_kb_ids": ["KB-SHP-03"]}
+{"id": "P-030", "question": "Why does my order have no tracking number?", "required_kb_ids": ["KB-SHP-01"], "answerable": true, "also_acceptable_kb_ids": ["KB-ORD-01"]}
+{"id": "P-031", "question": "My order has not turned up by the date it was promised. What do you do about delays?", "required_kb_ids": ["KB-SHP-02"], "answerable": true, "also_acceptable_kb_ids": []}
+{"id": "P-032", "question": "Can you guarantee that my order arrives by Friday?", "required_kb_ids": ["KB-SHP-03"], "answerable": true, "also_acceptable_kb_ids": []}
+{"id": "P-033", "question": "Is there an express shipping option?", "required_kb_ids": ["KB-SHP-03"], "answerable": true, "also_acceptable_kb_ids": []}
+{"id": "P-034", "question": "What sizes do your jackets come in?", "required_kb_ids": ["KB-SIZ-01"], "answerable": true, "also_acceptable_kb_ids": []}
+{"id": "P-035", "question": "Do your hiking boots run big or small?", "required_kb_ids": ["KB-SIZ-01"], "answerable": true, "also_acceptable_kb_ids": []}
+{"id": "P-036", "question": "I normally take a size nine and a half in boots. Should I go up or down?", "required_kb_ids": ["KB-SIZ-01"], "answerable": true, "also_acceptable_kb_ids": []}
+{"id": "P-037", "question": "Do you have a shop in Munich where I can try things on?", "required_kb_ids": [], "answerable": false, "also_acceptable_kb_ids": []}
+{"id": "P-038", "question": "Do you sell gift cards?", "required_kb_ids": [], "answerable": false, "also_acceptable_kb_ids": []}
+{"id": "P-039", "question": "I would like to buy your jackets wholesale. Who do I speak to?", "required_kb_ids": [], "answerable": false, "also_acceptable_kb_ids": []}
+{"id": "P-040", "question": "Which tent would you recommend for a winter expedition?", "required_kb_ids": [], "answerable": false, "also_acceptable_kb_ids": []}
+{"id": "P-041", "question": "Will you match a lower price from another shop?", "required_kb_ids": [], "answerable": false, "also_acceptable_kb_ids": []}
+{"id": "P-042", "question": "Do you ship to Canada and what does it cost?", "required_kb_ids": [], "answerable": false, "also_acceptable_kb_ids": []}
+{"id": "P-043", "question": "What warranty do you give on stitching?", "required_kb_ids": [], "answerable": false, "also_acceptable_kb_ids": []}
+{"id": "P-044", "question": "Is there a student discount code?", "required_kb_ids": [], "answerable": false, "also_acceptable_kb_ids": []}
+{"id": "P-045", "question": "What is your customer service phone number?", "required_kb_ids": [], "answerable": false, "also_acceptable_kb_ids": []}
+{"id": "P-046", "question": "Can you gift wrap an order?", "required_kb_ids": [], "answerable": false, "also_acceptable_kb_ids": []}
+{"id": "P-047", "question": "Is the down in your sleeping bags sourced ethically?", "required_kb_ids": [], "answerable": false, "also_acceptable_kb_ids": []}
+{"id": "P-048", "question": "What time does customer support open?", "required_kb_ids": [], "answerable": false, "also_acceptable_kb_ids": []}
