@@ -584,3 +584,10 @@ and not a tuned threshold; the final runs are the test of it.
 **Documents:** evaluation report v1.1 (section 4.6), ADR-007 condition recorded as met, risk register v1.5 (R18).
 **Carry-forward:** confirm on the held-out split in Phase 4; 3B stays on v3.
 **Next:** stage 2.2, knowledge-base retrieval design.
+
+
+## Stage 2.2: Phase 2 design and lexical retrieval baseline (2026-10-09)
+**Built:** `docs/design/phase-2-design.md` v0.1; `src/kb/retrieve.py` (BM25 over title, key facts and details; internal guidance never indexed; deterministic; standard library only); `src/evaluation/retrieval.py` (hit@k, recall@k and reciprocal rank by category over the 145 development tickets that list required articles; refuses the held-out split). 589 tests (8 new). Baseline output: `docs/evidence/retrieval-baseline-bm25.txt`.
+**Finding:** word matching on whole tickets gives hit@1 of 49% and hit@3 of 72% overall, 26% for order-status tickets (the right article follows from the order state, not the words) and 62% / 88% for knowledge questions (n = 8). Design consequence: articles for transactional tickets stay chosen by decision rules; retrieval serves knowledge questions only.
+**Open decisions (design section 4):** probe set for knowledge questions, embedding comparison, "I don't know" threshold.
+**Next:** stage 2.3, on approval of the decisions.

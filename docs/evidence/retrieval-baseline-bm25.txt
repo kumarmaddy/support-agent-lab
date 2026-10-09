@@ -1,0 +1,39 @@
+category           n   hit@1   hit@3  recall@3    MRR
+account           12     92%    100%       92%   0.96
+address_change    10     50%     80%       80%   0.63
+cancellation      14     50%     71%       71%   0.60
+order_status      35     26%     40%       40%   0.32
+other              4     75%     75%       75%   0.75
+product_info       8     62%     88%       88%   0.73
+refund            30     63%     90%       85%   0.77
+return_exchange   32     38%     75%       64%   0.53
+ALL              145     49%     72%       68%   0.60
+
+tickets with no required article: 5; best-hit score min 0.00, median 2.94, max 4.38
+
+first-place misses (74): category, required, ranked
+  order_status ['KB-SHP-01'] -> ['KB-REF-03', 'KB-CAN-01', 'KB-ACC-01']
+  order_status ['KB-ORD-02'] -> ['KB-REF-03', 'KB-RET-02', 'KB-CAN-01']
+  order_status ['KB-SHP-01'] -> ['KB-REF-03', 'KB-REF-04', 'KB-SHP-03']
+  cancellation ['KB-CAN-01', 'KB-SHP-02'] -> ['KB-REF-03', 'KB-SHP-01', 'KB-SHP-03']
+  order_status ['KB-SHP-03'] -> ['KB-ORD-01', 'KB-SHP-01', 'KB-REF-01']
+  return_exchange ['KB-RET-03'] -> ['KB-RET-02', 'KB-RET-03', 'KB-REF-03']
+  order_status ['KB-SHP-03'] -> ['KB-SIZ-01', 'KB-ORD-01', 'KB-SEC-01']
+  address_change ['KB-ADR-01'] -> ['KB-REF-04', 'KB-ACC-01', 'KB-REF-03']
+  cancellation ['KB-CAN-01'] -> ['KB-REF-03', 'KB-CAN-01', 'KB-REF-04']
+  order_status ['KB-ORD-02'] -> ['KB-CAN-01', 'KB-ADR-01', 'KB-REF-02']
+  refund ['KB-REF-01'] -> ['KB-REF-04', 'KB-REF-01', 'KB-RET-01']
+  refund ['KB-REF-01'] -> ['KB-SHP-02', 'KB-REF-01', 'KB-REF-03']
+  order_status ['KB-SHP-02'] -> ['KB-ORD-01', 'KB-ACC-01', 'KB-SHP-03']
+  return_exchange ['KB-RET-01', 'KB-RET-02'] -> ['KB-SIZ-01', 'KB-RET-04', 'KB-RET-02']
+  order_status ['KB-ORD-02'] -> ['KB-ADR-01', 'KB-ORD-01', 'KB-SHP-01']
+  order_status ['KB-SHP-01'] -> ['KB-REF-03', 'KB-REF-04', 'KB-CAN-01']
+  address_change ['KB-ADR-01'] -> ['KB-ORD-01', 'KB-ADR-01', 'KB-ACC-01']
+  product_info ['KB-REF-01'] -> ['KB-REF-03', 'KB-RET-02', 'KB-SIZ-01']
+  refund ['KB-REF-04'] -> ['KB-SEC-01', 'KB-REF-04', 'KB-SIZ-01']
+  refund ['KB-REF-02'] -> ['KB-REF-04', 'KB-RET-02', 'KB-CAN-01']
+  refund ['KB-REF-03'] -> ['KB-REF-01', 'KB-ORD-01', 'KB-REF-02']
+  return_exchange ['KB-RET-01', 'KB-RET-02'] -> ['KB-RET-04', 'KB-REF-03', 'KB-RET-02']
+  order_status ['KB-ORD-02'] -> ['KB-REF-02', 'KB-SHP-02', 'KB-ACC-01']
+  return_exchange ['KB-RET-01', 'KB-RET-02'] -> ['KB-SEC-01', 'KB-RET-01', 'KB-RET-03']
+  refund ['KB-REF-04'] -> ['KB-SEC-01', 'KB-REF-01', 'KB-REF-02']
