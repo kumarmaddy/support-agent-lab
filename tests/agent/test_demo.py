@@ -57,3 +57,9 @@ def test_unknown_ticket_returns_none(world):
 def test_refuses_heldout_database(tmp_path):
     with pytest.raises(SystemExit):
         demo.main(["--db", str(tmp_path / "heldout" / "support.db"), "--list", "1"])
+
+
+def test_defaults_are_the_adr_007_model_and_the_v4_prompt():
+    from src.agent.run import DEFAULT_MODEL, DEFAULT_READ_PROMPT
+    assert (DEFAULT_MODEL, DEFAULT_READ_PROMPT) == ("qwen2.5:7b", "v4")
+    load_prompt("read_ticket", DEFAULT_READ_PROMPT)

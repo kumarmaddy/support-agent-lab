@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| Version | 1.3 |
+| Version | 1.4 |
 | Date | 2026-10-09 |
 | Owner | Kumar Maddipatla, Project Lead |
 | Review cadence | Weekly, with the status note |
@@ -28,13 +28,14 @@ Scale: Likelihood (L) and Impact (I) are rated 1 (low) to 3 (high). Score = L x 
 | R15 | Measurement instruments omit information the agent will have (category definitions not shown in the timed tool; citations recorded after the fact) | 2 | 2 | 4 | Show definitions in the tool before any repeat run; use the same definitions in the agent prompt; state the limits in each report | Misses concentrated in one scenario or category | Open |
 | R16 | Too few escalation cases for stable metrics (22 per split) | 3 | 2 | 6 | Report 95% intervals with every point estimate; no threshold claims from point estimates alone; add escalation scenarios in a new dataset version if intervals stay wide | Interval wider than 10 points either side on a development run | Open. Phase 1: in-slice set has 35 tickets, so intervals are wide (3B 81-98%, 7B 90-100%); the 3B/7B end-to-end difference (p = 0.5) is not reliable. |
 | R17 | The read step is steered by instructions inside a ticket, so the category (and the route) can be chosen by the sender | 2 | 2 | 4 | Category only selects the route and never an action; automated routes need verified facts from the database; compare categories on adversarial tickets in every evaluation run; consider a separate check for text that addresses the assistant | An injection ticket changes the route in a way that reduces review | Open |
-| R18 | The 7B reader flags legal or chargeback threats too often, so out-of-scope tickets are escalated unnecessarily and reviewer time is wasted | 3 | 1 | 3 | Read prompt v4 stating that duplicate or wrong charges and bank statements are not threats; re-measure on the development split; escalation is the safe direction, so impact is cost and not harm | Unnecessary escalations above 3% of out-of-scope tickets (Phase 1: 7 of 115, 6.1%, with 7B) | Open (ADR-007 condition) |
+| R18 | The 7B reader flags legal or chargeback threats too often, so out-of-scope tickets are escalated unnecessarily and reviewer time is wasted | 3 | 1 | 3 | Read prompt v4 stating that duplicate or wrong charges and bank statements are not threats; re-measure on the development split; escalation is the safe direction, so impact is cost and not harm | Unnecessary escalations above 3% of out-of-scope tickets (Phase 1: 7 of 115, 6.1%, with 7B) | Mitigated on the development split: read prompt v4 reduces legal-flag false alarms from 7 to 1 with 7B (4/4 threats still caught). Full evaluation and held-out confirmation pending. |
 | R19 | Tickets that policy says must be escalated (suspected account compromise, identity not verified, not in the knowledge base) are only routed to a person in the order-status slice | 3 | 2 | 6 | Routing to a person is the safe fallback and no such ticket is answered; a policy engine with explicit escalation rules is planned for Phase 3 | Any such ticket answered automatically; routed-not-escalated count rising (Phase 1: 12 with 7B, 13 with 3B) | Open |
 
 ## Priority risks
 R1, R4 and R8 (score 9). Reviewed with Phase 1 measurements on 2026-10-09: R1 early-warning level not reached on the development split; R4 held-out split untouched, with two development-time fixes disclosed; R8 mitigations working on the slice but citation validity is not yet measured. All three stay open until Phase 4.
 
 ## Change log
+- 1.4 (2026-10-09): Phase 2 stage 2.1. R18 status updated with read prompt v4 results.
 - 1.3 (2026-10-09): Phase 1 exit. Measured evidence added to R1, R4, R6, R8, R9 and R16; R18 and R19 added; priority-risk review recorded.
 - 1.2 (2026-10-08): Phase 1 stage 1.4. R9 status updated with measured evidence from the read step; R17 added.
 - 1.1 (2026-10-08): Phase 0 exit review. R5 and R6 mitigations updated with baseline evidence; R15 and R16 added.

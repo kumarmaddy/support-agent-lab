@@ -1,0 +1,15 @@
+Read prompt v4 probe, development split (150 tickets), 2026-10-09. Prompt read_ticket.v4 sha256 6f2e5b7824e1
+Command: python -m scripts.probe_read_step --model <model> --prompt-version v4
+
+                              llama3.2:3b (a80c4f17acd5)   qwen2.5:7b (845dbda0ea48)
+failed readings               3 (T-000034, 83, 126)        0
+category agreement            134/147 (91.2%)              138/150 (92.0%)
+legal flag caught / missed    4 / 0                        4 / 0
+legal flag false alarms       0                            1 (T-000045)
+deadline date correct         137/147                      150/150
+latency per call (median)     4.2 s                        8.1 s
+
+Reference, prompt v3 (stage 1.6d final runs): 7B category 139/150, legal false alarms 7; 3B category 137/150, 150/150 valid readings, 0 false alarms.
+
+Acceptance test fixed before the run (7B): catch 4/4, at most 2 false alarms, category agreement within 2 tickets of v3 (139). Result: PASSED (4/4, 1 false alarm, 138).
+3B: caught 4/4 with no new false alarm, but 3 readings were rejected: the model wrote the deadline phrase "Thursday", which is not in those address-change tickets, and the check that a deadline phrase must appear in the ticket rejected it on both tries. Each ticket goes to a person. v3 remains the choice for 3B.

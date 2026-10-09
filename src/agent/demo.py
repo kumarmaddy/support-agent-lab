@@ -1,7 +1,7 @@
 """Walk one development ticket through the pipeline and print what each step did.
 
     python -m src.agent.demo --list 10
-    python -m src.agent.demo --ticket T-000001 --model qwen2.5:7b
+    python -m src.agent.demo --ticket T-000001 --model llama3.2:3b --read-prompt v3
 
 The demonstration uses the same pipeline as the evaluation runs. It reads no labels, writes no trace files and sends nothing to a
 customer. It refuses the held-out split.
@@ -14,7 +14,7 @@ from typing import Optional
 from src.agent.model import ModelClient, OllamaClient
 from src.agent.pipeline import Resolution, internal_guidance, run_ticket
 from src.agent.prompting import load_prompt
-from src.agent.run import check_not_heldout, warm_up
+from src.agent.run import DEFAULT_MODEL, DEFAULT_READ_PROMPT, check_not_heldout, warm_up
 from src.agent.tools import Ticket, Toolbox
 from src.kb.articles import load_articles
 
@@ -55,11 +55,11 @@ def render(ticket: Ticket, resolution: Resolution) -> str:
     return "\n".join(lines)
 
 
-def demo(box: Toolbox, model: ModelClient, ticket_id: str, kb: Path, reply_mode: str = "model") -> Optional[str]:
+def demo(box: Toolbox, model: ModelClient, ticket_id: str, kb: Path, reply_mode: str = "model", read_prompt: str = DEFAULT_READ_PROMPT) -> Optional[str]:
     got = box.get_ticket(ticket_id)
     if not got.ok:
         return None
-    resolution = run_ticket(box, model, load_prompt("read_ticket", "v3"), load_prompt("reply", "v1"),
+    resolution = run_ticket(box, model, load_prompt("read_ticket", read_prompt), load_prompt("reply", "v1"),
                             internal_guidance(load_articles(kb)), ticket_id, 0, reply_mode)
     return render(got.data, resolution)
 
@@ -73,7 +73,8 @@ def main(argv=None) -> int:
     p = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     p.add_argument("--db", type=Path, default=Path("data/generated/dev/support.db"))
     p.add_argument("--kb", type=Path, default=Path("data/seed/kb"))
-    p.add_argument("--model", default="llama3.2:3b")
+    p.add_argument("--model", default=DEFAULT_MODEL)
+    p.add_argument("--read-prompt", default=DEFAULT_READ_PROMPT)
     p.add_argument("--reply-mode", choices=["model", "template"], default="model")
     p.add_argument("--ticket", help="ticket id to run, for example T-000001")
     p.add_argument("--list", type=int, metavar="N", help="list the first N ticket ids and subjects, then stop")
@@ -86,8 +87,8 @@ def main(argv=None) -> int:
     if not args.ticket:
         p.error("give --ticket TICKET_ID, or --list N to see some")
     model = OllamaClient(model=args.model)
-    warm_up(model, load_prompt("read_ticket", "v3"))
-    text = demo(box, model, args.ticket, args.kb, args.reply_mode)
+    warm_up(model, load_prompt("read_ticket", args.read_prompt))
+    text = demo(box, model, args.ticket, args.kb, args.reply_mode, args.read_prompt)
     if text is None:
         print(f"No ticket {args.ticket} in {args.db}.")
         return 1

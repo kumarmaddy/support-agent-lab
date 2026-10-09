@@ -19,14 +19,15 @@ from src.agent.deadline import resolve_deadline
 from src.agent.model import OllamaClient
 from src.agent.prompting import load_prompt
 from src.agent.reading import read_ticket
+from src.agent.run import DEFAULT_MODEL, DEFAULT_READ_PROMPT
 
 
 def main(argv=None) -> int:
     p = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     p.add_argument("--db", type=Path, default=Path("data/generated/dev/support.db"))
     p.add_argument("--labels", type=Path, default=Path("data/labels/dev/labels.jsonl"))
-    p.add_argument("--model", default="llama3.2:3b")
-    p.add_argument("--prompt-version", default="v3")
+    p.add_argument("--model", default=DEFAULT_MODEL)
+    p.add_argument("--prompt-version", default=DEFAULT_READ_PROMPT)
     p.add_argument("--limit", type=int, default=0, help="first N tickets only (0 = all)")
     p.add_argument("--show-misses", type=int, default=15)
     args = p.parse_args(argv)

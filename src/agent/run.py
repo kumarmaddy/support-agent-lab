@@ -1,7 +1,7 @@
 """Run the fixed pipeline over development tickets and write a trace.
 
     python -m src.agent.run --limit 10
-    python -m src.agent.run --ids-file ids.txt --model qwen2.5:7b
+    python -m src.agent.run --ids-file ids.txt --model llama3.2:3b --read-prompt v3
 
 The runner reads tickets through the read-only tools and never reads labels; which tickets to run is chosen by the caller (the
 evaluation harness passes an explicit list). Nothing is sent to a customer. It refuses the held-out split.
@@ -23,6 +23,11 @@ from src.agent.reading import MAX_TOKENS, READ_SCHEMA, render_system, render_use
 from src.agent.tools import Toolbox
 from src.agent.tracing import TraceWriter, new_run_id
 from src.kb.articles import load_articles
+
+# ADR-007: qwen2.5:7b with read prompt v4 is the default. llama3.2:3b is the fast development model and needs --read-prompt v3
+# (v4 makes it invent a deadline phrase on three address-change tickets; the check rejects them and they go to a person).
+DEFAULT_MODEL = "qwen2.5:7b"
+DEFAULT_READ_PROMPT = "v4"
 
 HELDOUT_REFUSAL = "Refusing to run on the held-out split (it is opened once, in Phase 4)."
 
@@ -102,8 +107,8 @@ def main(argv=None) -> int:
     p.add_argument("--db", type=Path, default=Path("data/generated/dev/support.db"))
     p.add_argument("--kb", type=Path, default=Path("data/seed/kb"))
     p.add_argument("--out", type=Path, default=Path("data/runs"))
-    p.add_argument("--model", default="llama3.2:3b")
-    p.add_argument("--read-prompt", default="v3")
+    p.add_argument("--model", default=DEFAULT_MODEL)
+    p.add_argument("--read-prompt", default=DEFAULT_READ_PROMPT)
     p.add_argument("--reply-prompt", default="v1")
     p.add_argument("--seed", type=int, default=0)
     p.add_argument("--reply-mode", choices=["model", "template"], default="model",
