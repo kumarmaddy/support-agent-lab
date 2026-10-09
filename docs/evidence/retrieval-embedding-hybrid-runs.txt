@@ -1,0 +1,144 @@
+PS C:\Users\kumar\source\repos\support-agent-lab> python -m src.evaluation.retrieval --probes 
+usage: retrieval.py [-h] [--db DB] [--labels LABELS] [--kb KB] [--top TOP] [--method {bm25,embed,hybrid}]
+                    [--embed-model EMBED_MODEL] [--probes PROBES]
+retrieval.py: error: argument --probes: expected one argument
+(.venv) PS C:\Users\kumar\source\repos\support-agent-lab> python -m src.evaluation.retrieval --probes data\probes\knowledge_questions.jsonl --method embed
+method embed (nomic-embed-text)
+answerable probes 36: hit@1 30/36 = 83% (68%-92%); hit@3 35/36 = 97% (86%-100%)
+unanswerable probes 12
+
+minimum score -> right article | wrong article | unanswerable questions still answered
+     0.5096     83%     17%    100%
+     0.5861     83%     14%     58%
+     0.6460     81%     14%      8%
+     0.7130     69%      6%      8%
+     0.7480     61%      0%      0%
+     0.7905     42%      0%      0%
+     0.8065     22%      0%      0%
+     0.8731      3%      0%      0%
+
+first-place misses (id, required, ranked, best score):
+  P-017 ['KB-REF-03'] -> ['KB-RET-04', 'KB-REF-03', 'KB-REF-01'] 0.649
+  P-025 ['KB-RET-04'] -> ['KB-SIZ-01', 'KB-RET-04', 'KB-ADR-01'] 0.667
+  P-027 ['KB-SEC-01'] -> ['KB-ORD-02', 'KB-SEC-01', 'KB-SHP-01'] 0.646
+  P-030 ['KB-SHP-01'] -> ['KB-ORD-02', 'KB-SHP-01', 'KB-SHP-02'] 0.720
+  P-032 ['KB-SHP-03'] -> ['KB-SHP-01', 'KB-SHP-03', 'KB-REF-03'] 0.725
+  P-033 ['KB-SHP-03'] -> ['KB-ADR-01', 'KB-RET-04', 'KB-SHP-02'] 0.573
+
+unanswerable questions with the highest best score:
+  P-045 ['KB-ORD-02'] 0.715
+  P-046 ['KB-RET-04'] 0.633
+  P-047 ['KB-CAR-01'] 0.625
+  P-048 ['KB-SHP-03'] 0.614
+  P-042 ['KB-SHP-01'] 0.612
+(.venv) PS C:\Users\kumar\source\repos\support-agent-lab> python -m src.evaluation.retrieval --probes data\probes\knowledge_questions.jsonl --method hybrid
+method hybrid (nomic-embed-text)
+answerable probes 36: hit@1 31/36 = 86% (71%-94%); hit@3 34/36 = 94% (82%-98%)
+unanswerable probes 12
+
+minimum score -> right article | wrong article | unanswerable questions still answered
+     0.0164     86%     14%    100%
+     0.0309     86%     14%     42%
+     0.0315     86%     11%     42%
+     0.0315     86%     11%     33%
+     0.0318     86%      8%     33%
+     0.0320     83%      8%     33%
+     0.0323     83%      6%     33%
+     0.0328     69%      6%      8%
+
+first-place misses (id, required, ranked, best score):
+  P-013 ['KB-REF-01'] -> ['KB-REF-04', 'KB-RET-01', 'KB-REF-01'] 0.032
+  P-017 ['KB-REF-03'] -> ['KB-RET-04', 'KB-REF-03', 'KB-REF-01'] 0.033
+  P-025 ['KB-RET-04'] -> ['KB-SIZ-01', 'KB-RET-04', 'KB-ADR-01'] 0.033
+  P-027 ['KB-SEC-01'] -> ['KB-REF-03', 'KB-CAN-01', 'KB-SHP-02'] 0.032
+  P-033 ['KB-SHP-03'] -> ['KB-ORD-01', 'KB-ADR-01', 'KB-RET-04'] 0.031
+
+unanswerable questions with the highest best score:
+  P-047 ['KB-CAR-01'] 0.033
+  P-038 ['KB-REF-04'] 0.033
+  P-045 ['KB-ORD-02'] 0.033
+  P-039 ['KB-RET-03'] 0.032
+  P-048 ['KB-REF-01'] 0.032
+(.venv) PS C:\Users\kumar\source\repos\support-agent-lab> python -m src.evaluation.retrieval --method embed
+method embed (nomic-embed-text)
+category           n   hit@1   hit@3  recall@3    MRR
+account           12     92%    100%      100%   0.96
+address_change    10     60%    100%      100%   0.80
+cancellation      14     86%    100%       96%   0.93
+order_status      35     37%     66%       66%   0.50
+other              4      0%     75%       75%   0.29
+product_info       8    100%    100%      100%   1.00
+refund            30     70%     80%       75%   0.74
+return_exchange   32     62%     94%       89%   0.78
+ALL              145     63%     86%       83%   0.73
+
+tickets with no required article: 5; best-hit score min 0.54, median 0.56, max 0.61
+
+first-place misses (54): category, required, ranked
+  order_status ['KB-SHP-01'] -> ['KB-ORD-02', 'KB-SHP-01', 'KB-REF-03']
+  order_status ['KB-SHP-01'] -> ['KB-ORD-02', 'KB-SHP-01', 'KB-SHP-03']
+  other ['KB-SEC-01'] -> ['KB-ORD-02', 'KB-SHP-01', 'KB-SEC-01']
+  account ['KB-ACC-03'] -> ['KB-ACC-01', 'KB-ACC-03', 'KB-SEC-01']
+  order_status ['KB-SHP-02'] -> ['KB-SHP-01', 'KB-ORD-02', 'KB-SHP-02']
+  cancellation ['KB-CAN-01', 'KB-SHP-02'] -> ['KB-SHP-03', 'KB-CAN-01', 'KB-REF-03']
+  order_status ['KB-SHP-03'] -> ['KB-SHP-02', 'KB-SHP-01', 'KB-ORD-01']
+  cancellation ['KB-CAN-01'] -> ['KB-ORD-02', 'KB-CAN-01', 'KB-RET-01']
+  return_exchange ['KB-RET-03'] -> ['KB-RET-01', 'KB-RET-02', 'KB-RET-03']
+  refund ['KB-REF-04'] -> ['KB-RET-02', 'KB-REF-04', 'KB-RET-01']
+  other ['KB-SEC-01'] -> ['KB-CAN-01', 'KB-ORD-02', 'KB-SEC-01']
+  address_change ['KB-ADR-01'] -> ['KB-ORD-02', 'KB-ADR-01', 'KB-ORD-01']
+  refund ['KB-REF-01'] -> ['KB-ORD-02', 'KB-REF-03', 'KB-CAN-01']
+  refund ['KB-REF-01'] -> ['KB-REF-03', 'KB-ORD-02', 'KB-RET-01']
+  order_status ['KB-SHP-02'] -> ['KB-ORD-02', 'KB-SHP-01', 'KB-ORD-01']
+  return_exchange ['KB-RET-01', 'KB-RET-02'] -> ['KB-SIZ-01', 'KB-RET-01', 'KB-RET-02']
+  order_status ['KB-ORD-02'] -> ['KB-ORD-01', 'KB-SHP-02', 'KB-REF-03']
+  order_status ['KB-SHP-01'] -> ['KB-ORD-02', 'KB-SHP-01', 'KB-REF-03']
+  address_change ['KB-ADR-01'] -> ['KB-ORD-02', 'KB-ADR-01', 'KB-SHP-01']
+  refund ['KB-REF-04'] -> ['KB-ORD-02', 'KB-REF-03', 'KB-RET-01']
+  refund ['KB-REF-02'] -> ['KB-ORD-02', 'KB-REF-03', 'KB-CAN-01']
+  order_status ['KB-SHP-02'] -> ['KB-SHP-01', 'KB-SHP-03', 'KB-ORD-02']
+  refund ['KB-REF-04'] -> ['KB-ORD-02', 'KB-REF-03', 'KB-RET-01']
+  return_exchange ['KB-RET-03'] -> ['KB-RET-02', 'KB-RET-01', 'KB-RET-04']
+  return_exchange ['KB-RET-04'] -> ['KB-SIZ-01', 'KB-RET-04', 'KB-ORD-02']
+(.venv) PS C:\Users\kumar\source\repos\support-agent-lab> python -m src.evaluation.retrieval --method hybrid
+method hybrid (nomic-embed-text)
+category           n   hit@1   hit@3  recall@3    MRR
+account           12    100%    100%      100%   1.00
+address_change    10     70%    100%      100%   0.85
+cancellation      14     79%     93%       89%   0.85
+order_status      35     29%     63%       63%   0.43
+other              4     50%     75%       75%   0.62
+product_info       8     88%     88%       88%   0.88
+refund            30     83%     93%       87%   0.88
+return_exchange   32     66%     91%       88%   0.76
+ALL              145     66%     86%       83%   0.74
+
+tickets with no required article: 5; best-hit score min 0.02, median 0.03, max 0.03
+
+first-place misses (50): category, required, ranked
+  order_status ['KB-SHP-01'] -> ['KB-REF-03', 'KB-ORD-02', 'KB-SHP-03']
+  order_status ['KB-ORD-02'] -> ['KB-REF-03', 'KB-CAN-01', 'KB-SHP-02']
+  order_status ['KB-SHP-01'] -> ['KB-REF-03', 'KB-SHP-03', 'KB-SHP-01']
+  order_status ['KB-SHP-02'] -> ['KB-SHP-01', 'KB-SHP-02', 'KB-ORD-02']
+  cancellation ['KB-CAN-01', 'KB-SHP-02'] -> ['KB-REF-03', 'KB-SHP-03', 'KB-CAN-01']
+  order_status ['KB-SHP-03'] -> ['KB-ORD-01', 'KB-SHP-01', 'KB-SHP-02']
+  return_exchange ['KB-RET-03'] -> ['KB-RET-02', 'KB-RET-01', 'KB-RET-03']
+  other ['KB-SEC-01'] -> ['KB-CAN-01', 'KB-SEC-01', 'KB-ORD-02']
+  address_change ['KB-ADR-01'] -> ['KB-ORD-02', 'KB-ADR-01', 'KB-REF-03']
+  order_status ['KB-ORD-02'] -> ['KB-SHP-02', 'KB-CAN-01', 'KB-ORD-01']
+  refund ['KB-REF-01'] -> ['KB-REF-03', 'KB-REF-01', 'KB-RET-02']
+  refund ['KB-REF-01'] -> ['KB-RET-02', 'KB-REF-01', 'KB-RET-01']
+  order_status ['KB-SHP-02'] -> ['KB-ORD-01', 'KB-SHP-03', 'KB-SHP-01']
+  return_exchange ['KB-RET-01', 'KB-RET-02'] -> ['KB-SIZ-01', 'KB-RET-01', 'KB-RET-02']
+  order_status ['KB-ORD-02'] -> ['KB-ORD-01', 'KB-SHP-01', 'KB-ADR-01']
+  order_status ['KB-SHP-01'] -> ['KB-REF-03', 'KB-SHP-02', 'KB-SHP-01']
+  product_info ['KB-REF-01'] -> ['KB-REF-03', 'KB-RET-02', 'KB-RET-03']
+  refund ['KB-REF-02'] -> ['KB-CAN-01', 'KB-REF-04', 'KB-RET-02']
+  order_status ['KB-ORD-02'] -> ['KB-SHP-02', 'KB-ORD-02', 'KB-REF-02']
+  order_status ['KB-SHP-02'] -> ['KB-SHP-03', 'KB-SHP-01', 'KB-SHP-02']
+  refund ['KB-REF-04'] -> ['KB-REF-01', 'KB-REF-03', 'KB-RET-02']
+  return_exchange ['KB-RET-03'] -> ['KB-RET-02', 'KB-RET-04', 'KB-RET-01']
+  order_status ['KB-ORD-01'] -> ['KB-SHP-01', 'KB-ORD-01', 'KB-REF-03']
+  order_status ['KB-SHP-02'] -> ['KB-SHP-01', 'KB-ORD-01', 'KB-SHP-02']
+  return_exchange ['KB-RET-03'] -> ['KB-RET-01', 'KB-RET-04', 'KB-RET-02']
+(.venv) PS C:\Users\kumar\source\repos\support-agent-lab>

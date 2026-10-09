@@ -1,6 +1,6 @@
 # Phase 2 Design: Knowledge-Base Answers and More Ticket Types
 
-- Version: 0.1 (draft for review)
+- Version: 0.2 (draft for review)
 - Date: 2026-10-09
 - Owner: Kumar Maddipatla, Project Lead
 - Builds on: phase-1-design.md v1.6, ADR-006 (fixed pipeline), ADR-007 (qwen2.5:7b, read prompt v4)
@@ -33,17 +33,35 @@ Retrieval therefore sits beside the decision rules; it does not replace them. A 
 
 Reading: word matching on whole tickets is weak where the article depends on order state (order status 26%), which confirms section 2. For knowledge questions it works about two times in three at rank 1. That is not enough to answer from the first hit without a check, and n = 8 is too small to trust the figure.
 
-## 4. Decisions needed
-1. **A larger retrieval test set.** The development split holds only 8 knowledge questions. Options: (a) write about 30 knowledge-question probes by hand with labelled articles, kept separate from the frozen dataset and labelled as a development probe set; (b) add them to a new dataset version (v1.1), which re-freezes the manifest. Recommended: (a), because it leaves the frozen dataset and its hashes untouched.
-2. **Embeddings.** Compare BM25 with a local embedding model through Ollama (for example nomic-embed-text) and a hybrid of both, on the same test, and choose by recall@k and cost (ADR-009). Recommended: yes, stage 2.3.
-3. **"I don't know" rule.** The answer is given only when the best article scores above a threshold and clearly beats the second. The threshold is set on development data and re-checked on held-out in Phase 4. Five development tickets have no required article; their best BM25 score ranges from 0 to 4.4, which overlaps scores of answerable questions, so the rule cannot be settled from word matching alone.
+### 3.1 Probe questions and embeddings (stage 2.3)
+Because the development tickets hold only 8 knowledge questions, a separate probe file (`data/probes/knowledge_questions.jsonl`: 36 answerable questions covering all 21 articles and 12 the knowledge base cannot answer) was written before any retrieval result was seen. Three methods were compared: BM25, embeddings (nomic-embed-text through Ollama, cosine similarity) and a rank-fusion hybrid of the two.
+
+| Method | Probes hit@1 (95% interval) | Probes hit@3 | Tickets: product_info hit@1 / hit@3 (n = 8) | All 145 tickets hit@1 / hit@3 |
+|---|---|---|---|---|
+| BM25 | 75% (59-86%) | 89% | 62% / 88% | 49% / 72% |
+| Embeddings | 83% (68-92%) | 97% | 100% / 100% | 63% / 86% |
+| Hybrid | 86% (71-94%) | 94% | 88% / 88% | 66% / 86% |
+
+Paired on the probes, embeddings against BM25: right only for embeddings on 5 questions, only for BM25 on 2 (sign test p = 0.45). The differences are consistent in direction but not statistically reliable at this sample size. The hybrid does not beat embeddings alone, and its fused scores (0.016 to 0.033) cannot carry a threshold, so it is dropped.
+
+### 3.2 "I don't know"
+With embeddings the best score separates unanswerable from answerable questions much better than with BM25: of the 12 unanswerable probes, the highest score is 0.715 and the five unanswerable development tickets score 0.54 to 0.61. A minimum score of 0.65 keeps 81% of answerable probes correctly answered, lets 14% be answered with a wrong article and lets 1 of 12 (8%) unanswerable questions through. A stricter 0.75 leaves no wrong answers but answers only 61% correctly. A score alone therefore cannot make the call, so the rule has three gates (section 4).
+
+## 4. Decisions
+1. Probe set: written (36 + 12), reviewed by the project lead, kept apart from the frozen dataset. Decided.
+2. Method: embeddings with nomic-embed-text for knowledge questions; BM25 is kept as a measured baseline (ADR-009). Decided.
+3. Answer or hand over, three gates, all of which must pass:
+   - Gate 1: the best article's cosine score is at least 0.65 (initial value, set on the probes and development tickets; re-checked on held-out in Phase 4).
+   - Gate 2 (stage 2.4): a short model check, with a fixed yes/no schema, that the article's key facts answer the question; measured on the probes.
+   - Gate 3: the reply is validated against the article's key facts and must cite the article; any failure uses the template hand-over.
+   Any failed gate means a hand-over to a person with no answer sent.
 
 ## 5. Stages
 | Stage | Content |
 |---|---|
 | 2.2 | This design; BM25 retriever; retrieval evaluation; baseline numbers (done) |
-| 2.3 | Knowledge-question probe set; embedding and hybrid comparison; ADR-009 |
-| 2.4 | Knowledge-question path in the pipeline: retrieve, decide to answer or hand over, reply from article key facts, citation validator rule |
+| 2.3 | Knowledge-question probe set; embedding and hybrid comparison; ADR-009 (done) |
+| 2.4 | Knowledge-question path in the pipeline: retrieve, three gates, reply from article key facts, citation validator rule |
 | 2.5 | Returns, refunds, cancellations, address changes: reading, decision rules, reply facts (read-only; proposed actions go to a person) |
 | 2.6 | Escalation summary for the person who receives a ticket |
 | 2.7 | Phase 2 evaluation (3B and 7B), citation validity, blind review, report, exit review |

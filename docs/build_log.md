@@ -598,3 +598,10 @@ and not a tuned threshold; the final runs are the test of it.
 **BM25 on the probes (`docs/evidence/retrieval-probes-bm25.txt`):** hit@1 27/36 = 75% (59-86%); hit@3 32/36 = 89% (75-96%). A minimum-score rule at 3.07 still answers 8% of the unanswerable questions, and the one unanswerable question that gets a high score (down sourcing, 11.1) is matched to the sleeping-bag care article by the word "down".
 **Limitation:** the probes were written by the same author as the system; each is reviewed by the project lead before use. Probe questions are not tickets, so no action or escalation is scored.
 **Next:** run embed and hybrid on the probes and tickets, then ADR-009.
+
+
+## Stage 2.3b: Retrieval comparison and ADR-009 (2026-10-09)
+**Result (`docs/evidence/retrieval-embedding-hybrid-runs.txt`):** on 36 answerable probes BM25 ranks the right article first 75%, embeddings 83% (68-92%), hybrid 86%; top-3 89%, 97%, 94%. On the 8 knowledge-question tickets embeddings reach 100%. Embeddings against BM25 on the probes: 5 right only for embeddings, 2 only for BM25 (p = 0.45). Embedding scores separate unanswerable questions (highest 0.715; development tickets 0.54 to 0.61) far better than BM25; fused hybrid scores cannot carry a threshold.
+**Decided (ADR-009, Proposed):** embeddings for knowledge questions, BM25 kept as baseline, no hybrid, no vector database. Design v0.2: "I don't know" uses three gates (score at least 0.65, model check that the article answers the question, validated cited reply).
+**Limitations:** probes written by the system's author; threshold and method chosen on development data; embedding scores for all tickets are not meaningful for order-status tickets, where articles follow from the decision rules.
+**Next:** stage 2.4, knowledge-question path in the pipeline.
