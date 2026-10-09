@@ -624,3 +624,14 @@ and not a tuned threshold; the final runs are the test of it.
 - Tests added for the verdicts, check-only mode, reply display and digest lookup. Suite: 634 passed.
 
 **No change** to gates, thresholds or prompts. Those are adjusted only after the diagnostic output is reviewed.
+
+
+### 2.4d Knowledge check prompt comparison (v1 vs v2)
+
+**Why.** The v1 check handed over 11 answerable probes with the correct article retrieved. Diagnostics showed genuine "no" verdicts, not failed calls.
+
+**What.** Added check prompt v2 (an agent could answer from the facts alone, including by applying a stated rule or number) and a `--check-prompt` option on the run and evaluation commands. Evidence: `docs/evidence/knowledge-check-prompt-runs.txt`.
+
+**Result.** Coverage 58% (v1) vs 64% (v2); the difference is within noise (3 gained, 1 lost). Wrong answers 0 and unanswerable answered 0 under both. The v2 false-yes rate on non-answering articles rose from 1/48 to 4/48.
+
+**Decision.** v1 remains the default. v2 is kept as a documented alternative. The check is the main coverage limit; eight answerable probes with the right article are handed over under both prompts. Further prompt tuning on the 36 development probes is not pursued, to avoid fitting to them. Thresholds and the check prompt are confirmed once in Phase 4 on held-out data.

@@ -1,0 +1,26 @@
+Stage 2.4 evidence: knowledge check prompt v1 vs v2
+Probe file: data/probes/knowledge_questions.jsonl (36 answerable, 12 unanswerable). Development data; not held out.
+Model qwen2.5:7b (digest 845dbda0ea48), embeddings nomic-embed-text (digest 0a109f422b47), minimum score 0.65, reply mode model.
+
+== Check-only: labelled article (should say yes) / non-answering article (should say no)
+v1: yes 25, no 11  |  yes 1, no 47
+    labelled article not yes: P-005 009 014 020 023 027 032 033 034 035 036
+    non-answering article yes: P-015 (KB-REF-04)
+v2: yes 27, no 9   |  yes 4, no 44
+    labelled article not yes: P-007 014 020 023 027 032 033 034 035
+    non-answering article yes: P-001 (KB-ACC-02), P-015 (KB-REF-04), P-017 (KB-RET-04), P-021 (KB-RET-03)
+
+== Full probe run (answerable, 36)
+v1: answered with required/acceptable article 21/36 = 58% (42%-73%); wrong article 0/36 (0%-10%)
+    handed over: score gate 4, model check 11
+v2: answered 23/36 = 64% (48%-78%); wrong article 0/36 (0%-10%)
+    handed over: score gate 4, model check 9
+== Unanswerable (12)
+v1 and v2: answered 0/12 (0%-24%); handed over at score gate 11, at model check 1
+
+== Paired comparison on answered probes
+Gained by v2: P-005, P-009, P-036. Lost by v2: P-007. Net +2 (3 vs 1 discordant; not statistically distinguishable).
+Probes handed over under both prompts: P-014 020 023 025 030 032 034 035 (check) and P-016 017 027 033 (score gate).
+
+Reading: coverage differences are within noise. v2 raises the false-yes rate on non-answering articles from 1/48 to 4/48.
+Neither prompt produced a wrong answer on this probe file. Prompt choice was made on development data.
