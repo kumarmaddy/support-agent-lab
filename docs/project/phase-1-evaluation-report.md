@@ -1,6 +1,6 @@
 # Phase 1 Evaluation Report: Order-Status Slice
 
-- Version: 1.0 (final)
+- Version: 1.1 (final)
 - Date: 2026-10-09
 - Owner: Kumar Maddipatla, Project Lead
 - Scope: development split only (150 tickets, dataset v1.0.0). The held-out split is not used before Phase 4.
@@ -9,9 +9,9 @@
 The fixed pipeline (ADR-006) handles order-status tickets end to end and hands everything else to a person. On the 150 development tickets:
 - No out-of-scope ticket was answered by the agent in any run (0 of 115, upper 95% bound 3.2%).
 - With qwen2.5:7b, all 35 in-slice tickets were handled correctly end to end (35/35). With llama3.2:3b, 33/35.
-- The 7B reader raises a legal-threat flag too often (7 false alarms; 6.1% of out-of-scope tickets escalated unnecessarily). This is a precision defect, not a safety defect, and has a planned fix (section 7).
+- The 7B reader with prompt v3 raised a legal-threat flag too often (7 false alarms; 6.1% of out-of-scope tickets escalated unnecessarily). This was a precision defect, not a safety defect; read prompt v4 reduced it to 1 false alarm (0.9%) with no change to any in-slice result (section 4.6).
 - In blind review, 7B model-written replies were preferred to the fixed templates (8 against 1, sign test p = 0.039). For 3B there was no preference (6 against 5, p = 1.0).
-- Recommendation: qwen2.5:7b as the default model for Phase 2 (ADR-007, Accepted).
+- Recommendation: qwen2.5:7b as the default model for Phase 2 (ADR-007, Accepted). The legal-flag precision defect was addressed in stage 2.1 (section 4.6).
 
 ## 2. Setup
 | Item | Value |
@@ -74,6 +74,27 @@ Six tickets carry instructions aimed at the model: T-000016, T-000022, T-000062,
 ### 4.5 Latency against the manual baseline
 The manual baseline is a median of 136 s (mean 162 s) per ticket with 92.5% category accuracy (37/40). Agent latency is machine time per ticket and excludes the person who still reviews hand-overs, so the figures are not like-for-like and no time-saving claim is made.
 
+### 4.6 Re-run with read prompt v4 (stage 2.1)
+After the legal-flag false alarms were found (section 4.1), the read prompt was revised (v4: a threat must be the customer's own stated intention to take a named step; payment problems, bank statements and instructions to skip review are not threats). The acceptance test was fixed before the run. qwen2.5:7b was then re-run on all 150 development tickets (run-20261009-054209-fee598, commit 3a660d14, clean tree, read_ticket.v4 sha 6f2e5b78..., same model digest and dataset hash as run b2e156).
+
+| Measure (qwen2.5:7b) | v3 (b2e156) | v4 (fee598) |
+|---|---|---|
+| Valid readings | 150/150 | 150/150 |
+| Category agreement | 139/150 (92.7%) | 138/150 (92.0%) |
+| Legal threats found | 4/4 | 4/4 |
+| Legal-flag false alarms | 7 | 1 (T-000045) |
+| Set A end to end | 35/35 | 35/35 |
+| Set B handed to a person | 115/115 | 115/115 |
+| Set B wrongly answered | 0 | 0 |
+| Set B escalated unnecessarily | 7/115 (6.1%) | 1/115 (0.9%, 0-5%) |
+| Template fallbacks | 3 of 31 | 3 of 31 |
+| Set A latency median / p90 / max | 26.0 / 40.8 / 46.5 s | 25.6 / 42.1 / 44.7 s |
+| Full run | 31.5 min | 30.6 min |
+
+Paired comparison: category agreement only v3 right on 2 tickets, only v4 right on 1 (p = 1.0); Set A and Set B outcomes identical. Six tickets changed from escalated to routed (T-000029, 75, 99, 110, 111, 149), all duplicate-charge or skip-review refund requests that are not threats. The acceptance test (4/4 threats found, at most 2 false alarms, category agreement within 2 tickets of v3) was passed.
+
+With llama3.2:3b, v4 found 4/4 threats with no false alarm but three address-change tickets (T-000034, 83, 126) failed reading, because the model wrote a deadline phrase ("Thursday") that is not in the ticket and the check rejected it; each went to a person. v3 therefore remains the prompt for 3B (`--read-prompt v3`). The false alarms were observed on this development set; the improvement is an optimistic estimate until the held-out split is run in Phase 4. The reply review in section 4.3 was done on v3 runs; v4 changed no in-slice decision, so it is not repeated.
+
 ## 5. Findings
 1. Rule order: the first full run showed labelled legal-threat refund tickets being routed because the out-of-slice check ran first. Corrected in v1.6 (legal check first); the final runs are the test.
 2. Date role: all five 3B replies for unshipped orders described the promised delivery date as a ship date. A new validator rule (`wrong_date_role`) with a hinted retry fixed all five. The rule was written after seeing them; the final runs are the test.
@@ -92,7 +113,7 @@ The manual baseline is a median of 136 s (mean 162 s) per ticket with 92.5% cate
 ## 7. Carry-forward items
 | Item | Phase |
 |---|---|
-| Read prompt v4: duplicate or wrong charges and bank statements are not legal threats (7B precision) | 2, before relying on the 7B reader |
+| Read prompt v4: duplicate or wrong charges and bank statements are not legal threats (7B precision) | Done in stage 2.1 (section 4.6); confirm on held-out in Phase 4 |
 | Improve the information-request template wording | 2 |
 | Optional: require "not been dispatched" in processing replies | 2 |
 | Policy engine for compromise, unverified identity and unknown-policy tickets (12-13 tickets) | 3 |
@@ -100,4 +121,4 @@ The manual baseline is a median of 136 s (mean 162 s) per ticket with 92.5% cate
 | Evaluate once on the held-out split | 4 |
 
 ## 8. Recommendation
-Adopt qwen2.5:7b for Phase 2 (ADR-007, Accepted), keep llama3.2:3b as the fast development model and keep templates as the validated fallback. The 7B reader's legal-flag precision must be fixed (prompt v4) first.
+Adopt qwen2.5:7b for Phase 2 (ADR-007, Accepted), keep llama3.2:3b as the fast development model and keep templates as the validated fallback. The 7B reader's legal-flag precision was fixed with read prompt v4 (section 4.6).

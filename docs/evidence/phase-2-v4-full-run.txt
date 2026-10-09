@@ -1,0 +1,16 @@
+Full development run, qwen2.5:7b, read prompt v4. run-20261009-054209-fee598, commit 3a660d14 (clean), 150 tickets.
+Model digest 845dbda0ea48, read_ticket.v4 sha256 6f2e5b7824e17c1e60d3088bd6c29a344575df40b7d364a12e4f1da4df875051, db sha256 403baccf...af14705
+
+read step: valid readings 150/150; category agreement 138/150 = 92.0% (87-95%)
+chargeback or legal flag: found 4 of 4 labelled, 1 false alarm [T-000045]
+Set A (35): action 35/35, escalation 35/35, article 35/35, facts 35/35, end to end 35/35 (90-100%)
+  answered without a person and correct 31/35 (model 28, template 3)
+Set B (115): handed to a person 115/115; answered by the agent 0/115; needed escalation but only routed 12;
+  escalated although the label does not call for it 1/115 = 0.9% (0-5%)
+Template fallbacks 3/31 model-drafted replies; rejected drafts {missing_fact: 10}
+Latency per ticket (all 150): median 8.2 s, p90 25.6 s, max 44.7 s. Set A: median 25.6 s, p90 42.1 s, max 44.7 s. Run 30.6 min.
+
+Compared with run-20261008-131023-b2e156 (same model, read prompt v3):
+  category agreement 139 vs 138 (only v3 right 2, only v4 right 1, p = 1.0)
+  Set A end to end 35/35 vs 35/35; Set B handed to a person 115/115 vs 115/115 (no differences)
+  tickets with a different action: T-000029, T-000075, T-000099, T-000110, T-000111, T-000149 (escalated under v3, routed under v4)

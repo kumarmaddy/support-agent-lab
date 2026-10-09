@@ -576,3 +576,11 @@ and not a tuned threshold; the final runs are the test of it.
 **Result (`docs/evidence/phase-2-read-prompt-v4.txt`):** acceptance test fixed before the run was passed by 7B: legal threats caught 4/4, false alarms 7 to 1, category agreement 138/150 (v3: 139), 0 failed readings, deadline dates 150/150. On 3B, v4 caught 4/4 with no false alarm, but three address-change tickets (T-000034, 83, 126) failed reading because the model wrote an invented deadline phrase ("Thursday"); the ticket-text check rejected it and each ticket went to a person. v3 stays for 3B.
 **Limitation:** the false alarms were seen on this development set, so the gain is an optimistic estimate; the held-out split in Phase 4 is the real test. The remaining false alarm (T-000045) is a refund request telling the company to skip approval.
 **Next:** full 7B evaluation with v4 (run, score, compare with run b2e156), then knowledge-base retrieval.
+
+
+## Stage 2.1 (completed): full 7B run with read prompt v4 (2026-10-09)
+**Run:** run-20261009-054209-fee598, qwen2.5:7b, read_ticket.v4, commit 3a660d14, clean tree, 150 tickets, 30.6 minutes. Evidence in `docs/evidence/phase-2-v4-full-run.txt`.
+**Result:** legal-flag false alarms 7 to 1; Set B unnecessary escalations 7/115 (6.1%) to 1/115 (0.9%); legal threats found 4/4; Set A end to end 35/35 and Set B 115/115 handed to a person, both unchanged; category agreement 138/150 (v3: 139; p = 1.0); latency unchanged (Set A median 25.6 s). Six tickets moved from escalated to routed (duplicate-charge or skip-review refund requests).
+**Documents:** evaluation report v1.1 (section 4.6), ADR-007 condition recorded as met, risk register v1.5 (R18).
+**Carry-forward:** confirm on the held-out split in Phase 4; 3B stays on v3.
+**Next:** stage 2.2, knowledge-base retrieval design.
