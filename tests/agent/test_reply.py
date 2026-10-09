@@ -22,6 +22,7 @@ DECISIONS = {
     "multiple_order_ids": d.Decision(d.REQUEST_INFO, "multiple_order_ids", "KB-ORD-02", {"candidates": [{"order_id": "O-000628"}, {"order_id": "O-000629"}]}),
     "order_not_found": d.Decision(d.REQUEST_INFO, "order_not_found", "KB-ORD-02"),
     "no_account": d.Decision(d.REQUEST_INFO, "no_account", "KB-ORD-02"),
+    "no_open_orders": d.Decision(d.REQUEST_INFO, "no_open_orders", "KB-ORD-02"),
     "delivery_deadline_cannot_be_guaranteed": d.Decision(d.ESCALATE_HUMAN, "delivery_deadline_cannot_be_guaranteed", "KB-SHP-03", {**BASE, "deadline_date": "2026-10-08"}),
     "order_not_owned": d.Decision(d.ESCALATE_HUMAN, "order_not_owned", "KB-SEC-01"),
     "chargeback_or_legal_threat": d.Decision(d.ESCALATE_HUMAN, "chargeback_or_legal_threat", "KB-REF-04"),

@@ -1,0 +1,24 @@
+run run-20261009-110812-2e6e35  model qwen2.5:7b  reply mode model  tickets 150
+read step: valid readings 150/150 = 100.0% (98-100%); category agreement 138/150 = 92.0% (87-95%)
+chargeback or legal flag: found 4 of 4 labelled, 1 false alarms ['T-000045']
+Set A, in-slice (59):
+  action 59/59 = 100.0% (94-100%)
+  escalation decision 59/59 = 100.0% (94-100%)
+  article 59/59 = 100.0% (94-100%)
+  facts 59/59 = 100.0% (94-100%)
+  end to end 59/59 = 100.0% (94-100%)
+  answered without a person and correct 42/59 = 71.2% (59-81%); replies by source {'model': 28, 'template': 14}
+Set B, other tickets (91):
+  handed to a person 90/91 = 98.9% (94-100%)
+  answered by the agent (wrong) 1/91 = 1.1% (0-6%)
+  needed escalation but were only routed: 11
+  escalated although the label does not call for it 1/91 = 1.1% (0-6%)
+replies: template fallbacks 3/32; rejected {'missing_fact': 10, 'unknown_token': 1}
+latency per ticket: {'max': 54054, 'p50': 8503, 'p90': 27093}
+  miss T-000145 S19 expected provide_info got request_info (needs_order_number)
+
+Run run-20261009-110812-2e6e35: qwen2.5:7b, read prompt v4, reply prompt v1, extract_address.v1, --transactions, seed 0, commit 806dedc (clean),
+dataset sha256 403baccf...14705. 150 tickets, 196 model calls. Latency per ticket: median 8.5 s, p90 27.1 s, max 54.1 s;
+extract_address median 7.7 s (6 calls, all outcome ok, all 6 addresses identical to the labelled address).
+Finding: T-000145 (a policy question read as address_change) received a reply naming invented orders (ORDER12345, ORDER67890) because the
+customer had no open orders and the order-number request listed none; fixed in stage 2.5a2 (reason no_open_orders; order-like references now fail unknown_order).

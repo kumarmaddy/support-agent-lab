@@ -93,6 +93,8 @@ def decide(reading: Reading, identity: Optional[Identity], today: date, scope: f
         return Decision(REQUEST_INFO, "order_not_found", "KB-ORD-02")
     if identity.outcome == MULTIPLE_ORDER_IDS:
         return Decision(REQUEST_INFO, "multiple_order_ids", "KB-ORD-02", {"candidates": [{"order_id": i} for i in identity.named_ids]})
+    if identity.outcome == NEEDS_ORDER_NUMBER and not identity.open_orders:
+        return Decision(REQUEST_INFO, "no_open_orders", "KB-ORD-02")           # nothing to list: ask for the number, name no orders
     if identity.outcome == NEEDS_ORDER_NUMBER:
         candidates = [{"order_id": o.order_id, "items": [line.product for line in o.items]} for o in identity.open_orders]
         return Decision(REQUEST_INFO, "needs_order_number", "KB-ORD-02", {"candidates": candidates})

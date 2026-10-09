@@ -652,3 +652,14 @@ and not a tuned threshold; the final runs are the test of it.
 **Tests.** 674 passed (40 new). A perfect reader and scripted address extractor reproduce every labelled action, article and fact for the 24 tickets. Four mutations of the new rules (state check, address verification, proposal action, digit rule) were each caught.
 
 **Not yet measured.** Results with the real models (read step on cancellation and address-change tickets, address copying by qwen2.5:7b).
+
+
+### 2.5a2 First transactions run and one fix
+
+**Run.** run-20261009-110812-2e6e35 (qwen2.5:7b, read prompt v4, `--transactions`, 150 tickets). Set A (59 tickets: 35 order status + 24 transactional) 59/59 on action, escalation, article, facts and end to end; all six proposed addresses were copied exactly. Set B 90/91 handed to a person. The 35 order-status tickets and the 11 must-escalate routings are unchanged from Phase 1.
+
+**Finding.** T-000145 (S19, "Can I change my delivery address after I place an order?") was read as address_change. The customer has no open order, so the order-number request had no orders to list and the model invented two (ORDER12345, ORDER67890); the validator only recognised the O-nnnnnn format. 
+
+**Fix.** A customer with no open order is asked for the number without any order being named (`no_open_orders`); order-like references in other shapes (ORDER12345, #12345) now fail `unknown_order`. 683 tests pass.
+
+**Open.** Category agreement is 92% (12 misreads, mostly "other" tickets read as product_info, which go to a person). Misreads that land in a handled category (here T-000145) are the new exposure of widening the scope; the Phase 2 evaluation measures it.

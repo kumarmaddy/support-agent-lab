@@ -33,6 +33,7 @@ _DATE_ISO = re.compile(r"\b(\d{4})-(\d{2})-(\d{2})\b")
 _RELATIVE = re.compile(r"\b(monday|tuesday|wednesday|thursday|friday|saturday|sunday|today|tonight|tomorrow|yesterday)\b"
                        r"|\bwithin\s+\w+(?:\s+\w+)?\s+(?:hours?|days?|weeks?)\b|\bby\s+(?:the\s+)?end\s+of\b|\bnext\s+(?:week|day)\b", re.IGNORECASE)
 _ORDER_ID = re.compile(r"\bO-\d{6}\b", re.IGNORECASE)
+_ORDER_LIKE = re.compile(r"\bORDER[-\s#]?\d{3,}\b|#\s?\d{4,}", re.IGNORECASE)     # an order number in some other shape is invented too
 _TOKEN = re.compile(r"\b(?:[A-Z]{1,4}\d{6,}|\d{6,})\b")
 _AMOUNT = re.compile(r"[$€£]\s?\d|\b\d+(?:[.,]\d+)?\s?(?:usd|dollars?|euros?|pounds?)\b", re.IGNORECASE)
 _PROMISE = re.compile(r"\b(refund\w*|compensat\w*|voucher\w*|discount\w*|credit\w*|reimburs\w*|expedit\w*|upgrad\w*|guarantee\w*|"
@@ -119,7 +120,7 @@ def validate_reply(text: str, facts: ReplyFacts, internal: frozenset = frozenset
             break
     if _RELATIVE.search(text):
         failures.append("relative_time")
-    if any(m.group(0).upper() not in facts.allowed_ids for m in _ORDER_ID.finditer(text)):
+    if any(m.group(0).upper() not in facts.allowed_ids for m in _ORDER_ID.finditer(text)) or _ORDER_LIKE.search(text):
         failures.append("unknown_order")
     without_orders = _ORDER_ID.sub(" ", text)
     if any(m.group(0).upper() not in facts.allowed_tokens for m in _TOKEN.finditer(without_orders)):

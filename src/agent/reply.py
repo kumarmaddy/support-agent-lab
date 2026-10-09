@@ -90,6 +90,7 @@ INSTRUCTIONS = {
     "multiple_order_ids": "They mentioned more than one order. Ask which one they mean, naming the orders listed.",
     "order_not_found": "We could not find that order on the account. Ask them to check the order number in their confirmation email and reply with it.",
     "no_account": "We could not match the email address to an account. Ask them to reply with their order number.",
+    "no_open_orders": "We could not see an open order on the account. Ask them to reply with the order number they mean. Do not name any order.",
     "address_missing": "Ask them to reply with the complete new delivery address for the order listed.",
 }
 
@@ -111,7 +112,7 @@ def template_body(decision: d.Decision) -> str:
     if reason in ("needs_order_number", "multiple_order_ids"):
         return (f"So that we look at the right order, please reply with the order number you mean. "
                 f"The orders we can see are: {_candidate_text(f['candidates'])}.")
-    if reason in ("order_not_found", "no_account"):
+    if reason in ("order_not_found", "no_account", "no_open_orders"):
         return ("We could not find that order. Please check the order number in your confirmation email and reply with it, "
                 "so that we can look into it.")
     if reason == "address_missing":
