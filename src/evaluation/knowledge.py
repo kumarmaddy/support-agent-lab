@@ -130,13 +130,14 @@ def main(argv=None) -> int:
     p.add_argument("--model", default="qwen2.5:7b")
     p.add_argument("--embed-model", default="nomic-embed-text")
     p.add_argument("--min-score", type=float, default=DEFAULT_MIN_SCORE)
+    p.add_argument("--check-prompt", default="v1", help="version of the knowledge check prompt (v1 default)")
     p.add_argument("--reply-mode", choices=["model", "template"], default="model")
     p.add_argument("--show-replies", type=int, default=0, metavar="N", help="print the first N answered replies for reading")
     p.add_argument("--check-only", action="store_true", help="test the model check on its own, with the labelled and with a wrong article")
     args = p.parse_args(argv)
     from src.kb.embed import EmbeddingIndex, model_digest
     articles = load_articles(args.kb)
-    knowledge = Knowledge(EmbeddingIndex(articles, args.embed_model), articles, load_prompt("knowledge_check", "v1"),
+    knowledge = Knowledge(EmbeddingIndex(articles, args.embed_model), articles, load_prompt("knowledge_check", args.check_prompt),
                           load_prompt("knowledge_reply", "v1"), args.min_score)
     model = OllamaClient(model=args.model)
     print(f"model {args.model} (digest {model.digest()[:12] or 'unknown'}), embeddings {args.embed_model} (digest {model_digest(args.embed_model)[:12] or 'unknown'}), minimum score {args.min_score}, reply mode {args.reply_mode}")

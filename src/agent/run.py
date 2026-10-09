@@ -122,6 +122,7 @@ def main(argv=None) -> int:
     p.add_argument("--knowledge", action="store_true", help="answer policy questions from the knowledge base (needs the embedding model; ADR-009)")
     p.add_argument("--embed-model", default="nomic-embed-text")
     p.add_argument("--min-score", type=float, default=DEFAULT_MIN_SCORE)
+    p.add_argument("--check-prompt", default="v1", help="version of the knowledge check prompt (v1 default)")
     p.add_argument("--limit", type=int, default=0, help="first N tickets by id (0 = all)")
     p.add_argument("--ids-file", type=Path, help="text file with one ticket id per line")
     args = p.parse_args(argv)
@@ -136,7 +137,7 @@ def main(argv=None) -> int:
     knowledge = None
     if args.knowledge:
         from src.kb.embed import EmbeddingIndex
-        knowledge = Knowledge(EmbeddingIndex(articles, args.embed_model), articles, load_prompt("knowledge_check", "v1"),
+        knowledge = Knowledge(EmbeddingIndex(articles, args.embed_model), articles, load_prompt("knowledge_check", args.check_prompt),
                               load_prompt("knowledge_reply", "v1"), args.min_score)
     meta = build_meta(model, read_prompt, reply_prompt, args.db, args.seed, ids, argv if argv is not None else sys.argv[1:], model.digest(), warmup_ms,
                       args.reply_mode, knowledge, args.embed_model if knowledge else "",
