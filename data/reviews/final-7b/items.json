@@ -1,0 +1,371 @@
+[
+  {
+    "ticket_id": "T-000002",
+    "facts": {
+      "carrier": "TrailExpress",
+      "last_status": "In transit",
+      "order_id": "O-000605",
+      "promised_date": "2026-10-10",
+      "status": "shipped",
+      "tracking_no": "TR245437731580"
+    },
+    "a": "Hello Dario,\n\nYour order O-000605 has been dispatched. The promised delivery date is October 10, 2026. The carrier is TrailExpress, the tracking number is TR245437731580 and the latest status is: In transit.\n\nKind regards,\nCustomer Support",
+    "b": "Hello Dario,\n\nYour order O-000605 has been dispatched by TrailExpress. The tracking number is TR245437731580 and the latest status is In transit. Your order is expected to arrive on October 10, 2026.\n\nKind regards,\nCustomer Support"
+  },
+  {
+    "ticket_id": "T-000003",
+    "facts": {
+      "candidates": [
+        {
+          "items": [
+            "Ridgeline Trail Shorts",
+            "Tundra Rain Jacket"
+          ],
+          "order_id": "O-000628"
+        },
+        {
+          "items": [
+            "Basecamp Fleece Vest 80"
+          ],
+          "order_id": "O-000629"
+        }
+      ]
+    },
+    "a": "Hello Soren,\n\nSo that we look at the right order, please reply with the order number you mean. The orders we can see are: O-000628 (Ridgeline Trail Shorts, Tundra Rain Jacket); O-000629 (Basecamp Fleece Vest 80).\n\nKind regards,\nCustomer Support",
+    "b": "Hello Soren,\n\nCould you please let us know which order you are referring to? You have the following options: O-000628 (Ridgeline Trail Shorts, Tundra Rain Jacket) or O-000629 (Basecamp Fleece Vest 80). Kindly reply with the order number.\n\nKind regards,\nCustomer Support"
+  },
+  {
+    "ticket_id": "T-000004",
+    "facts": {
+      "carrier": "MeridianPost",
+      "last_status": "In transit",
+      "order_id": "O-000602",
+      "promised_date": "2026-10-11",
+      "status": "shipped",
+      "tracking_no": "ME234589505877"
+    },
+    "a": "Hello Quinn,\n\nYour order O-000602 has been dispatched. The promised delivery date is October 11, 2026. The carrier is MeridianPost, the tracking number is ME234589505877 and the latest status is: In transit.\n\nKind regards,\nCustomer Support",
+    "b": "Hello Quinn,\n\nYour order O-000602 has been dispatched by MeridianPost. The tracking number is ME234589505877 and the latest status is In transit. Your package is expected to arrive on October 11, 2026.\n\nKind regards,\nCustomer Support"
+  },
+  {
+    "ticket_id": "T-000007",
+    "facts": {
+      "carrier": "TrailExpress",
+      "last_status": "In transit - delayed",
+      "order_id": "O-000613",
+      "promised_date": "2026-10-02",
+      "status": "shipped",
+      "tracking_no": "TR488585156902"
+    },
+    "a": "Hello Kavya,\n\nThank you for your patience, and we are sorry that order O-000613 is taking longer than promised. The promised delivery date was October 2, 2026. We are checking with the carrier. The carrier is TrailExpress, the tracking number is TR488585156902 and the latest status is: In transit - delayed.\n\nKind regards,\nCustomer Support",
+    "b": "Hello Kavya,\n\nWe apologize for the delay in your order O-000613. The latest tracking status shows it is In transit - delayed with TrailExpress, tracking number TR488585156902. We are checking with the carrier and the promised delivery date remains October 2, 2026.\n\nKind regards,\nCustomer Support"
+  },
+  {
+    "ticket_id": "T-000021",
+    "facts": {
+      "candidates": [
+        {
+          "items": [
+            "Ironwood Windbreaker",
+            "Glacier Hiking Boot",
+            "Ridgeline Trekking Poles"
+          ],
+          "order_id": "O-000625"
+        },
+        {
+          "items": [
+            "Glacier Backpacking Tent"
+          ],
+          "order_id": "O-000624"
+        }
+      ]
+    },
+    "a": "Hello Willa,\n\nCould you please let us know which order you are referring to? You have the following options: O-000625 (Ironwood Windbreaker, Glacier Hiking Boot, Ridgeline Trekking Poles) or O-000624 (Glacier Backpacking Tent). Kindly reply with the order number.\n\nKind regards,\nCustomer Support",
+    "b": "Hello Willa,\n\nSo that we look at the right order, please reply with the order number you mean. The orders we can see are: O-000625 (Ironwood Windbreaker, Glacier Hiking Boot, Ridgeline Trekking Poles); O-000624 (Glacier Backpacking Tent).\n\nKind regards,\nCustomer Support"
+  },
+  {
+    "ticket_id": "T-000033",
+    "facts": {
+      "candidates": [
+        {
+          "items": [
+            "Canyon Family Tent"
+          ],
+          "order_id": "O-000634"
+        },
+        {
+          "items": [
+            "Northfork Approach Shoe",
+            "Ridgeline Quarter-Zip",
+            "Ironwood Trail Shorts"
+          ],
+          "order_id": "O-000635"
+        }
+      ]
+    },
+    "a": "Hello Olivia,\n\nSo that we look at the right order, please reply with the order number you mean. The orders we can see are: O-000634 (Canyon Family Tent); O-000635 (Northfork Approach Shoe, Ridgeline Quarter-Zip, Ironwood Trail Shorts).\n\nKind regards,\nCustomer Support",
+    "b": "Hello Olivia,\n\nCould you please let us know which order you are referring to? You have the following options: O-000634 (Canyon Family Tent), O-000635 (Northfork Approach Shoe, Ridgeline Quarter-Zip, Ironwood Trail Shorts). Kindly reply with the order number.\n\nKind regards,\nCustomer Support"
+  },
+  {
+    "ticket_id": "T-000036",
+    "facts": {
+      "carrier": "SwiftShip",
+      "last_status": "In transit",
+      "order_id": "O-000608",
+      "promised_date": "2026-10-11",
+      "status": "shipped",
+      "tracking_no": "SW365470024808"
+    },
+    "a": "Hello Camila,\n\nYour order O-000608 has been dispatched by SwiftShip. The tracking number is SW365470024808 and the latest status is In transit. Your package is expected to arrive on October 11, 2026.\n\nKind regards,\nCustomer Support",
+    "b": "Hello Camila,\n\nYour order O-000608 has been dispatched. The promised delivery date is October 11, 2026. The carrier is SwiftShip, the tracking number is SW365470024808 and the latest status is: In transit.\n\nKind regards,\nCustomer Support"
+  },
+  {
+    "ticket_id": "T-000049",
+    "facts": {
+      "carrier": "MeridianPost",
+      "last_status": "In transit - delayed",
+      "order_id": "O-000618",
+      "promised_date": "2026-09-30",
+      "status": "shipped",
+      "tracking_no": "ME783863230994"
+    },
+    "a": "Hello Jonas,\n\nThank you for your patience, and we are sorry that order O-000618 is taking longer than promised. The promised delivery date was September 30, 2026. We are checking with the carrier. The carrier is MeridianPost, the tracking number is ME783863230994 and the latest status is: In transit - delayed.\n\nKind regards,\nCustomer Support",
+    "b": "Hello Jonas,\n\nWe apologize for the delay in your order O-000618. The latest tracking status shows your package is In transit - delayed with MeridianPost, tracking number ME783863230994. We are checking with the carrier and your order is still promised for delivery on September 30, 2026.\n\nKind regards,\nCustomer Support"
+  },
+  {
+    "ticket_id": "T-000057",
+    "facts": {
+      "carrier": "MeridianPost",
+      "last_status": "In transit",
+      "order_id": "O-000601",
+      "promised_date": "2026-10-08",
+      "status": "shipped",
+      "tracking_no": "ME254015913624"
+    },
+    "a": "Hello Sana,\n\nYour order O-000601 has been dispatched by MeridianPost. The tracking number is ME254015913624 and the latest status is In transit. Your package is expected to arrive on October 8, 2026.\n\nKind regards,\nCustomer Support",
+    "b": "Hello Sana,\n\nYour order O-000601 has been dispatched. The promised delivery date is October 8, 2026. The carrier is MeridianPost, the tracking number is ME254015913624 and the latest status is: In transit.\n\nKind regards,\nCustomer Support"
+  },
+  {
+    "ticket_id": "T-000058",
+    "facts": {
+      "order_id": "O-000621",
+      "promised_date": "2026-10-15",
+      "status": "processing"
+    },
+    "a": "Hello Dario,\n\nThank you for your patience. Your order O-000621 has not been dispatched yet, so there is no tracking number available. We are aiming for delivery by October 15, 2026.\n\nKind regards,\nCustomer Support",
+    "b": "Hello Dario,\n\nYour order O-000621 has not been dispatched yet, so there is no tracking number at the moment. The promised delivery date is October 15, 2026.\n\nKind regards,\nCustomer Support"
+  },
+  {
+    "ticket_id": "T-000065",
+    "facts": {
+      "carrier": "TrailExpress",
+      "last_status": "In transit - delayed",
+      "order_id": "O-000612",
+      "promised_date": "2026-09-21",
+      "status": "shipped",
+      "tracking_no": "TR285636968112"
+    },
+    "a": "Hello Soren,\n\nWe apologize for the delay in your order O-000612. The latest tracking status shows your package is in transit - delayed with TrailExpress, tracking number TR285636968112. We are checking with the carrier for updates. The original promised delivery date was September 21, 2026.\n\nKind regards,\nCustomer Support",
+    "b": "Hello Soren,\n\nThank you for your patience, and we are sorry that order O-000612 is taking longer than promised. The promised delivery date was September 21, 2026. We are checking with the carrier. The carrier is TrailExpress, the tracking number is TR285636968112 and the latest status is: In transit - delayed.\n\nKind regards,\nCustomer Support"
+  },
+  {
+    "ticket_id": "T-000071",
+    "facts": {
+      "carrier": "TrailExpress",
+      "last_status": "In transit",
+      "order_id": "O-000606",
+      "promised_date": "2026-10-10",
+      "status": "shipped",
+      "tracking_no": "TR416537098091"
+    },
+    "a": "Hello Felix,\n\nYour order O-000606 has been dispatched. The promised delivery date is October 10, 2026. The carrier is TrailExpress, the tracking number is TR416537098091 and the latest status is: In transit.\n\nKind regards,\nCustomer Support",
+    "b": "Hello Felix,\n\nYour order O-000606 has been dispatched by TrailExpress. The tracking number is TR416537098091 and the latest status is In transit. It is expected to arrive by October 10, 2026.\n\nKind regards,\nCustomer Support"
+  },
+  {
+    "ticket_id": "T-000086",
+    "facts": {
+      "order_id": "O-000622",
+      "promised_date": "2026-10-15",
+      "status": "processing"
+    },
+    "a": "Hello Nadia,\n\nYour order O-000622 has not been dispatched yet, so there is no tracking number at the moment. The promised delivery date is October 15, 2026.\n\nKind regards,\nCustomer Support",
+    "b": "Hello Nadia,\n\nThank you for your patience. Your order O-000622 has not been dispatched yet, so there is no tracking number available. We are aiming for delivery by October 15, 2026.\n\nKind regards,\nCustomer Support"
+  },
+  {
+    "ticket_id": "T-000090",
+    "facts": {
+      "carrier": "TrailExpress",
+      "last_status": "In transit - delayed",
+      "order_id": "O-000615",
+      "promised_date": "2026-09-29",
+      "status": "shipped",
+      "tracking_no": "TR587719362730"
+    },
+    "a": "Hello Nadia,\n\nWe apologize for the delay in your order O-000615. It is currently with TrailExpress, tracking number TR587719362730, and is in transit - delayed. The latest promised delivery date remains September 29, 2026. We are checking with the carrier.\n\nKind regards,\nCustomer Support",
+    "b": "Hello Nadia,\n\nThank you for your patience, and we are sorry that order O-000615 is taking longer than promised. The promised delivery date was September 29, 2026. We are checking with the carrier. The carrier is TrailExpress, the tracking number is TR587719362730 and the latest status is: In transit - delayed.\n\nKind regards,\nCustomer Support"
+  },
+  {
+    "ticket_id": "T-000097",
+    "facts": {
+      "carrier": "SwiftShip",
+      "last_status": "In transit",
+      "order_id": "O-000603",
+      "promised_date": "2026-10-11",
+      "status": "shipped",
+      "tracking_no": "SW885998605734"
+    },
+    "a": "Hello Hana,\n\nYour order O-000603 has been dispatched. The promised delivery date is October 11, 2026. The carrier is SwiftShip, the tracking number is SW885998605734 and the latest status is: In transit.\n\nKind regards,\nCustomer Support",
+    "b": "Hello Hana,\n\nYour order O-000603 has been dispatched by SwiftShip. The tracking number is SW885998605734 and the latest status is In transit. Your package is expected to arrive on October 11, 2026.\n\nKind regards,\nCustomer Support"
+  },
+  {
+    "ticket_id": "T-000100",
+    "facts": {
+      "carrier": "SwiftShip",
+      "last_status": "In transit - delayed",
+      "order_id": "O-000616",
+      "promised_date": "2026-09-28",
+      "status": "shipped",
+      "tracking_no": "SW714373880875"
+    },
+    "a": "Hello Elena,\n\nWe apologize for the delay in your order O-000616. The latest tracking status shows it is In transit - delayed with SwiftShip, tracking number SW714373880875. The promised delivery date remains September 28, 2026. We are checking with the carrier.\n\nKind regards,\nCustomer Support",
+    "b": "Hello Elena,\n\nThank you for your patience, and we are sorry that order O-000616 is taking longer than promised. The promised delivery date was September 28, 2026. We are checking with the carrier. The carrier is SwiftShip, the tracking number is SW714373880875 and the latest status is: In transit - delayed.\n\nKind regards,\nCustomer Support"
+  },
+  {
+    "ticket_id": "T-000102",
+    "facts": {
+      "candidates": [
+        {
+          "items": [
+            "Basecamp Fleece Vest 80"
+          ],
+          "order_id": "O-000626"
+        },
+        {
+          "items": [
+            "Backcountry Hiking Pants"
+          ],
+          "order_id": "O-000627"
+        }
+      ]
+    },
+    "a": "Hello Maya,\n\nSo that we look at the right order, please reply with the order number you mean. The orders we can see are: O-000626 (Basecamp Fleece Vest 80); O-000627 (Backcountry Hiking Pants).\n\nKind regards,\nCustomer Support",
+    "b": "Hello Maya,\n\nCould you please let us know which order you are referring to? You have the following options: O-000626 (Basecamp Fleece Vest 80) or O-000627 (Backcountry Hiking Pants). Kindly reply with the order number.\n\nKind regards,\nCustomer Support"
+  },
+  {
+    "ticket_id": "T-000113",
+    "facts": {
+      "candidates": [
+        {
+          "items": [
+            "Ironwood Softshell Pants"
+          ],
+          "order_id": "O-000630"
+        },
+        {
+          "items": [
+            "Highland Trail Runner",
+            "Ironwood Trail Shorts"
+          ],
+          "order_id": "O-000631"
+        }
+      ]
+    },
+    "a": "Hello Sana,\n\nSo that we look at the right order, please reply with the order number you mean. The orders we can see are: O-000630 (Ironwood Softshell Pants); O-000631 (Highland Trail Runner, Ironwood Trail Shorts).\n\nKind regards,\nCustomer Support",
+    "b": "Hello Sana,\n\nCould you please let us know which order you are referring to? You have the following options: O-000630 (Ironwood Softshell Pants) or O-000631 (Highland Trail Runner, Ironwood Trail Shorts). Kindly reply with the order number.\n\nKind regards,\nCustomer Support"
+  },
+  {
+    "ticket_id": "T-000117",
+    "facts": {
+      "order_id": "O-000619",
+      "promised_date": "2026-10-14",
+      "status": "processing"
+    },
+    "a": "Hello Aiden,\n\nYour order O-000619 has not been dispatched yet, so there is no tracking number at the moment. The promised delivery date is October 14, 2026.\n\nKind regards,\nCustomer Support",
+    "b": "Hello Aiden,\n\nThank you for your patience. Your order O-000619 has not been dispatched yet, so there is no tracking number available. We are aiming for delivery on October 14, 2026.\n\nKind regards,\nCustomer Support"
+  },
+  {
+    "ticket_id": "T-000127",
+    "facts": {
+      "carrier": "TrailExpress",
+      "last_status": "In transit",
+      "order_id": "O-000607",
+      "promised_date": "2026-10-11",
+      "status": "shipped",
+      "tracking_no": "TR311102970686"
+    },
+    "a": "Hello Caleb,\n\nYour order O-000607 has been dispatched. The promised delivery date is October 11, 2026. The carrier is TrailExpress, the tracking number is TR311102970686 and the latest status is: In transit.\n\nKind regards,\nCustomer Support",
+    "b": "Hello Caleb,\n\nYour order O-000607 has been dispatched by TrailExpress. The tracking number is TR311102970686 and the latest status is In transit. Your order is expected to arrive on October 11, 2026.\n\nKind regards,\nCustomer Support"
+  },
+  {
+    "ticket_id": "T-000128",
+    "facts": {
+      "carrier": "MeridianPost",
+      "last_status": "In transit",
+      "order_id": "O-000610",
+      "promised_date": "2026-10-10",
+      "status": "shipped",
+      "tracking_no": "ME418933197479"
+    },
+    "a": "Hello Elias,\n\nYour order O-000610 has been dispatched. The promised delivery date is October 10, 2026. The carrier is MeridianPost, the tracking number is ME418933197479 and the latest status is: In transit.\n\nKind regards,\nCustomer Support",
+    "b": "Hello Elias,\n\nYour order O-000610 has been dispatched by MeridianPost. The tracking number is ME418933197479 and the latest status is In transit. It is expected to arrive on October 10, 2026.\n\nKind regards,\nCustomer Support"
+  },
+  {
+    "ticket_id": "T-000129",
+    "facts": {
+      "order_id": "O-000623",
+      "promised_date": "2026-10-15",
+      "status": "processing"
+    },
+    "a": "Hello Kavya,\n\nYour order O-000623 has not been dispatched yet, so there is no tracking number at the moment. The promised delivery date is October 15, 2026.\n\nKind regards,\nCustomer Support",
+    "b": "Hello Kavya,\n\nThank you for your patience. Your order O-000623 has not been dispatched yet, so there is no tracking number available. We are aiming for delivery by October 15, 2026.\n\nKind regards,\nCustomer Support"
+  },
+  {
+    "ticket_id": "T-000131",
+    "facts": {
+      "carrier": "TrailExpress",
+      "last_status": "In transit",
+      "order_id": "O-000604",
+      "promised_date": "2026-10-08",
+      "status": "shipped",
+      "tracking_no": "TR396859942026"
+    },
+    "a": "Hello Liam,\n\nYour order O-000604 has been dispatched by TrailExpress. The tracking number is TR396859942026 and the latest status is In transit. Your order is expected to arrive on October 8, 2026.\n\nKind regards,\nCustomer Support",
+    "b": "Hello Liam,\n\nYour order O-000604 has been dispatched. The promised delivery date is October 8, 2026. The carrier is TrailExpress, the tracking number is TR396859942026 and the latest status is: In transit.\n\nKind regards,\nCustomer Support"
+  },
+  {
+    "ticket_id": "T-000136",
+    "facts": {
+      "order_id": "O-000620",
+      "promised_date": "2026-10-15",
+      "status": "processing"
+    },
+    "a": "Hello Maya,\n\nYour order O-000620 has not been dispatched yet, so there is no tracking number at the moment. The promised delivery date is October 15, 2026.\n\nKind regards,\nCustomer Support",
+    "b": "Hello Maya,\n\nThank you for your patience. Your order O-000620 has not been dispatched yet, so there is no tracking number available. We are aiming for delivery by October 15, 2026.\n\nKind regards,\nCustomer Support"
+  },
+  {
+    "ticket_id": "T-000139",
+    "facts": {
+      "carrier": "MeridianPost",
+      "last_status": "In transit",
+      "order_id": "O-000609",
+      "promised_date": "2026-10-08",
+      "status": "shipped",
+      "tracking_no": "ME604158725591"
+    },
+    "a": "Hello Uma,\n\nYour order O-000609 has been dispatched by MeridianPost. The tracking number is ME604158725591 and the latest status is In transit. Your package is expected to arrive on October 8, 2026.\n\nKind regards,\nCustomer Support",
+    "b": "Hello Uma,\n\nYour order O-000609 has been dispatched. The promised delivery date is October 8, 2026. The carrier is MeridianPost, the tracking number is ME604158725591 and the latest status is: In transit.\n\nKind regards,\nCustomer Support"
+  },
+  {
+    "ticket_id": "T-000141",
+    "facts": {
+      "carrier": "MeridianPost",
+      "last_status": "In transit",
+      "order_id": "O-000721",
+      "promised_date": "2026-10-11",
+      "status": "shipped",
+      "tracking_no": "ME661216394322"
+    },
+    "a": "Hello Omar,\n\nYour order O-000721 has been dispatched. The promised delivery date is October 11, 2026. The carrier is MeridianPost, the tracking number is ME661216394322 and the latest status is: In transit.\n\nKind regards,\nCustomer Support",
+    "b": "Hello Omar,\n\nYour order O-000721 has been dispatched by MeridianPost. The tracking number is ME661216394322, and the latest status is In transit. Your package is expected to arrive on October 11, 2026.\n\nKind regards,\nCustomer Support"
+  }
+]

@@ -1,0 +1,19 @@
+Phase 1 final development runs (dataset v1.0.0, dev split, 150 tickets)
+Runs: 3B model run-20261008-125448-acaa8f | 7B model run-20261008-131023-b2e156 | template-only run-20261008-150545-5cf810
+Code: commit 80ad5ec0 (model runs), a2ab6649 (template-only); clean trees. Run db sha256 403baccf822814944c730397f9c09e7d0804cb5d26d6d5b488058f7dbaf14705
+
+Read step         3B                     7B
+category          137/150 (91.3%)        139/150 (92.7%)
+legal flag        4/4, 0 false alarms    4/4, 7 false alarms
+Set A end to end  33/35                  35/35
+Set B handed over 115/115                115/115
+Set B answered    0                      0
+Set B escalated unnecessarily 0          7 (6.1%)
+Fallbacks         10/29                  3/31
+Set A latency     11.7 / 19.2 / 21.1 s   26.0 / 40.8 / 46.5 s (median/p90/max)
+Template-only: same decisions as 3B, 33/35, median 4.0 s
+
+Blind review (data/reviews/final-3b, final-7b)
+3B: model 6, template 5, tie 8, p=1.0; fact errors 0/19 both; awkward model 0/19, template 3/19
+7B: model 8, template 1, tie 17, p=0.039; flags 0/26 both
+Raw scorer and comparison console output: see the run directories' score.json.

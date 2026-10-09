@@ -553,3 +553,10 @@ which the runs decided differently are excluded and listed instead of aborting),
 the five defective 3B replies and none of the 28 accepted 7B replies. It was written after seeing those five, so it is a rule about what the supplied date means
 and not a tuned threshold; the final runs are the test of it.
 **Next:** final runs on the corrected code (3B, 3B template-only, 7B), blind review of the model-written replies, the first evaluation report.
+
+
+## Stage 1.7: Demonstration, tool-access decision and Phase 1 exit (2026-10-09)
+**Built:** `src/agent/demo.py` (`python -m src.agent.demo --list N` / `--ticket ID [--model M] [--reply-mode R]`), which runs one development ticket through the pipeline and prints each step, the decision and the reply. It reads no labels, writes no traces, refuses the held-out split. 578 tests (5 new).
+**Decided:** ADR-008, in-process read-only tools in Phase 1; MCP adapter built with the Actions server in Phase 3.
+**Closed:** Phase 1 exit review (`docs/project/phase-1-exit-review.md`). Old smoke-test scripts removed (results are recorded in ADR-003).
+**Next:** Phase 2, first stage: read prompt v4 for legal-flag precision, then knowledge-base retrieval.
