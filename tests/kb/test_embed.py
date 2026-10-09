@@ -56,3 +56,12 @@ def test_hybrid_fuses_ranks_from_both_indexes():
     fused = embed.HybridIndex(Fixed(["KB-A", "KB-B"]), Fixed(["KB-B", "KB-C"])).search("x", 3)
     assert [h.kb_id for h in fused] == ["KB-B", "KB-A", "KB-C"]
     assert fused[0].score == pytest.approx(1 / 62 + 1 / 61, abs=1e-6)
+
+
+def test_model_digest_matches_a_bare_name_to_its_latest_tag_and_fails_quietly():
+    tags = {"models": [{"name": "nomic-embed-text:latest", "model": "nomic-embed-text:latest", "digest": "abc123"},
+                       {"name": "qwen2.5:7b", "model": "qwen2.5:7b", "digest": "def456"}]}
+    assert embed.model_digest("nomic-embed-text", transport=lambda *a: tags) == "abc123"
+    assert embed.model_digest("qwen2.5:7b", transport=lambda *a: tags) == "def456"
+    assert embed.model_digest("missing", transport=lambda *a: tags) == ""
+    assert embed.model_digest("x", transport=lambda *a: (_ for _ in ()).throw(OSError("down"))) == ""

@@ -611,3 +611,16 @@ and not a tuned threshold; the final runs are the test of it.
 **Built:** `src/agent/knowledge.py` (three gates: similarity score at least 0.65, a yes/no model check that the article's key facts answer the question, and a validated reply; failing any gate hands the ticket over); prompts `knowledge_check.v1` and `knowledge_reply.v1`; `validate_knowledge_reply` and `draft_knowledge_reply` (writer sees only the key facts; fallback is the key facts themselves; template passes the validator for all 21 articles); pipeline step `knowledge` behind `--knowledge`; run metadata records the embedding model, threshold and prompt hashes; `src/evaluation/knowledge.py` measures the path on the probe file. Probe labels widened for four duplicate-fact cases (design 4.1). 630 tests (33 new); six mutation checks each failed a test (one survivor found and covered).
 **Not yet measured:** the path has been run only against scripted models. The probe run and the product_info tickets need the real models (stage 2.4 results).
 **Next:** run `python -m src.evaluation.knowledge`, then fold product_info tickets into the scorer in stage 2.7.
+
+
+### 2.4b Knowledge-path diagnostics and embedding digest
+
+**Why.** The first stage 2.4 probe run answered 21 of 36 answerable probes (58%) with no wrong answers and 0 of 12 unanswerable probes answered. Eleven probes were handed over at the model check, eight of them with the correct article retrieved. The output could not distinguish a model "no" from a failed call.
+
+**Changes.**
+- `src/evaluation/knowledge.py`: per-probe check verdict (`yes`, `no`, `error:<code>`, `invalid`, `-`); `--check-only` (tests the check on the labelled article and on a retrieved non-answering article); `--show-replies N`; embedding digest in the header.
+- `src/kb/embed.py`: `model_digest()` reads the model digest from Ollama.
+- `src/agent/run.py`: records `embed_digest` in the run metadata (as ADR-009 states).
+- Tests added for the verdicts, check-only mode, reply display and digest lookup. Suite: 634 passed.
+
+**No change** to gates, thresholds or prompts. Those are adjusted only after the diagnostic output is reviewed.

@@ -24,6 +24,22 @@ DOCUMENT_PREFIX, QUERY_PREFIX = "search_document: ", "search_query: "     # nomi
 RRF_K = 60
 
 
+def model_digest(model: str = DEFAULT_EMBED_MODEL, base_url: str = DEFAULT_URL, transport: Callable = urllib_transport) -> str:
+    """Content digest of the installed embedding model from /api/tags, so a run can show which model produced its vectors.
+    Ollama lists a model pulled without a tag as ``name:latest``. Empty if it cannot be read."""
+    if urlparse(base_url).hostname not in LOCAL_HOSTS:
+        raise ValueError("the project runs local models only")
+    try:
+        tags = transport("GET", f"{base_url}/api/tags", None, 10)
+    except (OSError, ValueError, urllib.error.URLError):
+        return ""
+    wanted = {model, model if ":" in model else f"{model}:latest"}
+    for entry in tags.get("models", []):
+        if wanted & {entry.get("name"), entry.get("model")}:
+            return str(entry.get("digest", ""))
+    return ""
+
+
 class EmbeddingError(RuntimeError):
     pass
 

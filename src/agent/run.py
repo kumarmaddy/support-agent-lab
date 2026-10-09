@@ -23,6 +23,7 @@ from src.agent.prompting import Prompt, load_prompt
 from src.agent.reading import MAX_TOKENS, READ_SCHEMA, render_system, render_user
 from src.agent.tools import Toolbox
 from src.agent.tracing import TraceWriter, new_run_id
+from src.kb.embed import model_digest
 from src.kb.articles import load_articles
 
 # ADR-007: qwen2.5:7b with read prompt v4 is the default. llama3.2:3b is the fast development model and needs --read-prompt v3
@@ -66,7 +67,7 @@ def warm_up(model: ModelClient, read_prompt: Prompt) -> int:
 
 def build_meta(model: ModelClient, read_prompt: Prompt, reply_prompt: Prompt, db_path: Path, seed: int, ticket_ids: list,
                argv: Optional[list] = None, digest: str = "", warmup_ms: int = 0, reply_mode: str = "model", knowledge: Optional[Knowledge] = None,
-               embed_model: str = "") -> dict:
+               embed_model: str = "", embed_digest: str = "") -> dict:
     return {
         "started_at": datetime.now(timezone.utc).isoformat(timespec="seconds"),
         "model": {"tag": model.model, "digest": digest},
@@ -78,7 +79,7 @@ def build_meta(model: ModelClient, read_prompt: Prompt, reply_prompt: Prompt, db
         "dataset": {"db_file": Path(db_path).name, "db_sha256": file_sha256(db_path)},
         "tickets": len(ticket_ids),
         "code": code_version(),
-        "knowledge": None if knowledge is None else {"embed_model": embed_model, "min_score": knowledge.min_score,
+        "knowledge": None if knowledge is None else {"embed_model": embed_model, "embed_digest": embed_digest, "min_score": knowledge.min_score,
                                                        "check_prompt": {"label": knowledge.check_prompt.label, "sha256": knowledge.check_prompt.sha256},
                                                        "reply_prompt": {"label": knowledge.reply_prompt.label, "sha256": knowledge.reply_prompt.sha256}},
         "python": platform.python_version(),
@@ -138,7 +139,8 @@ def main(argv=None) -> int:
         knowledge = Knowledge(EmbeddingIndex(articles, args.embed_model), articles, load_prompt("knowledge_check", "v1"),
                               load_prompt("knowledge_reply", "v1"), args.min_score)
     meta = build_meta(model, read_prompt, reply_prompt, args.db, args.seed, ids, argv if argv is not None else sys.argv[1:], model.digest(), warmup_ms,
-                      args.reply_mode, knowledge, args.embed_model if knowledge else "")
+                      args.reply_mode, knowledge, args.embed_model if knowledge else "",
+                      model_digest(args.embed_model) if knowledge else "")
     with TraceWriter(args.out, new_run_id(), meta) as writer:
         run_tickets(box, model, read_prompt, reply_prompt, internal_guidance(articles), ids, writer, args.seed, args.reply_mode, knowledge,
                     progress=lambda i, n, r: print(f"[{i}/{n}] {r.ticket_id} {r.action} ({r.reason}) reply by {r.reply_source}", flush=True))
