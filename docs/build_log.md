@@ -591,3 +591,10 @@ and not a tuned threshold; the final runs are the test of it.
 **Finding:** word matching on whole tickets gives hit@1 of 49% and hit@3 of 72% overall, 26% for order-status tickets (the right article follows from the order state, not the words) and 62% / 88% for knowledge questions (n = 8). Design consequence: articles for transactional tickets stay chosen by decision rules; retrieval serves knowledge questions only.
 **Open decisions (design section 4):** probe set for knowledge questions, embedding comparison, "I don't know" threshold.
 **Next:** stage 2.3, on approval of the decisions.
+
+
+## Stage 2.3a: Knowledge-question probe set and embedding retrieval (2026-10-09)
+**Built:** `data/probes/knowledge_questions.jsonl` (36 answerable knowledge questions covering all 21 articles and 12 questions the knowledge base cannot answer; written before any retrieval result was seen; kept apart from the frozen dataset); `src/kb/embed.py` (local embedding index through Ollama, cosine ranking, and a hybrid of two rankings by reciprocal rank fusion); `src/evaluation/retrieval.py` extended with `--probes`, `--method bm25|embed|hybrid` and a threshold table for the "I don't know" rule. 597 tests (8 new).
+**BM25 on the probes (`docs/evidence/retrieval-probes-bm25.txt`):** hit@1 27/36 = 75% (59-86%); hit@3 32/36 = 89% (75-96%). A minimum-score rule at 3.07 still answers 8% of the unanswerable questions, and the one unanswerable question that gets a high score (down sourcing, 11.1) is matched to the sleeping-bag care article by the word "down".
+**Limitation:** the probes were written by the same author as the system; each is reviewed by the project lead before use. Probe questions are not tickets, so no action or escalation is scored.
+**Next:** run embed and hybrid on the probes and tickets, then ADR-009.

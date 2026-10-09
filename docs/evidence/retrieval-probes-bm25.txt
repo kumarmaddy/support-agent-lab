@@ -1,0 +1,31 @@
+method bm25
+answerable probes 36: hit@1 27/36 = 75% (59%-86%); hit@3 32/36 = 89% (75%-96%)
+unanswerable probes 12
+
+minimum score -> right article | wrong article | unanswerable questions still answered
+     0.0000     75%     25%    100%
+     3.0662     72%     25%      8%
+     4.0250     69%     11%      8%
+     5.1113     58%      6%      8%
+     6.8090     44%      6%      8%
+     8.8187     28%      3%      8%
+    10.3572     17%      0%      8%
+    14.1725      3%      0%      0%
+
+first-place misses (id, required, ranked, best score):
+  P-005 ['KB-ADR-01'] -> ['KB-ORD-01', 'KB-ADR-01', 'KB-ACC-01'] 8.819
+  P-008 ['KB-CAN-01'] -> ['KB-REF-03', 'KB-CAN-01'] 3.066
+  P-013 ['KB-REF-01'] -> ['KB-REF-03', 'KB-REF-04', 'KB-RET-02'] 3.066
+  P-017 ['KB-REF-03'] -> ['KB-RET-04', 'KB-REF-03', 'KB-SIZ-01'] 4.418
+  P-019 ['KB-RET-01'] -> ['KB-RET-02', 'KB-REF-03', 'KB-RET-03'] 3.728
+  P-025 ['KB-RET-04'] -> ['KB-SIZ-01', 'KB-RET-04'] 7.930
+  P-027 ['KB-SEC-01'] -> ['KB-REF-03', 'KB-CAN-01', 'KB-REF-01'] 4.025
+  P-029 ['KB-SHP-01'] -> ['KB-SHP-03', 'KB-SHP-01', 'KB-SIZ-01'] 3.561
+  P-033 ['KB-SHP-03'] -> ['KB-ORD-01'] 3.577
+
+unanswerable questions with the highest best score:
+  P-047 ['KB-CAR-01'] 11.103
+  P-043 ['KB-ORD-02'] 2.940
+  P-038 ['KB-REF-04'] 2.861
+  P-039 ['KB-RET-03'] 2.861
+  P-045 ['KB-SHP-02'] 2.787
