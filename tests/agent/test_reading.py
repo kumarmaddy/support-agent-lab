@@ -166,7 +166,7 @@ def test_none_like_wording_is_an_empty_phrase_not_a_failure(word):
     assert r is not None and r.deadline_phrase == ""
 
 
-@pytest.mark.parametrize("version", ["v2", "v3"])
+@pytest.mark.parametrize("version", ["v2", "v3", "v4"])
 def test_each_read_prompt_version_renders_fully(version):
     text = render_system(load_prompt("read_ticket", version))
     assert all(name in text for name in CATEGORIES) and all(rule in text for rule in BOUNDARY_RULES) and "{" not in text
@@ -176,6 +176,14 @@ def test_prompt_v3_excludes_placed_and_promised_dates():
     text = load_prompt("read_ticket", "v3").text
     assert "placed, dispatched, delivered or promised is never a needed-by date" in text
     assert "placed" not in load_prompt("read_ticket", "v2").text.split("3. mentions")[0].split("2. deadline_phrase")[1]
+
+
+def test_prompt_v4_separates_payment_problems_from_threats_and_keeps_v3_date_rule():
+    text = load_prompt("read_ticket", "v4").text
+    assert "reporting a wrong or duplicate charge" in text and "stating their own intention" in text
+    for step in ("chargeback", "lawyer", "lawsuit", "regulator"):
+        assert step in text
+    assert text.split("3. mentions")[0] == load_prompt("read_ticket", "v3").text.split("3. mentions")[0]
 
 
 # ------------------------------------------------------------------ the retry tells the model what was wrong

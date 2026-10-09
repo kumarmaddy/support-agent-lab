@@ -44,6 +44,7 @@ def main(argv=None) -> int:
     deadline_misses, failures = [], []
     confusion = collections.Counter()
     flag_checks = collections.Counter()
+    legal_false_alarms = []
     for lab in labels:
         subject, body, received = conn.execute("SELECT subject, body, received_at FROM tickets WHERE ticket_id=?", (lab["ticket_id"],)).fetchone()
         out = read_ticket(model, prompt, subject, body)
@@ -61,6 +62,11 @@ def main(argv=None) -> int:
             misses.append((lab["ticket_id"], lab["scenario_id"], lab["category"], got))
         want_legal = bool(lab["priority_attributes"]["chargeback_or_legal_threat"])
         flag_checks["legal_agree"] += out.reading.mentions_chargeback_or_legal == want_legal
+        flag_checks["legal_tp"] += out.reading.mentions_chargeback_or_legal and want_legal
+        flag_checks["legal_fn"] += want_legal and not out.reading.mentions_chargeback_or_legal
+        if out.reading.mentions_chargeback_or_legal and not want_legal:
+            flag_checks["legal_fp"] += 1
+            legal_false_alarms.append((lab["ticket_id"], lab["scenario_id"], lab["category"]))
         wanted = lab["expected_facts"].get("deadline_date")
         resolved = resolve_deadline(out.reading.deadline_phrase, date.fromisoformat(received[:10]))
         flag_checks["deadline_agree"] += (resolved.isoformat() if resolved else None) == wanted
@@ -73,6 +79,7 @@ def main(argv=None) -> int:
           + (f" = {hits / scored:.1%}" if scored else ""))
     if scored:
         print(f"chargeback/legal flag agrees with label: {flag_checks['legal_agree']}/{scored}")
+        print(f"  legal flag: caught {flag_checks['legal_tp']}, missed {flag_checks['legal_fn']}, false alarms {flag_checks['legal_fp']}")
         print(f"deadline date (wording resolved in code) equals the labelled deadline, or both absent: "
               f"{flag_checks['deadline_agree']}/{scored}  (tickets with a labelled deadline: {flag_checks['deadline_labelled']})")
     if latencies:
@@ -85,6 +92,10 @@ def main(argv=None) -> int:
     print(f"\nfirst {args.show_misses} misses (ticket, scenario, label, model):")
     for miss in misses[: args.show_misses]:
         print("  ", *miss)
+    if legal_false_alarms:
+        print("\nlegal flag false alarms (ticket, scenario, category):")
+        for item in legal_false_alarms:
+            print("  ", *item)
     if failures:
         print("\nfailed readings (ticket, scenario, reason, what the model returned on each try):")
         for item in failures:

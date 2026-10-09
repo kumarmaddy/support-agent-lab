@@ -560,3 +560,11 @@ and not a tuned threshold; the final runs are the test of it.
 **Decided:** ADR-008, in-process read-only tools in Phase 1; MCP adapter built with the Actions server in Phase 3.
 **Closed:** Phase 1 exit review (`docs/project/phase-1-exit-review.md`). Old smoke-test scripts removed (results are recorded in ADR-003).
 **Next:** Phase 2, first stage: read prompt v4 for legal-flag precision, then knowledge-base retrieval.
+
+
+## Stage 2.1: Read prompt v4, legal-flag precision (2026-10-09)
+**Problem (ADR-007 condition, risk R18):** with read prompt v3 the qwen2.5:7b reader flagged 7 development tickets as chargeback or legal threats that are not (duplicate or wrong charges, bank statements, requests to skip review). 3B had none. Escalation is the safe direction, but 7 of 115 out-of-scope tickets (6.1%) were escalated unnecessarily.
+**Change:** `read_ticket.v4.md` rewrites field 3 only: a threat must be the customer's own stated intention to take a named step (chargeback, bank dispute, lawyer, lawsuit, regulator), and payment problems, refund requests, bank statements and instructions to skip review are listed as not threats. The category and deadline text is unchanged from v3 (tested). The wording describes the rule and quotes no ticket text. `scripts/probe_read_step.py` now reports legal flags caught, missed and falsely raised, and lists the false alarms.
+**Evidence:** 580 tests. The prompt has not yet been run against a model; v3 remains the default until it passes the acceptance test below.
+**Acceptance test (fixed before the run):** on the 150 development tickets with qwen2.5:7b, v4 must catch all 4 labelled threats, raise at most 2 false alarms, and keep category agreement within 2 tickets of v3 (139). It is also run on llama3.2:3b and must catch all 4 with no new false alarms.
+**Limitation:** the 7 false alarms were seen on this development set, so a pass here is an optimistic estimate; the held-out split in Phase 4 is the real test.
