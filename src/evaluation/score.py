@@ -18,7 +18,7 @@ from src.baseline.scoring import wilson_interval
 from src.evaluation.slice import in_scope
 
 ANSWERS = ("provide_info", "request_info", "decline_policy")     # actions that reply to the customer without a person
-PROPOSALS = ("propose_cancellation", "propose_address_change", "propose_return_label", "propose_exchange", "propose_replacement")   # the agent proposes, a person acts
+PROPOSALS = ("propose_cancellation", "propose_address_change", "propose_return_label", "propose_exchange", "propose_replacement", "propose_refund")   # the agent proposes, a person acts
 HAND_OVERS = ("route_to_human", "escalate_human")
 FACT_KEYS = {"order_status": "status", "promised_date": "promised_date", "carrier": "carrier", "tracking_no": "tracking_no",
              "last_status": "last_status", "deadline_date": "deadline_date"}
@@ -27,6 +27,11 @@ FACT_KEYS = {"order_status": "status", "promised_date": "promised_date", "carrie
 # scorer checks that the agent's own count is consistent with its request date instead.
 RETURN_FACT_KEYS = {"delivered_date": "delivered_date", "within_return_window": "within_return_window",
                     "return_window_days": "return_window_days", "current_size": "current_size", "requested_size": "requested_size"}
+# facts a refund resolution carries (stage 2.5c): amounts and ids come from the payment and refund records, never from the ticket
+REFUND_FACT_KEYS = {"refund_status": "refund_status", "refund_amount_cents": "refund_amount_cents", "refund_requested_date": "refund_requested_date",
+                    "return_received_date": "return_received_date", "duplicate_amount_cents": "duplicate_amount_cents",
+                    "duplicate_payment_id": "duplicate_payment_id", "approval_required": "approval_required"}
+REFUND_SCOPE_CATEGORIES = ("return_exchange", "refund")
 HELDOUT_REFUSAL = "Refusing to score against the held-out split (it is opened once, in Phase 4)."
 
 
@@ -48,12 +53,16 @@ def facts_agree(resolution: dict, label: dict) -> bool:
             continue                    # a far-away deadline is labelled but only the hand-over states it
         if label_key in want and got.get(fact_key) != want[label_key]:
             return False
-    if label["category"] == "return_exchange":
+    if label["category"] == "refund":
+        for label_key, fact_key in REFUND_FACT_KEYS.items():
+            if label_key in want and got.get(fact_key) != want[label_key]:
+                return False
+    if label["category"] in REFUND_SCOPE_CATEGORIES:
         for label_key, fact_key in RETURN_FACT_KEYS.items():
             if label_key in want and got.get(fact_key) != want[label_key] and not (
                     label_key in ("current_size", "requested_size") and resolution.get("reason") not in ("exchange_within_window", "size_missing")):
                 return False
-    if label["category"] == "return_exchange" and "days_since_delivery" in got:
+    if label["category"] in REFUND_SCOPE_CATEGORIES and "days_since_delivery" in got:
         counted = (date.fromisoformat(got["request_date"]) - date.fromisoformat(got["delivered_date"])).days
         if counted != got["days_since_delivery"]:
             return False
@@ -68,9 +77,9 @@ def facts_agree(resolution: dict, label: dict) -> bool:
 
 
 def score_ticket(resolution: dict, label: dict, read_category: Optional[str], read_legal: Optional[bool] = None,
-                 transactions: bool = False) -> dict:
+                 transactions: bool = False, refunds: bool = False) -> dict:
     expected_action = label["expected_actions"][0]
-    row = {"ticket_id": label["ticket_id"], "in_slice": in_scope(label, transactions), "scenario_id": label["scenario_id"],
+    row = {"ticket_id": label["ticket_id"], "in_slice": in_scope(label, transactions, refunds), "scenario_id": label["scenario_id"],
            "label_category": label["category"], "read_category": read_category, "category_ok": read_category == label["category"],
            "read_legal": read_legal, "label_legal": bool(label["priority_attributes"]["chargeback_or_legal_threat"]),
            "action": resolution["action"], "reason": resolution["reason"], "reply_source": resolution["reply_source"],
@@ -124,7 +133,8 @@ def score_run(run_dir: Path, labels: list) -> dict:
         raise SystemExit(f"Tickets in the run without a development label: {unknown[:5]}")
     meta = json.loads((run_dir / "run.json").read_text(encoding="utf-8")) if (run_dir / "run.json").exists() else {}
     transactions = bool(meta.get("transactions"))                  # the scope is whatever the run was switched on to handle
-    rows = [score_ticket(r, by_id[r["ticket_id"]], *results.get(r["ticket_id"], (None, None)), transactions) for r in resolutions]
+    refunds = bool((meta.get("transactions") or {}).get("refund_prompt"))        # the refund step was part of the run
+    rows = [score_ticket(r, by_id[r["ticket_id"]], *results.get(r["ticket_id"], (None, None)), transactions, refunds) for r in resolutions]
     a, b = [r for r in rows if r["in_slice"]], [r for r in rows if not r["in_slice"]]
     summary = json.loads((run_dir / "summary.json").read_text(encoding="utf-8")) if (run_dir / "summary.json").exists() else {}
     answered_correctly = [r for r in a if r["end_to_end_ok"] and r["action"] in ANSWERS]

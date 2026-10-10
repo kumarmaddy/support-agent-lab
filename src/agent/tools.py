@@ -7,7 +7,8 @@ Rules enforced here:
 - The connection is read-only (opened with ``mode=ro`` and ``PRAGMA query_only``), so no tool can change data (ADR-005).
 - Every argument is validated before it reaches SQL, and SQL always uses bound parameters.
 - ``get_order`` refuses an order that belongs to another customer and then reveals nothing about it (privacy, KB-SEC-01).
-- Results contain only what the pipeline needs: no postal addresses, card digits or payment records (NFR-3).
+- Results contain only what the pipeline needs: no postal addresses and no card digits (NFR-3). Payment, refund and return records are
+  returned only by ``get_payment_records``, with ids, amounts, statuses and dates, for an order the verified customer owns.
 - Expected conditions (not found, not owned, invalid argument) are returned as a status, not raised, so callers handle them explicitly.
 """
 import re
@@ -85,6 +86,40 @@ class OpenOrder:
 
 
 @dataclass(frozen=True)
+class Payment:
+    payment_id: str
+    amount_cents: int
+    status: str                       # captured / refunded / duplicate_flagged
+    created_at: str
+
+
+@dataclass(frozen=True)
+class RefundRecord:
+    refund_id: str
+    payment_id: str
+    amount_cents: int
+    status: str                       # pending / processed
+    requested_at: str
+
+
+@dataclass(frozen=True)
+class ReturnRecord:
+    return_id: str
+    status: str
+    label_issued_at: str | None
+    received_at: str | None
+
+
+@dataclass(frozen=True)
+class PaymentRecords:
+    """What the records say about the money on one order. Card digits are never read."""
+    order_id: str
+    payments: tuple[Payment, ...]
+    refunds: tuple[RefundRecord, ...]
+    returns: tuple[ReturnRecord, ...]
+
+
+@dataclass(frozen=True)
 class ToolResult:
     status: str
     data: object | None = None
@@ -123,6 +158,9 @@ TOOL_SCHEMAS = {
                                 customer_id="Customer id, for example C-000042"),
     "get_order": _schema("Return one order with its items and shipment. Refuses an order that belongs to another customer.",
                          order_id="Order id, for example O-000123", customer_id="The verified customer asking about the order"),
+    "get_payment_records": _schema("Return the payments, refunds and returns recorded for one order (amounts, statuses, dates; never card digits). "
+                                   "Refuses an order that belongs to another customer.",
+                                   order_id="Order id, for example O-000123", customer_id="The verified customer asking about the order"),
 }
 
 
@@ -178,6 +216,23 @@ class Toolbox:
         shipment = self.conn.execute("SELECT carrier, tracking_no, dispatched_at, delivered_at, last_status FROM shipments "
                                      "WHERE order_id = ?", (order_id,)).fetchone()
         return ToolResult(OK, Order(*row, items=self._items(order_id), shipment=Shipment(*shipment) if shipment else None))
+
+    def get_payment_records(self, order_id: str, customer_id: str) -> ToolResult:
+        if not _matches(ORDER_ID, order_id) or not _matches(CUSTOMER_ID, customer_id):
+            return ToolResult(INVALID, detail="order_id must look like O-000123 and customer_id like C-000123")
+        row = self.conn.execute("SELECT customer_id FROM orders WHERE order_id = ?", (order_id,)).fetchone()
+        if row is None:
+            return ToolResult(NOT_FOUND, detail="no such order")
+        if row[0] != customer_id:
+            return ToolResult(NOT_OWNED, detail="this order does not belong to the verified customer")
+        payments = tuple(Payment(*r) for r in self.conn.execute(
+            "SELECT payment_id, amount_cents, status, created_at FROM payments WHERE order_id = ? ORDER BY created_at, payment_id", (order_id,)))
+        refunds = tuple(RefundRecord(*r) for r in self.conn.execute(
+            "SELECT r.refund_id, r.payment_id, r.amount_cents, r.status, r.requested_at FROM refunds r JOIN payments p USING (payment_id) "
+            "WHERE p.order_id = ? ORDER BY r.requested_at, r.refund_id", (order_id,)))
+        returns = tuple(ReturnRecord(*r) for r in self.conn.execute(
+            "SELECT return_id, status, label_issued_at, received_at FROM returns WHERE order_id = ? ORDER BY return_id", (order_id,)))
+        return ToolResult(OK, PaymentRecords(order_id, payments, refunds, returns))
 
     # ------------------------------------------------------------------ dispatch by name (what a model-driven loop would use)
     def call(self, name: str, arguments: dict) -> dict:

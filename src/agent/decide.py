@@ -18,12 +18,15 @@ PROVIDE_INFO, REQUEST_INFO, ESCALATE_HUMAN, ROUTE_TO_HUMAN = "provide_info", "re
 # proposals and refusals for transactional tickets (phase-2-design.md, section 6): the agent proposes, a person acts
 PROPOSE_CANCELLATION, PROPOSE_ADDRESS_CHANGE, DECLINE_POLICY = "propose_cancellation", "propose_address_change", "decline_policy"
 PROPOSE_RETURN_LABEL, PROPOSE_EXCHANGE, PROPOSE_REPLACEMENT = "propose_return_label", "propose_exchange", "propose_replacement"
+PROPOSE_REFUND = "propose_refund"
+REFUND_PENDING_DAYS = 7                       # KB-REF-01: the refund is issued within 5 to 7 calendar days after the return is received
 RETURN_WINDOW_DAYS = 30                       # KB-RET-01: the day of delivery is day 0; day 30 is inside the window, day 31 is not
 
 # the ticket categories the agent handles. Phase 1 handled order status only; --transactions adds the rest, one stage at a time.
 PHASE1_SCOPE = frozenset({"order_status"})
 TRANSACTION_SCOPE = PHASE1_SCOPE | {"cancellation", "address_change"}
 RETURNS_SCOPE = TRANSACTION_SCOPE | {"return_exchange"}
+REFUNDS_SCOPE = RETURNS_SCOPE | {"refund"}
 
 # identification outcomes
 IDENTIFIED, NO_ACCOUNT, ORDER_NOT_FOUND, ORDER_NOT_OWNED = "identified", "no_account", "order_not_found", "order_not_owned"
@@ -46,6 +49,15 @@ class ReturnRequest:
     kind: str
     item: Optional[tools.OrderLine] = None
     requested_size: str = ""
+
+
+@dataclass(frozen=True)
+class RefundRequest:
+    """What a refund ticket is about (the model's topic, checked against the records in decide) with the payment records of the order and the
+    dollar amounts the customer wrote (in cents; used only to check that the customer and the records agree)."""
+    topic: str
+    records: Optional[tools.PaymentRecords] = None
+    stated_amounts: tuple = ()
 
 
 @dataclass(frozen=True)
@@ -87,7 +99,7 @@ def _day(stamp: Optional[str]) -> Optional[str]:
 
 
 def decide(reading: Reading, identity: Optional[Identity], today: date, scope: frozenset = PHASE1_SCOPE,
-           requested_address: str = "", request: Optional[ReturnRequest] = None) -> Decision:
+           requested_address: str = "", request: Optional[ReturnRequest] = None, refund: Optional[RefundRequest] = None) -> Decision:
     # 1. threat of chargeback or legal action: always escalated (KB-REF-04), whatever the category; no account details are read
     if reading.mentions_chargeback_or_legal:
         return Decision(ESCALATE_HUMAN, "chargeback_or_legal_threat", "KB-REF-04")
@@ -118,6 +130,8 @@ def decide(reading: Reading, identity: Optional[Identity], today: date, scope: f
         return _address_change(order, shipment, base, requested_address)
     if reading.category == "return_exchange":
         return _return_exchange(order, shipment, base, request, today)
+    if reading.category == "refund":
+        return _refund(order, shipment, base, refund, today)
     # 4. by order state
     if order.status == "processing":
         deadline = resolve_deadline(reading.deadline_phrase, today)
@@ -200,3 +214,86 @@ def _return_exchange(order, shipment, base: dict, request: Optional[ReturnReques
     if not request.requested_size or request.requested_size == current.upper():
         return Decision(REQUEST_INFO, "size_missing", "KB-RET-04", {**facts, "candidates": [{"order_id": order.order_id}]})
     return Decision(PROPOSE_EXCHANGE, "exchange_within_window", "KB-RET-04", {**facts, "requested_size": request.requested_size})
+
+
+# ------------------------------------------------------------------ refunds (stage 2.5c)
+def _refund(order, shipment, base: dict, refund: Optional[RefundRequest], today: date) -> Decision:
+    """KB-REF-01 to KB-REF-03. The model only says what the ticket is about; every amount and date comes from the records. A refund is
+    only ever proposed (a person approves it), the order's own records must support it, and the reply states no amount or date the
+    records do not hold."""
+    if refund is None or refund.records is None:
+        return Decision(ROUTE_TO_HUMAN, "refund_records_unavailable", None, base)
+    records = refund.records
+    if refund.topic == "status":
+        return _refund_status(base, records, today)
+    if refund.topic == "duplicate_charge":
+        return _duplicate_charge(order, shipment, base, refund, today)
+    if refund.topic in ("item_refund", "item_unspecified"):
+        return _item_refund(order, shipment, base, refund, today)
+    return Decision(ROUTE_TO_HUMAN, "request_not_covered", None, base)
+
+
+def _refund_status(base: dict, records: tools.PaymentRecords, today: date) -> Decision:
+    """KB-REF-01: say whether the refund is pending or processed and for how much. A pending refund is described only while it is inside
+    the 5 to 7 day period counted from the day the return was received; after that a person looks into it."""
+    if not records.refunds:
+        return Decision(ROUTE_TO_HUMAN, "no_refund_on_record", None, base)
+    if len(records.refunds) > 1:
+        return Decision(ROUTE_TO_HUMAN, "refund_ambiguous", None, base)
+    refund = records.refunds[0]
+    received = next((_day(r.received_at) for r in records.returns if r.status == "received" and r.received_at), None)
+    facts = {**base, "refund_status": refund.status, "refund_amount_cents": refund.amount_cents,
+             "refund_requested_date": _day(refund.requested_at), "request_date": today.isoformat()}
+    if received:
+        facts["return_received_date"] = received
+    if refund.status == "processed":
+        return Decision(PROVIDE_INFO, "refund_processed", "KB-REF-01", facts)
+    if refund.status != "pending":
+        return Decision(ROUTE_TO_HUMAN, "refund_state_not_covered", None, facts)
+    if not received:
+        return Decision(ROUTE_TO_HUMAN, "refund_pending_without_return", None, facts)
+    waited = (today - date.fromisoformat(received)).days
+    facts["days_since_return_received"] = waited
+    if not 0 <= waited <= REFUND_PENDING_DAYS:
+        return Decision(ROUTE_TO_HUMAN, "refund_pending_outside_period", None, facts)       # overdue (or an inconsistent date): a person chases it
+    return Decision(PROVIDE_INFO, "refund_pending", "KB-REF-01", facts)
+
+
+def _duplicate_charge(order, shipment, base: dict, refund: RefundRequest, today: date) -> Decision:
+    """KB-REF-02: propose a refund of the duplicate payment only, taken from the payment record. The ticket's own amount is never used;
+    if it disagrees with the record, or the record shows no single duplicate, a person decides."""
+    records = refund.records
+    flagged = [p for p in records.payments if p.status == "duplicate_flagged"]
+    if not flagged:
+        return Decision(ROUTE_TO_HUMAN, "duplicate_not_on_record", None, base)
+    if len(flagged) > 1:
+        return Decision(ROUTE_TO_HUMAN, "duplicate_ambiguous", None, base)
+    duplicate = flagged[0]
+    if refund.stated_amounts and duplicate.amount_cents not in refund.stated_amounts:
+        return Decision(ROUTE_TO_HUMAN, "duplicate_amount_differs", None, base)
+    if any(r.payment_id == duplicate.payment_id for r in records.refunds):
+        return Decision(ROUTE_TO_HUMAN, "duplicate_already_refunded", None, base)
+    facts = {**base, "duplicate_amount_cents": duplicate.amount_cents, "duplicate_payment_id": duplicate.payment_id, "approval_required": True}
+    if order.status == "shipped" and shipment is not None:                  # a ticket that also asks where the parcel is gets the update
+        facts.update(_shipment_facts({}, shipment))
+        facts["delivery_late"] = today > date.fromisoformat(order.promised_date)
+    return Decision(PROPOSE_REFUND, "duplicate_charge", "KB-REF-02", facts)
+
+
+def _item_refund(order, shipment, base: dict, refund: RefundRequest, today: date) -> Decision:
+    """KB-REF-03: a damaged or wrong item can be refunded or replaced if the customer tells us within 30 days of delivery. Whether the
+    customer wants money back is for them to say; if they do not, they are asked. No amount is stated: a person sets it."""
+    if order.status != "delivered" or shipment is None or not _day(shipment.delivered_at):
+        return Decision(ROUTE_TO_HUMAN, "order_state_not_covered", None, base)
+    delivered = date.fromisoformat(_day(shipment.delivered_at))
+    days = (today - delivered).days
+    within = 0 <= days <= RETURN_WINDOW_DAYS
+    facts = {**base, "delivered_date": delivered.isoformat(), "days_since_delivery": days, "within_return_window": within,
+             "return_window_days": RETURN_WINDOW_DAYS, "request_date": today.isoformat()}
+    if not within:
+        return Decision(ROUTE_TO_HUMAN, "refund_window_closed", None, facts)
+    if refund.records.refunds or any(p.status == "refunded" for p in refund.records.payments):
+        return Decision(ROUTE_TO_HUMAN, "item_already_refunded", None, facts)
+    if refund.topic == "item_unspecified":
+        return Decision(REQUEST_INFO, "remedy_unclear", "KB-REF-03", {**facts, "candidates": [{"order_id": order.order_id}]})
+    return Decision(PROPOSE_REFUND, "item_refund_within_window", "KB-REF-03", {**facts, "approval_required": True})

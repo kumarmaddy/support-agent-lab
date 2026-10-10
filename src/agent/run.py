@@ -86,7 +86,9 @@ def build_meta(model: ModelClient, read_prompt: Prompt, reply_prompt: Prompt, db
         "transactions": None if transactions is None else {
             "address_prompt": {"label": transactions.address_prompt.label, "sha256": transactions.address_prompt.sha256},
             "request_prompt": None if transactions.request_prompt is None else {"label": transactions.request_prompt.label,
-                                                                                "sha256": transactions.request_prompt.sha256}},
+                                                                                "sha256": transactions.request_prompt.sha256},
+            "refund_prompt": None if transactions.refund_prompt is None else {"label": transactions.refund_prompt.label,
+                                                                              "sha256": transactions.refund_prompt.sha256}},
         "python": platform.python_version(),
         "argv": argv or [],
     }
@@ -125,7 +127,7 @@ def main(argv=None) -> int:
     p.add_argument("--reply-mode", choices=["model", "template"], default="model",
                    help="template: every reply is built by code (the comparison baseline for model-written replies)")
     p.add_argument("--knowledge", action="store_true", help="answer policy questions from the knowledge base (needs the embedding model; ADR-009)")
-    p.add_argument("--transactions", action="store_true", help="handle cancellation, address-change, return and exchange tickets (read-only; proposals go to a person)")
+    p.add_argument("--transactions", action="store_true", help="handle cancellation, address-change, return, exchange and refund tickets (read-only; proposals go to a person)")
     p.add_argument("--embed-model", default="nomic-embed-text")
     p.add_argument("--min-score", type=float, default=DEFAULT_MIN_SCORE)
     p.add_argument("--check-prompt", default="v1", help="version of the knowledge check prompt (v1 default)")
@@ -145,7 +147,7 @@ def main(argv=None) -> int:
         from src.kb.embed import EmbeddingIndex
         knowledge = Knowledge(EmbeddingIndex(articles, args.embed_model), articles, load_prompt("knowledge_check", args.check_prompt),
                               load_prompt("knowledge_reply", "v1"), args.min_score)
-    transactions = Transactions(load_prompt("extract_address", "v1"), load_prompt("read_request", "v1")) if args.transactions else None
+    transactions = Transactions(load_prompt("extract_address", "v1"), load_prompt("read_request", "v1"), load_prompt("read_refund", "v1")) if args.transactions else None
     meta = build_meta(model, read_prompt, reply_prompt, args.db, args.seed, ids, argv if argv is not None else sys.argv[1:], model.digest(), warmup_ms,
                       args.reply_mode, knowledge, args.embed_model if knowledge else "",
                       model_digest(args.embed_model) if knowledge else "", transactions)

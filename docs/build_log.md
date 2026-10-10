@@ -692,3 +692,14 @@ and not a tuned threshold; the final runs are the test of it.
 **Fix.** For the last two, the reply was written by the model and claimed the customer had mentioned an order number, which was untrue. The `no_open_orders` reply is now written by code. 735 tests pass.
 
 **Open.** A general question read as a transaction category when no order is named (stage 2.7). Refunds are stage 2.5c.
+
+
+### 2.5c Refunds
+
+**Built.** Refund tickets under `--transactions`: a read-only `get_payment_records` tool (payments, refunds, returns; no card digits), a small model call that reports the topic (status, duplicate charge, damaged or wrong item), and decision rules that check that topic against the records. Refund status is reported from the refund record (pending only inside the 7-day period of KB-REF-01). A duplicate charge becomes `propose_refund` of the recorded duplicate payment, or goes to a person if the ticket's amount disagrees with the record. A damaged or wrong item becomes `propose_refund` with no amount when it is within 30 days of delivery. Every proposal carries `approval_required` and says a colleague must approve it. Replies are written by code.
+
+**Scope in scoring.** 26 development tickets (S09, S10, S11, S23, S24, S26 refund tickets). S21 legal threats stay out until the Phase 3 policy engine.
+
+**Checks.** 792 tests pass. 18 deliberate breakages of the rules, the tool's ownership check, the template-only rule and the scorer were each caught by a test.
+
+**Open.** First run on the 7B model is pending. Whether a general question read as a refund reaches the knowledge path is decided in 2.7.

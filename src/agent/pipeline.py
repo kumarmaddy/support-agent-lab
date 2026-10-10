@@ -20,7 +20,7 @@ from src.agent.knowledge import KNOWLEDGE_ANSWER, Knowledge, answer_or_hand_over
 from src.agent.model import ModelClient
 from src.agent.prompting import Prompt
 from src.agent.tools import Toolbox
-from src.agent.transactions import Transactions, extract_address, match_item, read_request
+from src.agent.transactions import Transactions, extract_address, match_item, read_refund, read_request, stated_amounts
 from src.agent.validate import internal_shingles
 from src.kb.articles import SECTION_GUIDANCE, Article
 
@@ -128,11 +128,23 @@ def run_ticket(box: Toolbox, model: ModelClient, read_prompt: Prompt, reply_prom
                                prompt=transactions.request_prompt.label, prompt_sha256=transactions.request_prompt.sha256,
                                request=asked.kind, item_phrase=asked.item_phrase, item=line.product if line else "",
                                requested_size=asked.requested_size, **_model_usage(asked.attempts)))
+        refund = None
+        if (transactions is not None and transactions.refund_prompt is not None and reading.category == "refund"
+                and identity is not None and identity.outcome == d.IDENTIFIED):
+            started = time.perf_counter()
+            found = box.get_payment_records(identity.order.order_id, identity.customer.customer_id)
+            steps.append(_step("get_payment_records", started, outcome=found.status, input_hash=_hash(identity.order.order_id)))
+            started = time.perf_counter()
+            asked = read_refund(model, transactions.refund_prompt, ticket.subject, ticket.body, seed)
+            steps.append(_step("read_refund", started, outcome=asked.reason, input_hash=_hash(ticket.subject, ticket.body),
+                               prompt=transactions.refund_prompt.label, prompt_sha256=transactions.refund_prompt.sha256,
+                               topic=asked.topic, **_model_usage(asked.attempts)))
+            refund = d.RefundRequest(asked.topic, found.data if found.ok else None, stated_amounts(ticket.subject, ticket.body))
         started = time.perf_counter()
         today = date.fromisoformat(ticket.received_at[:10])
-        decision = d.decide(reading, identity, today, scope, requested_address, request)
+        decision = d.decide(reading, identity, today, scope, requested_address, request, refund)
         steps.append(_step("decide", started, input_hash=_hash(reading.category, reading.deadline_phrase, reading.mentions_chargeback_or_legal,
-                                                           identity.outcome if identity else None, str(today), *([requested_address] if requested_address else []), *([request.kind, request.requested_size] if request else [])),
+                                                           identity.outcome if identity else None, str(today), *([requested_address] if requested_address else []), *([request.kind, request.requested_size] if request else []), *([refund.topic, refund.stated_amounts] if refund else [])),
                            action=decision.action, reason=decision.reason, article=decision.article))
         name = identity.customer.name if identity and identity.customer else None
 

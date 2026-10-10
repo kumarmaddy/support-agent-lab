@@ -34,6 +34,10 @@ def fmt_date(iso: str) -> str:
     return f"{_MONTH_NAMES[day.month - 1]} {day.day}, {day.year}"
 
 
+def fmt_money(cents: int) -> str:
+    return f"${cents // 100:,}.{cents % 100:02d}"
+
+
 def first_name(full_name: Optional[str]) -> str:
     words = re.sub(r"[^A-Za-z' -]", "", full_name or "").split()
     return words[0][:30] if words else ""
@@ -154,6 +158,31 @@ def template_body(decision: d.Decision) -> str:
     if reason == "address_change_after_dispatch":
         return (f"Thank you for your message. Order {f['order_id']} has already been dispatched and is with {f['carrier']} "
                 f"(tracking number {f['tracking_no']}), so the delivery address can no longer be changed.")
+    if reason == "refund_processed":
+        received = f" We received your return on {fmt_date(f['return_received_date'])}." if f.get("return_received_date") else ""
+        return (f"Thank you for your message. Our records show that the refund of {fmt_money(f['refund_amount_cents'])} for order {f['order_id']}, "
+                f"requested on {fmt_date(f['refund_requested_date'])}, has been processed.{received} Refunds are paid to your original payment method.")
+    if reason == "refund_pending":
+        return (f"Thank you for your message. We received your return for order {f['order_id']} on {fmt_date(f['return_received_date'])}. "
+                f"A refund of {fmt_money(f['refund_amount_cents'])} was requested on {fmt_date(f['refund_requested_date'])} and is still pending. "
+                "We issue refunds to your original payment method within 5 to 7 calendar days after we receive a return.")
+    if reason == "duplicate_charge":
+        update = ""
+        if f.get("tracking_no"):
+            update = (f" You also asked about delivery. Order {f['order_id']} was promised for {fmt_date(f['promised_date'])}"
+                      f"{' and is taking longer than that, so we are checking with the carrier' if f.get('delivery_late') else ''}. "
+                      f"The carrier is {f['carrier']}, the tracking number is {f['tracking_no']} and the latest status is: {f['last_status']}.")
+        return (f"Thank you for your message. Our records show a second payment of {fmt_money(f['duplicate_amount_cents'])} on order {f['order_id']}. "
+                "We have passed your request to refund that duplicate payment to a colleague, who will review it and reply to you. "
+                "A refund has to be approved by a colleague before it is issued, so we cannot confirm it yet. "
+                f"Only the duplicate payment is considered; the order itself is not affected.{update}")
+    if reason == "item_refund_within_window":
+        return (f"We are sorry that there is a problem with order {f['order_id']}. It was delivered on {fmt_date(f['delivered_date'])}, which is "
+                f"within the {f['return_window_days']} days we allow for reporting a damaged or wrong item. We have passed your request for a refund to a "
+                "colleague, who will review it and reply to you. A refund has to be approved by a colleague before it is issued, so we cannot confirm it yet.")
+    if reason == "remedy_unclear":
+        return (f"We are sorry that there is a problem with order {f['candidates'][0]['order_id']}. So that we arrange the right thing, "
+                "please reply to tell us whether you would like a replacement or your money back.")
     if reason == "delivery_deadline_cannot_be_guaranteed":
         return ("Thank you for telling us about your date. We are not able to confirm delivery by a particular date, so we have "
                 "passed your request to a colleague who will review what is possible and reply to you.")
@@ -167,7 +196,9 @@ def template_body(decision: d.Decision) -> str:
 
 # Replies for these reasons are always built by code: they name items and sizes taken from the order, a person follows up, or (no_open_orders)
 # a model-written version claimed the customer had mentioned an order number when none was given.
-TEMPLATE_ONLY = frozenset({"item_unclear", "size_missing", "no_open_orders"})
+# Refund replies (refund_pending, refund_processed, remedy_unclear) are code-written too: they state money from the records, and a
+# model-written reply to a refund question could promise or misstate it (the validator forbids amounts and promises in model drafts).
+TEMPLATE_ONLY = frozenset({"item_unclear", "size_missing", "no_open_orders", "refund_pending", "refund_processed", "remedy_unclear"})
 
 RETRY_HINTS = {
     "unknown_date": "Use only the dates listed in the facts.",

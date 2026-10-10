@@ -1,4 +1,4 @@
-"""Transactional tickets (phase-2-design.md, section 6): the pieces that cancellation and address-change tickets need beyond Phase 1.
+"""Transactional tickets (phase-2-design.md, section 6): the pieces that cancellation, address-change, return and refund tickets need beyond Phase 1.
 
 The decision itself is made in ``decide.py``. This module holds the one extra model task, copying the new delivery address out of
 the ticket, and the check that makes its answer safe to use: the address must appear word for word in the ticket and may contain
@@ -30,10 +30,13 @@ class Transactions:
     """Switches on the cancellation and address-change path (``--transactions``); with a request prompt, returns and exchanges too."""
     address_prompt: Prompt
     request_prompt: Optional[Prompt] = None
+    refund_prompt: Optional[Prompt] = None
 
     @property
     def scope(self) -> frozenset:
-        return d.RETURNS_SCOPE if self.request_prompt is not None else d.TRANSACTION_SCOPE
+        if self.request_prompt is None:
+            return d.TRANSACTION_SCOPE
+        return d.REFUNDS_SCOPE if self.refund_prompt is not None else d.RETURNS_SCOPE
 
 
 @dataclass
@@ -137,3 +140,39 @@ def match_item(phrase: str, items: tuple):
     if best[0] < MATCH_MIN or (len(scored) > 1 and best[0] - scored[1][0] < MATCH_MARGIN):
         return None
     return best[1]
+
+
+# ------------------------------------------------------------------ refunds (stage 2.5c)
+REFUND_TOPICS = ("status", "duplicate_charge", "item_refund", "item_unspecified", "other")
+REFUND_SCHEMA = {
+    "type": "object",
+    "properties": {"topic": {"type": "string", "enum": list(REFUND_TOPICS)}},
+    "required": ["topic"],
+    "additionalProperties": False,
+}
+REFUND_MAX_TOKENS = 30
+_MONEY = re.compile(r"\$\s?(\d{1,3}(?:,\d{3})+|\d+)(?:\.(\d{1,2}))?(?!\d)")
+
+
+@dataclass
+class RefundOutcome:
+    topic: str                                      # one of REFUND_TOPICS; "other" when the answer is unusable
+    reason: str                                     # ok / invalid / model_error
+    attempts: list = field(default_factory=list)
+
+
+def stated_amounts(subject: str, body: str) -> tuple:
+    """Every dollar amount written in the ticket, in cents, found by code. The agent never repeats these: it uses them only to check that
+    the customer and the payment record agree before a refund is proposed."""
+    found = set()
+    for whole, cents in _MONEY.findall(f"{subject}\n{body}"):
+        found.add(int(whole.replace(",", "")) * 100 + int((cents or "0").ljust(2, "0")))
+    return tuple(sorted(found))
+
+
+def read_refund(model: ModelClient, prompt: Prompt, subject: str, body: str, seed: int = 0) -> RefundOutcome:
+    response = model.chat(prompt.text, render_user(subject, body), REFUND_SCHEMA, seed=seed, max_tokens=REFUND_MAX_TOKENS)
+    if not response.ok or not isinstance(response.content, dict):
+        return RefundOutcome("other", "model_error", [response])
+    topic = response.content.get("topic")
+    return RefundOutcome(topic, "ok", [response]) if topic in REFUND_TOPICS else RefundOutcome("other", "invalid", [response])
