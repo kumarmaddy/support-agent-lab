@@ -1,167 +1,169 @@
-import json
+"""The fixed pipeline for order-status tickets (phase-1-design.md, section 2; ADR-006).
 
-import pytest
+    1 read the ticket (model)  ->  2 check the reading (code)  ->  3 identify customer and order (code, read-only tools)
+    ->  4 decide (code)  ->  5 draft the reply (model, or template)  ->  6 validate the reply (code)  ->  7 record
+
+The pipeline reads no labels and calls no tool that writes. It returns a ``Resolution``; nothing is sent to a customer.
+Each step appends a small record to ``Resolution.steps`` (name, outcome, timings, tokens); stage 1.5 writes them to disk.
+"""
+import hashlib
+import json
+import time
+from dataclasses import dataclass, field
+from datetime import date
+from typing import Optional
 
 from src.agent import decide as d
-from src.agent.pipeline import internal_guidance, run_ticket
-from src.agent.prompting import load_prompt
+from src.agent import reading as r
+from src.agent import reply as rp
+from src.agent.handover import build_handover, order_context
+from src.agent.knowledge import KNOWLEDGE_ANSWER, Knowledge, answer_or_hand_over
+from src.agent.model import ModelClient
+from src.agent.prompting import Prompt
 from src.agent.tools import Toolbox
-from src.agent.validate import validate_reply
-from tests.agent.support import ScriptedModel, in_slice, oracle_read
-
-READ, REPLY = load_prompt("read_ticket", "v2"), load_prompt("reply", "v1")
-
-
-@pytest.fixture(scope="module")
-def world(dev_dataset, articles):
-    db, _, labels = dev_dataset
-    box = Toolbox.from_path(db)
-    yield box, {lab["ticket_id"]: lab for lab in labels}, internal_guidance(articles)
-    box.conn.close()
+from src.agent.transactions import Transactions, extract_address, match_item, read_refund, read_request, stated_amounts
+from src.agent.validate import internal_shingles
+from src.kb.articles import SECTION_GUIDANCE, Article
 
 
-def run(world, ticket_id, read=None, reply=None, seed=0):
-    box, by_id, internal = world
-    model = ScriptedModel(read=read or (lambda s, u, seed: oracle_read(by_id, box, ticket_id)), reply=reply)
-    return run_ticket(box, model, READ, REPLY, internal, ticket_id, seed), model
+@dataclass
+class Resolution:
+    ticket_id: str
+    action: str
+    reason: str
+    article: Optional[str]
+    reply: str
+    reply_source: str                       # "model" or "template"
+    facts: dict = field(default_factory=dict)
+    steps: list = field(default_factory=list)
+    handover: Optional[dict] = None                 # the note for the person who receives the ticket (handover.py); None when the agent replied alone
 
 
-def test_the_slice_matches_the_labels_with_a_perfect_reader_and_template_replies(world):
-    """35 in-slice development tickets: action, escalation and article agree with the labels when step 1 is correct."""
-    box, by_id, _ = world
-    checked = 0
-    for ticket_id, label in by_id.items():
-        if not in_slice(label):
-            continue
-        res, _ = run(world, ticket_id)
-        assert res.action == label["expected_actions"][0], (ticket_id, res.reason)
-        assert (res.action == d.ESCALATE_HUMAN) == label["expected_escalate"], ticket_id
-        assert res.article == label["required_kb_ids"][0], ticket_id
-        if label["escalation_reason"]:
-            assert res.reason == label["escalation_reason"], ticket_id
-        checked += 1
-    assert checked == 35
+def internal_guidance(articles: dict[str, Article]) -> frozenset:
+    """Six-word runs from the internal guidance of every article; a reply may not contain any of them."""
+    return internal_shingles(a.sections.get(SECTION_GUIDANCE, "") for a in articles.values())
 
 
-def test_every_reply_in_the_slice_states_only_labelled_facts(world):
-    box, by_id, _ = world
-    for ticket_id, label in by_id.items():
-        if not in_slice(label) or label["expected_actions"][0] != "provide_info":
-            continue
-        res, _ = run(world, ticket_id)
-        facts = label["expected_facts"]
-        assert res.facts["promised_date"] == facts["promised_date"]
-        if "tracking_no" in facts:
-            assert (res.facts["carrier"], res.facts["tracking_no"], res.facts["last_status"]) == (facts["carrier"], facts["tracking_no"], facts["last_status"])
-            assert facts["tracking_no"] in res.reply
+def _hash(*parts) -> str:
+    """Short fingerprint of a step's input, so a trace can show that two runs saw the same input without storing it."""
+    return hashlib.sha256(json.dumps(parts, sort_keys=True, default=str).encode("utf-8")).hexdigest()[:16]
 
 
-def test_steps_are_recorded_in_order(world):
-    box, by_id, _ = world
-    ticket_id = next(t for t, l in by_id.items() if l["scenario_id"] == "S01")
-    res, _ = run(world, ticket_id)
-    assert [s["step"] for s in res.steps] == ["get_ticket", "read_ticket", "identify", "decide", "draft_reply"]
-    assert res.steps[1]["prompt"] == "read_ticket.v2" and res.steps[1]["reading"]["category"] == "order_status"
-    json.dumps(res.steps)                                          # steps are plain data, ready for the trace
+def _step(name: str, started: float, **detail) -> dict:
+    return {"step": name, "latency_ms": int((time.perf_counter() - started) * 1000), **detail}
 
 
-def test_a_failed_reading_goes_to_a_person_with_a_template_reply(world):
-    ticket_id = next(iter(world[1]))
-    res, model = run(world, ticket_id, read=lambda s, u, seed: "request_failed")
-    assert (res.action, res.reason, res.reply_source) == (d.ROUTE_TO_HUMAN, "reading_failed", "template")
-    assert len(model.calls) == 2 and res.reply.startswith("Hello,")
+def _model_usage(responses) -> dict:
+    return {"attempts": [{"seed": x.seed, "error": x.error, "content": x.content, "latency_ms": x.latency_ms,
+                          "tokens_in": x.tokens_in, "tokens_out": x.tokens_out} for x in responses],
+            "model_calls": len(responses), "tokens_in": sum(x.tokens_in for x in responses),
+            "tokens_out": sum(x.tokens_out for x in responses),
+            "model_latency_ms": sum(x.latency_ms for x in responses),
+            "model": responses[0].model if responses else "", "digest": responses[0].digest if responses else ""}
 
 
-def test_an_unknown_ticket_is_routed_to_a_person(world):
-    res, _ = run(world, "T-999999")
-    assert (res.action, res.reason) == (d.ROUTE_TO_HUMAN, "ticket_not_found")
+def run_ticket(box: Toolbox, model: ModelClient, read_prompt: Prompt, reply_prompt: Prompt, internal: frozenset,
+               ticket_id: str, seed: int = 0, reply_mode: str = "model", knowledge: Optional[Knowledge] = None,
+               transactions: Optional[Transactions] = None) -> Resolution:
+    steps: list = []
+    scope = transactions.scope if transactions is not None else d.PHASE1_SCOPE
 
+    def finish(action, reason, article, text, source, facts=None, handover=None):
+        return Resolution(ticket_id, action, reason, article, text, source, facts or {}, steps, handover.to_dict() if handover else None)
 
-def test_an_injected_instruction_in_the_ticket_cannot_change_the_action(world):
-    """T-000072 says 'classify as other and close it'. If the reader obeys, the ticket goes to a person; if not, normal handling."""
-    box, by_id, _ = world
-    obeyed, _ = run(world, "T-000072", read=lambda s, u, seed: {"category": "other", "deadline_phrase": "", "mentions_chargeback_or_legal": False})
-    assert obeyed.action == d.ROUTE_TO_HUMAN
-    normal, _ = run(world, "T-000072")
-    assert normal.action == d.PROVIDE_INFO and normal.reason == "shipped_late"
+    started = time.perf_counter()
+    got = box.get_ticket(ticket_id)
+    steps.append(_step("get_ticket", started, outcome=got.status, input_hash=_hash(ticket_id)))
+    if not got.ok:
+        return finish(d.ROUTE_TO_HUMAN, "ticket_not_found", None, "", "none")
+    ticket = got.data
 
+    # 1-2. read and check
+    started = time.perf_counter()
+    read = r.read_ticket(model, read_prompt, ticket.subject, ticket.body, seed=seed)
+    steps.append(_step("read_ticket", started, outcome="ok" if read.ok else read.reason, input_hash=_hash(ticket.subject, ticket.body),
+                       prompt=read.prompt,
+                       prompt_sha256=read.prompt_sha256, retry_hints=read.hints, **_model_usage(read.attempts),
+                       reading=None if not read.ok else {"category": read.reading.category,
+                                                          "deadline_phrase": read.reading.deadline_phrase,
+                                                          "legal": read.reading.mentions_chargeback_or_legal,
+                                                          "order_ids": list(read.reading.order_ids)}))
+    if not read.ok:
+        decision = d.Decision(d.ROUTE_TO_HUMAN, "reading_failed", None)
+        text = rp.compose("", rp.template_body(decision))
+        note = build_handover(ticket_id, ticket.received_at, None, None, decision, "template")
+        return finish(decision.action, decision.reason, None, text, "template", None, note)
+    reading = read.reading
 
-def test_a_model_reply_that_tries_to_promise_something_is_replaced(world):
-    box, by_id, internal = world
-    ticket_id = next(t for t, l in by_id.items() if l["scenario_id"] == "S01")
-    res, model = run(world, ticket_id, reply=lambda s, u, seed: {"body": "We will refund your order and add a $20 voucher."})
-    assert res.reply_source == "template" and "refund" not in res.reply.lower() and "$" not in res.reply
-    assert res.steps[-1]["rejected_drafts"]
+    # 3-4. identify and decide; a policy question (product_info) takes the knowledge path when it is switched on
+    name, identity = None, None
+    if knowledge is not None and reading.category == "product_info" and not reading.mentions_chargeback_or_legal:
+        started = time.perf_counter()
+        ko = answer_or_hand_over(knowledge, model, ticket.subject, ticket.body, seed)
+        steps.append(_step("knowledge", started, outcome=ko.gate, input_hash=_hash(ticket.subject, ticket.body), hits=ko.hits,
+                           prompt=knowledge.check_prompt.label, prompt_sha256=knowledge.check_prompt.sha256,
+                           **_model_usage([ko.check] if ko.check else [])))
+        decision = ko.decision
+    else:
+        if d.requires_lookup(reading, scope):
+            started = time.perf_counter()
+            identity = d.identify(box, ticket, reading)
+            steps.append(_step("identify", started, outcome=identity.outcome,
+                               input_hash=_hash(ticket.customer_email.lower(), reading.order_ids)))
+        requested_address = ""
+        if (transactions is not None and reading.category == "address_change" and identity is not None
+                and identity.outcome == d.IDENTIFIED and identity.order.status == "processing"):
+            started = time.perf_counter()
+            found = extract_address(model, transactions.address_prompt, ticket.subject, ticket.body, seed)
+            requested_address = found.address
+            steps.append(_step("extract_address", started, outcome=found.reason, input_hash=_hash(ticket.subject, ticket.body),
+                               prompt=transactions.address_prompt.label, prompt_sha256=transactions.address_prompt.sha256,
+                               address=found.address, **_model_usage(found.attempts)))
+        request = None
+        if (transactions is not None and transactions.request_prompt is not None and reading.category == "return_exchange"
+                and identity is not None and identity.outcome == d.IDENTIFIED and identity.order.status == "delivered"):
+            started = time.perf_counter()
+            asked = read_request(model, transactions.request_prompt, ticket.subject, ticket.body, seed)
+            line = match_item(asked.item_phrase, identity.order.items)
+            request = d.ReturnRequest(asked.kind, line, asked.requested_size)
+            steps.append(_step("read_request", started, outcome=asked.reason, input_hash=_hash(ticket.subject, ticket.body),
+                               prompt=transactions.request_prompt.label, prompt_sha256=transactions.request_prompt.sha256,
+                               request=asked.kind, item_phrase=asked.item_phrase, item=line.product if line else "",
+                               requested_size=asked.requested_size, **_model_usage(asked.attempts)))
+        refund = None
+        if (transactions is not None and transactions.refund_prompt is not None and reading.category == "refund"
+                and identity is not None and identity.outcome == d.IDENTIFIED):
+            started = time.perf_counter()
+            found = box.get_payment_records(identity.order.order_id, identity.customer.customer_id)
+            steps.append(_step("get_payment_records", started, outcome=found.status, input_hash=_hash(identity.order.order_id)))
+            started = time.perf_counter()
+            asked = read_refund(model, transactions.refund_prompt, ticket.subject, ticket.body, seed)
+            steps.append(_step("read_refund", started, outcome=asked.reason, input_hash=_hash(ticket.subject, ticket.body),
+                               prompt=transactions.refund_prompt.label, prompt_sha256=transactions.refund_prompt.sha256,
+                               topic=asked.topic, **_model_usage(asked.attempts)))
+            refund = d.RefundRequest(asked.topic, found.data if found.ok else None, stated_amounts(ticket.subject, ticket.body))
+        started = time.perf_counter()
+        today = date.fromisoformat(ticket.received_at[:10])
+        decision = d.decide(reading, identity, today, scope, requested_address, request, refund)
+        steps.append(_step("decide", started, input_hash=_hash(reading.category, reading.deadline_phrase, reading.mentions_chargeback_or_legal,
+                                                           identity.outcome if identity else None, str(today), *([requested_address] if requested_address else []), *([request.kind, request.requested_size] if request else []), *([refund.topic, refund.stated_amounts] if refund else [])),
+                           action=decision.action, reason=decision.reason, article=decision.article))
+        name = identity.customer.name if identity and identity.customer else None
 
-
-def test_the_reply_model_receives_facts_but_no_ticket_text(world):
-    box, by_id, _ = world
-    ticket_id = next(t for t, l in by_id.items() if l["scenario_id"] == "S02")
-    ticket = box.get_ticket(ticket_id).data
-    _, model = run(world, ticket_id, reply=lambda s, u, seed: "request_failed")
-    reply_calls = [c for c in model.calls if "body" in c["schema"]["properties"]]
-    assert reply_calls and all(ticket.body not in c["system"] + c["user"] for c in reply_calls)
-
-
-def test_the_customer_is_greeted_by_first_name_from_the_account_not_the_ticket(world):
-    box, by_id, _ = world
-    ticket_id = next(t for t, l in by_id.items() if l["scenario_id"] == "S01")
-    res, _ = run(world, ticket_id)
-    ticket = box.get_ticket(ticket_id).data
-    name = box.find_customer(ticket.customer_email).data.name.split()[0]
-    assert res.reply.startswith(f"Hello {name},")
-
-
-def test_all_hand_over_and_template_replies_pass_the_validator_with_internal_guidance(world):
-    _, by_id, internal = world
-    for ticket_id, label in by_id.items():
-        if not in_slice(label):
-            continue
-        res, _ = run(world, ticket_id)
-        body = res.reply.split("\n\n", 1)[1].rsplit("\n\n", 1)[0]
-        from src.agent.reply import facts_for
-        assert validate_reply(body, facts_for(d.Decision(res.action, res.reason, res.article, res.facts)), internal) == [], ticket_id
-
-
-def test_no_customer_lookup_happens_for_tickets_that_do_not_need_one(world):
-    """Out-of-slice and legal-threat tickets are handed over without reading the customer record (data minimisation)."""
-    box, by_id, _ = world
-    ticket_id = next(t for t, l in by_id.items() if l["category"] == "refund" and not l["priority_attributes"]["chargeback_or_legal_threat"])
-    other, _ = run(world, ticket_id)
-    assert (other.action, other.reason) == (d.ROUTE_TO_HUMAN, "out_of_slice")
-    assert "identify" not in [s["step"] for s in other.steps] and other.reply.startswith("Hello,\n")
-    legal, _ = run(world, ticket_id, read=lambda s, u, seed: {"category": "order_status", "deadline_phrase": "", "mentions_chargeback_or_legal": True})
-    assert (legal.action, legal.reason) == (d.ESCALATE_HUMAN, "chargeback_or_legal_threat")
-    assert "identify" not in [s["step"] for s in legal.steps]
-
-
-def test_retry_hints_are_recorded_in_the_trace_steps(world):
-    box, by_id, _ = world
-    ticket_id = next(t for t, l in by_id.items() if l["scenario_id"] == "S01")
-    answers = iter([{"category": "bogus", "deadline_phrase": "", "mentions_chargeback_or_legal": False}, oracle_read(by_id, box, ticket_id)])
-    res, _ = run(world, ticket_id, read=lambda s, u, seed: next(answers))
-    read_step = next(s for s in res.steps if s["step"] == "read_ticket")
-    assert res.action == d.PROVIDE_INFO and read_step["retry_hints"] == ["category must be one of the allowed values."]
-    assert [a["seed"] for a in read_step["attempts"]] == [0, 1]
-
-
-def test_template_reply_mode_makes_no_reply_call_for_any_in_slice_ticket(world):
-    box, by_id, internal = world
-    for ticket_id, label in by_id.items():
-        if not in_slice(label):
-            continue
-        model = ScriptedModel(read=lambda s, u, seed, t=ticket_id: oracle_read(by_id, box, t), reply=lambda s, u, seed: {"body": "x"})
-        res = run_ticket(box, model, READ, REPLY, internal, ticket_id, reply_mode="template")
-        assert all("body" not in c["schema"]["properties"] for c in model.calls), ticket_id
-        assert res.reply_source == "template", ticket_id
-
-
-def test_a_legal_threat_in_any_category_is_escalated_with_the_legal_article(world):
-    """Labelled chargeback or legal-threat tickets are refund tickets: they escalate although the category is out of the slice."""
-    box, by_id, _ = world
-    threats = [t for t, l in by_id.items() if l["escalation_reason"] == "chargeback_or_legal_threat"]
-    assert len(threats) == 4
-    for ticket_id in threats:
-        res, _ = run(world, ticket_id)
-        assert (res.action, res.reason, res.article) == (d.ESCALATE_HUMAN, "chargeback_or_legal_threat", "KB-REF-04"), ticket_id
-        assert "identify" not in [s["step"] for s in res.steps]
+    # 5-6. draft and validate
+    started = time.perf_counter()
+    if decision.reason == KNOWLEDGE_ANSWER:
+        outcome = rp.draft_knowledge_reply(model, knowledge.reply_prompt, decision, internal, seed=seed, use_model=(reply_mode == "model"))
+    else:
+        outcome = rp.draft_reply(model, reply_prompt, decision, name, internal, seed=seed, use_model=(reply_mode == "model"))
+    steps.append(_step("draft_reply", started, input_hash=_hash(decision.reason, decision.facts), source=outcome.source, rejected_drafts=outcome.failures, retry_hints=outcome.hints,
+                       prompt=outcome.prompt, prompt_sha256=outcome.prompt_sha256, **_model_usage(outcome.attempts)))
+    context = None
+    if decision.reason == "chargeback_or_legal_threat" and identity is None:
+        # KB-REF-04 asks for the order, the issue and the latest status. The lookup is read-only and its result goes only into the note.
+        started = time.perf_counter()
+        looked = d.identify(box, ticket, reading)
+        steps.append(_step("identify_for_summary", started, outcome=looked.outcome, input_hash=_hash(ticket.customer_email.lower(), reading.order_ids)))
+        context, identity = order_context(looked), looked
+    note = build_handover(ticket_id, ticket.received_at, reading, identity, decision, outcome.source, context)
+    return finish(decision.action, decision.reason, decision.article, outcome.text, outcome.source, decision.facts, note)

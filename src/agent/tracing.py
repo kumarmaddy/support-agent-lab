@@ -47,10 +47,12 @@ class TraceWriter:
     def write(self, resolution) -> None:
         for seq, step in enumerate(resolution.steps):
             self._trace.write(_line({"schema": SCHEMA_VERSION, "run_id": self.run_id, "ticket_id": resolution.ticket_id, "seq": seq, **step}))
-        self._resolutions.write(_line({
-            "schema": SCHEMA_VERSION, "run_id": self.run_id, "ticket_id": resolution.ticket_id, "action": resolution.action,
-            "reason": resolution.reason, "article": resolution.article, "reply_source": resolution.reply_source,
-            "reply": resolution.reply, "facts": resolution.facts}))
+        record = {"schema": SCHEMA_VERSION, "run_id": self.run_id, "ticket_id": resolution.ticket_id, "action": resolution.action,
+                  "reason": resolution.reason, "article": resolution.article, "reply_source": resolution.reply_source,
+                  "reply": resolution.reply, "facts": resolution.facts}
+        if getattr(resolution, "handover", None):
+            record["handover"] = resolution.handover                  # stage 2.6: only for hand-overs and proposals
+        self._resolutions.write(_line(record))
         self._trace.flush()
         self._resolutions.flush()
         self.tickets += 1

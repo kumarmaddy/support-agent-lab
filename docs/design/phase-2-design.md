@@ -1,6 +1,6 @@
 # Phase 2 Design: Knowledge-Base Answers and More Ticket Types
 
-- Version: 0.6 (draft for review)
+- Version: 0.7 (draft for review)
 - Date: 2026-10-09
 - Owner: Kumar Maddipatla, Project Lead
 - Builds on: phase-1-design.md v1.6, ADR-006 (fixed pipeline), ADR-007 (qwen2.5:7b, read prompt v4)
@@ -70,7 +70,7 @@ With embeddings the best score separates unanswerable from answerable questions 
 | 2.3 | Knowledge-question probe set; embedding and hybrid comparison; ADR-009 (done) |
 | 2.4 | Knowledge-question path in the pipeline: retrieve, three gates, reply from article key facts, knowledge validator (built; measured on the probes by the project lead's run) |
 | 2.5 | Cancellations and address changes (2.5a), returns, exchanges and replacements (2.5b), refunds (2.5c): reading, decision rules, reply facts (read-only; proposed actions go to a person) |
-| 2.6 | Escalation summary for the person who receives a ticket |
+| 2.6 | Hand-over note for the person who receives a ticket (built; section 5d) |
 | 2.7 | Phase 2 evaluation (3B and 7B), citation validity, blind review, report, exit review |
 
 ## 5a. Cancellations and address changes (stage 2.5a)
@@ -104,6 +104,29 @@ Part of `--transactions`. The agent proposes and a person acts; no tool writes, 
 - **Replies are written by code**, including the status replies (`TEMPLATE_ONLY`): the reply validator forbids amounts and promises in model-written text, and a model should not state money. Amounts shown are formatted from the record.
 - **Scoring.** The scorer treats the refund tickets of S09, S10, S11, S23, S24 and S26 as in scope when the run had the refund step (26 development tickets). It compares refund status, refund amount, request and receipt dates, the duplicate amount and payment id, the approval flag, and for S11 the delivery date, window flag and a consistent day count. S21 (legal threats) stays out: those are escalated by rule and belong with the Phase 3 policy engine.
 - **Limits.** The delivery update appears on every shipped-order duplicate reply, even when the customer did not ask. The topic is read by a small model; a misread is caught only when the records disagree with it.
+
+## 5d. Hand-over note (stage 2.6)
+Every ticket that the agent escalates, routes to a person, or answers with a proposal that a person must carry out comes with a short note in `resolutions.jsonl` (`handover`). Tickets the agent answers itself (information, a request for information, a policy decline) have none.
+- **Built by code, not by a model.** The note comes from the reading, the identification outcome, the decision and its verified facts, so it cannot invent a record. Each reason has a fixed explanation and a suggested next step taken from the policy article (`REASONS` in `handover.py`; a test reads the source and fails if a reason that can reach a person has no entry).
+- **Contents.** Ticket id and received date; queue (senior for escalations, standard otherwise); the action and reason; why the agent stopped; the category it read and whether it saw a legal threat; whether an account was found; the order numbers named or identified; the records checked (order status and promised date, delivery date and window count, shipment, item and sizes, the address as written in the ticket, refund status and amounts, the duplicate payment id); whether approval is required; the suggested next step; the policy article.
+- **Legal threats (KB-REF-04).** The article asks for the order, the issue and the latest status. A legal threat is still escalated before any account lookup, so the decision reads nothing. After the decision, one read-only lookup fills the note with the order's status and shipment; it affects nothing else. An order that is not on the sender's account is not read.
+- **No ticket text and no email address.** Same rule as the trace. The person opens the ticket by its id. The only customer wording in a note is a new delivery address, which is already verified word for word against the ticket.
+- **Example (development ticket T-000029).**
+```
+Ticket T-000029, received 2026-10-05. Queue: standard.
+Agent action: propose_refund (duplicate_charge).
+Why: The records show one payment flagged as a duplicate of the order's payment (KB-REF-02).
+Order: O-000668
+Records checked:
+  - Order O-000668 is shipped; promised October 12, 2026.
+  - Shipment: TrailExpress, tracking TR125532822880, latest status: In transit.
+  - Duplicate payment PM-000679 of $109.99.
+Approval: required before anything is done.
+Suggested next step: Approve or reject a refund of that payment only, then tell the customer.
+Policy: KB-REF-02
+```
+- **Scoring.** The scorer counts how many tickets needed a note, how many had one, and how many name the labelled order. Whether a person finds a note useful is not measured by code: the blind review in stage 2.7 reads a sample.
+- **Limits.** The next steps are fixed wording written for this project; they are not read from the articles automatically, so a change to an article needs a matching change to `REASONS`. The explanation texts mention the 30-day and 7-day periods as numbers.
 
 ## 6. Safety rules carried over
 Ticket and article text are data, not instructions; the reply model sees only verified facts and article key facts; every reply passes the validator; any failure falls back to a template or a hand-over; write actions stay disabled until Phase 3.

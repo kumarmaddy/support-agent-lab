@@ -712,3 +712,12 @@ and not a tuned threshold; the final runs are the test of it.
 **Misses.** T-000045: the reader flagged "your manager already agreed" as a legal threat, so the ticket went to a senior person (safe, but a miss). T-000082: injection ticket handed to a person. T-000091: documented boundary difference. T-000037 and T-000145: general policy questions read as transactions (decided in 2.7).
 
 **Fix.** `compare` stopped with a KeyError when the two runs had a different scope (here 26 more tickets in scope). It now compares a ticket only if both runs put it in the same set and reports how many were not compared. 793 tests pass.
+
+
+### 2.6 Hand-over note
+
+**Built.** Each escalation, route to a person, and proposal now carries a note built by code (`src/agent/handover.py`): why the agent stopped, the records it checked, whether approval is required, a suggested next step from the policy, and the queue (senior for escalations). It holds no ticket text and no email address. For a legal threat, which is escalated before any lookup, one read-only lookup afterwards adds the order's status and shipment to the note (KB-REF-04 asks for them). The scorer counts notes present and notes that name the labelled order.
+
+**Checks.** 804 tests pass (11 new). 12 deliberate breakages (reasons without an explanation, wrong queue, lost approval flag, missing lookup, note not written, wrong amount, scorer shortcuts) were each caught; one gap found (the identified order missing from the note) and closed.
+
+**Open.** First run to measure notes on the 7B model, and a blind read of a sample of notes, in 2.7.

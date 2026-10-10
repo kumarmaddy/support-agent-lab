@@ -16,6 +16,7 @@ from typing import Optional
 from src.agent import decide as d
 from src.agent import reading as r
 from src.agent import reply as rp
+from src.agent.handover import build_handover, order_context
 from src.agent.knowledge import KNOWLEDGE_ANSWER, Knowledge, answer_or_hand_over
 from src.agent.model import ModelClient
 from src.agent.prompting import Prompt
@@ -35,6 +36,7 @@ class Resolution:
     reply_source: str                       # "model" or "template"
     facts: dict = field(default_factory=dict)
     steps: list = field(default_factory=list)
+    handover: Optional[dict] = None                 # the note for the person who receives the ticket (handover.py); None when the agent replied alone
 
 
 def internal_guidance(articles: dict[str, Article]) -> frozenset:
@@ -66,8 +68,8 @@ def run_ticket(box: Toolbox, model: ModelClient, read_prompt: Prompt, reply_prom
     steps: list = []
     scope = transactions.scope if transactions is not None else d.PHASE1_SCOPE
 
-    def finish(action, reason, article, text, source, facts=None):
-        return Resolution(ticket_id, action, reason, article, text, source, facts or {}, steps)
+    def finish(action, reason, article, text, source, facts=None, handover=None):
+        return Resolution(ticket_id, action, reason, article, text, source, facts or {}, steps, handover.to_dict() if handover else None)
 
     started = time.perf_counter()
     got = box.get_ticket(ticket_id)
@@ -89,11 +91,12 @@ def run_ticket(box: Toolbox, model: ModelClient, read_prompt: Prompt, reply_prom
     if not read.ok:
         decision = d.Decision(d.ROUTE_TO_HUMAN, "reading_failed", None)
         text = rp.compose("", rp.template_body(decision))
-        return finish(decision.action, decision.reason, None, text, "template")
+        note = build_handover(ticket_id, ticket.received_at, None, None, decision, "template")
+        return finish(decision.action, decision.reason, None, text, "template", None, note)
     reading = read.reading
 
     # 3-4. identify and decide; a policy question (product_info) takes the knowledge path when it is switched on
-    name = None
+    name, identity = None, None
     if knowledge is not None and reading.category == "product_info" and not reading.mentions_chargeback_or_legal:
         started = time.perf_counter()
         ko = answer_or_hand_over(knowledge, model, ticket.subject, ticket.body, seed)
@@ -102,7 +105,6 @@ def run_ticket(box: Toolbox, model: ModelClient, read_prompt: Prompt, reply_prom
                            **_model_usage([ko.check] if ko.check else [])))
         decision = ko.decision
     else:
-        identity = None
         if d.requires_lookup(reading, scope):
             started = time.perf_counter()
             identity = d.identify(box, ticket, reading)
@@ -156,4 +158,12 @@ def run_ticket(box: Toolbox, model: ModelClient, read_prompt: Prompt, reply_prom
         outcome = rp.draft_reply(model, reply_prompt, decision, name, internal, seed=seed, use_model=(reply_mode == "model"))
     steps.append(_step("draft_reply", started, input_hash=_hash(decision.reason, decision.facts), source=outcome.source, rejected_drafts=outcome.failures, retry_hints=outcome.hints,
                        prompt=outcome.prompt, prompt_sha256=outcome.prompt_sha256, **_model_usage(outcome.attempts)))
-    return finish(decision.action, decision.reason, decision.article, outcome.text, outcome.source, decision.facts)
+    context = None
+    if decision.reason == "chargeback_or_legal_threat" and identity is None:
+        # KB-REF-04 asks for the order, the issue and the latest status. The lookup is read-only and its result goes only into the note.
+        started = time.perf_counter()
+        looked = d.identify(box, ticket, reading)
+        steps.append(_step("identify_for_summary", started, outcome=looked.outcome, input_hash=_hash(ticket.customer_email.lower(), reading.order_ids)))
+        context, identity = order_context(looked), looked
+    note = build_handover(ticket_id, ticket.received_at, reading, identity, decision, outcome.source, context)
+    return finish(decision.action, decision.reason, decision.article, outcome.text, outcome.source, decision.facts, note)

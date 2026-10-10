@@ -20,6 +20,7 @@ from src.evaluation.slice import in_scope
 ANSWERS = ("provide_info", "request_info", "decline_policy")     # actions that reply to the customer without a person
 PROPOSALS = ("propose_cancellation", "propose_address_change", "propose_return_label", "propose_exchange", "propose_replacement", "propose_refund")   # the agent proposes, a person acts
 HAND_OVERS = ("route_to_human", "escalate_human")
+NOTE_ACTIONS = HAND_OVERS + PROPOSALS                  # actions that must come with a hand-over note (stage 2.6)
 FACT_KEYS = {"order_status": "status", "promised_date": "promised_date", "carrier": "carrier", "tracking_no": "tracking_no",
              "last_status": "last_status", "deadline_date": "deadline_date"}
 # facts a return or exchange resolution carries (stage 2.5b); compared only for return_exchange labels. days_since_delivery is not compared
@@ -84,6 +85,11 @@ def score_ticket(resolution: dict, label: dict, read_category: Optional[str], re
            "read_legal": read_legal, "label_legal": bool(label["priority_attributes"]["chargeback_or_legal_threat"]),
            "action": resolution["action"], "reason": resolution["reason"], "reply_source": resolution["reply_source"],
            "expected_action": expected_action}
+    row["note_needed"] = resolution["action"] in NOTE_ACTIONS
+    if row["note_needed"]:
+        note = resolution.get("handover")
+        row["note_present"] = bool(note)
+        row["note_names_order"] = (bool(note) and label["referenced_order_id"] in note.get("order_ids", [])) if label["referenced_order_id"] else None
     if row["in_slice"]:
         row["action_ok"] = resolution["action"] == expected_action
         row["escalation_ok"] = (resolution["action"] == "escalate_human") == label["expected_escalate"]
@@ -157,6 +163,11 @@ def score_run(run_dir: Path, labels: list) -> dict:
                   "wrongly_answered": rate(sum(r["wrongly_answered"] for r in b), len(b)),
                   "should_escalate_but_routed": sum(r["should_escalate_but_routed"] for r in b),
                   "escalated_unnecessarily": rate(sum(r["escalated_unnecessarily"] for r in b), len(b))},
+        "notes": {"needed": sum(r["note_needed"] for r in rows),
+                  "present": rate(sum(r.get("note_present", False) for r in rows if r["note_needed"]), sum(r["note_needed"] for r in rows)),
+                  "name_the_labelled_order": rate(sum(bool(r["note_names_order"]) for r in rows if r.get("note_names_order") is not None),
+                                                  sum(1 for r in rows if r.get("note_names_order") is not None)),
+                  "missing_the_order": [r["ticket_id"] for r in rows if r.get("note_names_order") is False]},
         "replies": {"template_fallback_share": summary.get("template_fallback_share"), "template_fallbacks": summary.get("template_fallbacks"),
                     "drafts_by_model": summary.get("drafts_by_model"), "rejected_draft_codes": summary.get("rejected_draft_codes")},
         "latency_ms": (summary.get("latency_ms") or {}).get("per_ticket"), "warmup_ms": meta.get("warmup_ms"),
@@ -185,6 +196,8 @@ def render(score: dict) -> str:
              f"  handed to a person {fmt(b['handed_to_person'])}", f"  answered by the agent (wrong) {fmt(b['wrongly_answered'])}",
              f"  needed escalation but were only routed: {b['should_escalate_but_routed']}",
              f"  escalated although the label does not call for it {fmt(b['escalated_unnecessarily'])}",
+             f"hand-over notes: needed {score['notes']['needed']}; present {fmt(score['notes']['present'])}; "
+             f"name the labelled order {fmt(score['notes']['name_the_labelled_order'])} {score['notes']['missing_the_order']}",
              f"replies: template fallbacks {score['replies']['template_fallbacks']}/{score['replies']['drafts_by_model']}; rejected {score['replies']['rejected_draft_codes']}",
              f"latency per ticket: {score['latency_ms']}"]
     for m in score["misses"]:
