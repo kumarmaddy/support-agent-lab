@@ -7,11 +7,12 @@ def in_slice(label: dict) -> bool:
     return label["scenario_id"] in IN_SLICE or (label["scenario_id"] == "S24" and label["category"] == "order_status")
 
 
-# Phase 2 stage 2.5a: cancellation (S13, S14) and address change (S15, S16) join the scope when --transactions is on.
-TRANSACTION_SCENARIOS = ("S13", "S14", "S15", "S16")
+# Phase 2 stages 2.5a and 2.5b: with --transactions these categories and scenarios join the scope. S11 appears in two categories; only its
+# return_exchange tickets (replacement requests) belong here, its refund tickets wait for stage 2.5c.
+TRANSACTION_CATEGORIES = ("cancellation", "address_change", "return_exchange")
+TRANSACTION_SCENARIOS = ("S05", "S06", "S07", "S08", "S11", "S13", "S14", "S15", "S16", "S24")
 
 
 def in_scope(label: dict, transactions: bool = False) -> bool:
     """The Phase 1 slice, plus the transactional scenarios when the run used --transactions."""
-    return in_slice(label) or (transactions and (label["scenario_id"] in TRANSACTION_SCENARIOS or
-                                                  (label["scenario_id"] == "S24" and label["category"] in ("cancellation", "address_change"))))
+    return in_slice(label) or (transactions and label["category"] in TRANSACTION_CATEGORIES and label["scenario_id"] in TRANSACTION_SCENARIOS)

@@ -663,3 +663,21 @@ and not a tuned threshold; the final runs are the test of it.
 **Fix.** A customer with no open order is asked for the number without any order being named (`no_open_orders`); order-like references in other shapes (ORDER12345, #12345) now fail `unknown_order`. 683 tests pass.
 
 **Open.** Category agreement is 92% (12 misreads, mostly "other" tickets read as product_info, which go to a person). Misreads that land in a handled category (here T-000145) are the new exposure of widening the scope; the Phase 2 evaluation measures it.
+
+
+### 2.5b Returns, exchanges and replacements
+
+**Scope.** 32 development tickets (S05, S06, S07, S08, the replacement half of S11, and the S24 return). Part of `--transactions`.
+
+**Changes.**
+- `read_request.v1.md`, `transactions.py`: reads the kind of request, the product phrase and the requested size; code verifies each against the ticket; the product is matched to the order's own product names.
+- `tools.py`: order lines carry the final-sale flag (read-only query).
+- `decide.py`: the window (day 30 in, day 31 out, counted to the day the request was received), final-sale, exchange and replacement rules; actions `propose_return_label`, `propose_exchange`, `propose_replacement`.
+- `reply.py`: code-written replies; `pipeline.py`, `run.py`: the extra step; the prompt hash is recorded in `run.json`.
+- `score.py`, `slice.py`: scope and fact checks for returns.
+
+**Finding.** The dataset counts delivery days to its snapshot date; the agent counts to the day the request was received, as KB-RET-01 words it. One development ticket (T-000091) falls on different sides of the boundary and is reported as a miss.
+
+**Tests.** 734 passed (51 new). A perfect reader reproduces every labelled action, article and fact for 31 of the 32 tickets; the 32nd is the boundary ticket above, which has its own test. Seven mutations of the new rules (window boundary, final sale, same-size exchange, no-item rule, window check, item-match margin, item-in-ticket check) were each caught.
+
+**Not yet measured.** Results with the real models.

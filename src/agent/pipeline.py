@@ -20,7 +20,7 @@ from src.agent.knowledge import KNOWLEDGE_ANSWER, Knowledge, answer_or_hand_over
 from src.agent.model import ModelClient
 from src.agent.prompting import Prompt
 from src.agent.tools import Toolbox
-from src.agent.transactions import Transactions, extract_address
+from src.agent.transactions import Transactions, extract_address, match_item, read_request
 from src.agent.validate import internal_shingles
 from src.kb.articles import SECTION_GUIDANCE, Article
 
@@ -64,7 +64,7 @@ def run_ticket(box: Toolbox, model: ModelClient, read_prompt: Prompt, reply_prom
                ticket_id: str, seed: int = 0, reply_mode: str = "model", knowledge: Optional[Knowledge] = None,
                transactions: Optional[Transactions] = None) -> Resolution:
     steps: list = []
-    scope = d.TRANSACTION_SCOPE if transactions is not None else d.PHASE1_SCOPE
+    scope = transactions.scope if transactions is not None else d.PHASE1_SCOPE
 
     def finish(action, reason, article, text, source, facts=None):
         return Resolution(ticket_id, action, reason, article, text, source, facts or {}, steps)
@@ -117,11 +117,22 @@ def run_ticket(box: Toolbox, model: ModelClient, read_prompt: Prompt, reply_prom
             steps.append(_step("extract_address", started, outcome=found.reason, input_hash=_hash(ticket.subject, ticket.body),
                                prompt=transactions.address_prompt.label, prompt_sha256=transactions.address_prompt.sha256,
                                address=found.address, **_model_usage(found.attempts)))
+        request = None
+        if (transactions is not None and transactions.request_prompt is not None and reading.category == "return_exchange"
+                and identity is not None and identity.outcome == d.IDENTIFIED and identity.order.status == "delivered"):
+            started = time.perf_counter()
+            asked = read_request(model, transactions.request_prompt, ticket.subject, ticket.body, seed)
+            line = match_item(asked.item_phrase, identity.order.items)
+            request = d.ReturnRequest(asked.kind, line, asked.requested_size)
+            steps.append(_step("read_request", started, outcome=asked.reason, input_hash=_hash(ticket.subject, ticket.body),
+                               prompt=transactions.request_prompt.label, prompt_sha256=transactions.request_prompt.sha256,
+                               request=asked.kind, item_phrase=asked.item_phrase, item=line.product if line else "",
+                               requested_size=asked.requested_size, **_model_usage(asked.attempts)))
         started = time.perf_counter()
         today = date.fromisoformat(ticket.received_at[:10])
-        decision = d.decide(reading, identity, today, scope, requested_address)
+        decision = d.decide(reading, identity, today, scope, requested_address, request)
         steps.append(_step("decide", started, input_hash=_hash(reading.category, reading.deadline_phrase, reading.mentions_chargeback_or_legal,
-                                                           identity.outcome if identity else None, str(today), *([requested_address] if requested_address else [])),
+                                                           identity.outcome if identity else None, str(today), *([requested_address] if requested_address else []), *([request.kind, request.requested_size] if request else [])),
                            action=decision.action, reason=decision.reason, article=decision.article))
         name = identity.customer.name if identity and identity.customer else None
 

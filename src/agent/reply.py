@@ -115,6 +115,29 @@ def template_body(decision: d.Decision) -> str:
     if reason in ("order_not_found", "no_account", "no_open_orders"):
         return ("We could not find that order. Please check the order number in your confirmation email and reply with it, "
                 "so that we can look into it.")
+    if reason == "item_unclear":
+        c = f["candidates"][0]
+        return f"So that we arrange this correctly, please reply with the item you mean from order {c['order_id']}: {', '.join(c['items'])}."
+    if reason == "size_missing":
+        return f"So that we can arrange the exchange, please reply with the new size you would like for the {f['item']} in order {f['order_id']}."
+    if reason == "return_label":
+        return (f"Thank you for your message. Order {f['order_id']} was delivered on {fmt_date(f['delivered_date'])}, which is within our "
+                f"{f['return_window_days']}-day return window, so {'the ' + f['item'] if f.get('item') else 'your order'} can be returned. We have passed your request to a colleague, "
+                "who will email you a free return label.")
+    if reason == "return_window_closed":
+        what = "exchange" if f["request_kind"] == "exchange" else "return"
+        return (f"Thank you for your message. Order {f['order_id']} was delivered on {fmt_date(f['delivered_date'])}. Our {what} window is "
+                f"{f['return_window_days']} days from delivery, so we are not able to accept this {what}. We are sorry that we cannot help with this.")
+    if reason == "return_final_sale":
+        return (f"Thank you for your message. The {f['item']} in order {f['order_id']} was marked final sale when it was bought, so it cannot "
+                "be returned or exchanged. We are sorry that we cannot accept it back.")
+    if reason == "exchange_within_window":
+        return (f"Thank you for your message. Order {f['order_id']} was delivered on {fmt_date(f['delivered_date'])}, which is within our "
+                f"{f['return_window_days']}-day window, so the {f['item']} can be exchanged. You asked for size {f['requested_size']}. "
+                "We have passed your request to a colleague, who will confirm that it is available and arrange the exchange with you.")
+    if reason == "replacement_within_window":
+        return (f"We are sorry that there is a problem with order {f['order_id']}. We have passed your request for a replacement to a "
+                "colleague, who will confirm it with you.")
     if reason == "address_missing":
         return f"So that we can change the delivery address, please reply with the complete new address for order {f['candidates'][0]['order_id']}."
     if reason == "cancellation_before_dispatch":
@@ -139,6 +162,9 @@ def template_body(decision: d.Decision) -> str:
         return ("We are sorry for the trouble. We have passed your message to a senior colleague, who will contact you about it.")
     return "Thank you for your message. We have passed it to a colleague, who will reply to you."
 
+
+# Replies for these reasons are always built by code: they name items and sizes taken from the order, and a person follows up.
+TEMPLATE_ONLY = frozenset({"item_unclear", "size_missing"})
 
 RETRY_HINTS = {
     "unknown_date": "Use only the dates listed in the facts.",
@@ -197,7 +223,7 @@ def draft_reply(model: ModelClient, prompt: Prompt, decision: d.Decision, custom
     name = first_name(customer_name)
     facts = facts_for(decision)
     outcome = ReplyOutcome("", "template", prompt=prompt.label, prompt_sha256=prompt.sha256)
-    if use_model and decision.action in (d.PROVIDE_INFO, d.REQUEST_INFO):
+    if use_model and decision.action in (d.PROVIDE_INFO, d.REQUEST_INFO) and decision.reason not in TEMPLATE_ONLY:
         system, request = render_system(prompt, decision), "Write the email body now."
         for attempt in range(2):
             response: ModelResponse = model.chat(system, request, REPLY_SCHEMA, seed=seed + attempt, max_tokens=MAX_TOKENS)

@@ -1,6 +1,6 @@
 # Phase 2 Design: Knowledge-Base Answers and More Ticket Types
 
-- Version: 0.4 (draft for review)
+- Version: 0.5 (draft for review)
 - Date: 2026-10-09
 - Owner: Kumar Maddipatla, Project Lead
 - Builds on: phase-1-design.md v1.6, ADR-006 (fixed pipeline), ADR-007 (qwen2.5:7b, read prompt v4)
@@ -82,6 +82,16 @@ Opt-in with `--transactions`; without it these tickets go to a person as in Phas
 - **Replies are written by code** (templates). A proposal tells the customer that a colleague will confirm the change; no reply says that anything has been cancelled or changed. This removes model-wording risk from the first transactional actions; model-written wording can be compared later.
 - **Scoring.** A run made with `--transactions` records it in `run.json`; the scorer then counts scenarios S13-S16 and the S24 cancellation as in scope and compares the proposed address with the labelled one exactly. `decline_policy` counts as an answer; a proposal for an out-of-scope ticket counts as wrongly answered.
 - **Not covered here.** Returns, exchanges, replacements and refunds (2.5b, 2.5c); the final state of a delivered, cancelled or returned order is left to a person.
+
+## 5b. Returns, exchanges and replacements (stage 2.5b)
+Part of `--transactions`. The agent proposes and a person acts; no tool writes.
+- **What is asked.** A second small model call (`read_request.v1`) reports the kind of request (return, exchange, replacement, refund or unclear), the product as the customer wrote it, and the requested size. Code keeps only what the ticket supports: the product phrase must appear in the ticket, the size must be one of XS-XXL or 7-13 and stand alone in the ticket text. The call is made only for a delivered order.
+- **Which item.** The phrase is matched to the order's own product names (a spelling slip still matches; two close candidates, or none, do not). Order lines now carry the final-sale flag from the products table (read-only).
+- **The window.** Counted in code, from the delivery date to the day the request was received. KB-RET-01 says a return "requested on the thirtieth day" is accepted, so day 30 is inside and day 31 is not. The facts record the request date and the count.
+- **Rules, in this order.** Delivered orders only (others go to a person). Refund and unclear requests go to a person (refunds are stage 2.5c). Replacement: inside the window, `propose_replacement` (KB-REF-03); outside, a person. Return or exchange outside the window: `decline_policy` (KB-RET-01). No item pinned down: a return is still proposed when nothing in the order is final sale; otherwise, and for any exchange, the customer is asked which item. Final-sale item: `decline_policy` (KB-RET-03). Return: `propose_return_label` (KB-RET-01). Exchange: needs a size different from the current one, otherwise the customer is asked for it (KB-RET-04); an item without sizes goes to a person; else `propose_exchange`.
+- **Replies are written by code**; no reply promises a refund or says the return, exchange or replacement has been arranged.
+- **Known label difference.** The dataset counts delivery days to its snapshot date (2026-10-06); tickets were received on earlier days. The agent follows the policy text. The two give different answers for one development ticket (T-000091: delivered 5 September, received 5 October, day 30 by the policy, day 31 by the snapshot). It is reported as a miss, not hidden. The scorer does not compare `days_since_delivery` with the label; it checks that the agent's count matches its own request date and compares the window flag and the delivery date.
+- **Scope in scoring.** Scenarios S05-S08, S11 (its return_exchange tickets) and the S24 return_exchange ticket join the in-scope set. S11's refund tickets wait for stage 2.5c.
 
 ## 6. Safety rules carried over
 Ticket and article text are data, not instructions; the reply model sees only verified facts and article key facts; every reply passes the validator; any failure falls back to a template or a hand-over; write actions stay disabled until Phase 3.

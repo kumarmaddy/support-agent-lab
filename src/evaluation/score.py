@@ -10,6 +10,7 @@ Reads ``resolutions.jsonl``, ``trace.jsonl`` and ``summary.json`` from the run d
 """
 import argparse
 import json
+from datetime import date
 from pathlib import Path
 from typing import Optional
 
@@ -17,10 +18,15 @@ from src.baseline.scoring import wilson_interval
 from src.evaluation.slice import in_scope
 
 ANSWERS = ("provide_info", "request_info", "decline_policy")     # actions that reply to the customer without a person
-PROPOSALS = ("propose_cancellation", "propose_address_change")   # the agent proposes, a person acts
+PROPOSALS = ("propose_cancellation", "propose_address_change", "propose_return_label", "propose_exchange", "propose_replacement")   # the agent proposes, a person acts
 HAND_OVERS = ("route_to_human", "escalate_human")
 FACT_KEYS = {"order_status": "status", "promised_date": "promised_date", "carrier": "carrier", "tracking_no": "tracking_no",
              "last_status": "last_status", "deadline_date": "deadline_date"}
+# facts a return or exchange resolution carries (stage 2.5b); compared only for return_exchange labels. days_since_delivery is not compared
+# with the label: the dataset counts to its snapshot date (2026-10-06) and the agent to the day the request was received (KB-RET-01), so the
+# scorer checks that the agent's own count is consistent with its request date instead.
+RETURN_FACT_KEYS = {"delivered_date": "delivered_date", "within_return_window": "within_return_window",
+                    "return_window_days": "return_window_days", "current_size": "current_size", "requested_size": "requested_size"}
 HELDOUT_REFUSAL = "Refusing to score against the held-out split (it is opened once, in Phase 4)."
 
 
@@ -41,6 +47,15 @@ def facts_agree(resolution: dict, label: dict) -> bool:
         if label_key == "deadline_date" and resolution.get("reason") != "delivery_deadline_cannot_be_guaranteed":
             continue                    # a far-away deadline is labelled but only the hand-over states it
         if label_key in want and got.get(fact_key) != want[label_key]:
+            return False
+    if label["category"] == "return_exchange":
+        for label_key, fact_key in RETURN_FACT_KEYS.items():
+            if label_key in want and got.get(fact_key) != want[label_key] and not (
+                    label_key in ("current_size", "requested_size") and resolution.get("reason") not in ("exchange_within_window", "size_missing")):
+                return False
+    if label["category"] == "return_exchange" and "days_since_delivery" in got:
+        counted = (date.fromisoformat(got["request_date"]) - date.fromisoformat(got["delivered_date"])).days
+        if counted != got["days_since_delivery"]:
             return False
     if "requested_address" in want and resolution.get("reason") == "address_change_before_dispatch":
         if got.get("requested_address") != want["requested_address"]:      # the address must be copied exactly

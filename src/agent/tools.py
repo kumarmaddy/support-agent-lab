@@ -51,6 +51,7 @@ class OrderLine:
     product: str
     size: str | None
     quantity: int
+    final_sale: bool = False
 
 
 @dataclass(frozen=True)
@@ -189,9 +190,9 @@ class Toolbox:
         return getattr(self, name)(**arguments).to_dict()
 
     def _items(self, order_id: str) -> tuple[OrderLine, ...]:
-        rows = self.conn.execute("SELECT p.name, i.size, i.quantity FROM order_items i JOIN products p USING (product_id) "
+        rows = self.conn.execute("SELECT p.name, i.size, i.quantity, p.final_sale FROM order_items i JOIN products p USING (product_id) "
                                  "WHERE i.order_id = ? ORDER BY i.order_item_id", (order_id,)).fetchall()
-        return tuple(OrderLine(*r) for r in rows)
+        return tuple(OrderLine(r[0], r[1], r[2], bool(r[3])) for r in rows)
 
 
 def _matches(pattern: re.Pattern, value) -> bool:

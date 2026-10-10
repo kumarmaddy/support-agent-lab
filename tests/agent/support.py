@@ -18,7 +18,7 @@ class ScriptedModel:
         self.calls.append({"system": system, "user": user, "schema": schema, "seed": seed})
         props = schema["properties"]
         handler = (self.reply if "body" in props else self.check if "answers_question" in props
-                   else self.extract if "address" in props else self.read)
+                   else self.extract if ("address" in props or "request" in props) else self.read)
         out = handler(system, user, seed) if handler else "no_handler"
         return ModelResponse(error=out, seed=seed) if isinstance(out, str) else ModelResponse(content=out, seed=seed, model=self.model)
 

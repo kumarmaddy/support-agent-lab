@@ -17,10 +17,13 @@ from src.agent.reading import Reading
 PROVIDE_INFO, REQUEST_INFO, ESCALATE_HUMAN, ROUTE_TO_HUMAN = "provide_info", "request_info", "escalate_human", "route_to_human"
 # proposals and refusals for transactional tickets (phase-2-design.md, section 6): the agent proposes, a person acts
 PROPOSE_CANCELLATION, PROPOSE_ADDRESS_CHANGE, DECLINE_POLICY = "propose_cancellation", "propose_address_change", "decline_policy"
+PROPOSE_RETURN_LABEL, PROPOSE_EXCHANGE, PROPOSE_REPLACEMENT = "propose_return_label", "propose_exchange", "propose_replacement"
+RETURN_WINDOW_DAYS = 30                       # KB-RET-01: the day of delivery is day 0; day 30 is inside the window, day 31 is not
 
 # the ticket categories the agent handles. Phase 1 handled order status only; --transactions adds the rest, one stage at a time.
 PHASE1_SCOPE = frozenset({"order_status"})
 TRANSACTION_SCOPE = PHASE1_SCOPE | {"cancellation", "address_change"}
+RETURNS_SCOPE = TRANSACTION_SCOPE | {"return_exchange"}
 
 # identification outcomes
 IDENTIFIED, NO_ACCOUNT, ORDER_NOT_FOUND, ORDER_NOT_OWNED = "identified", "no_account", "order_not_found", "order_not_owned"
@@ -34,6 +37,15 @@ class Identity:
     order: Optional[tools.Order] = None
     open_orders: tuple = ()
     named_ids: tuple = ()
+
+
+@dataclass(frozen=True)
+class ReturnRequest:
+    """What a return-or-exchange ticket asks for, after the checks in transactions.py: the kind, the order line it concerns (None if it
+    could not be pinned down) and the requested size (empty if none)."""
+    kind: str
+    item: Optional[tools.OrderLine] = None
+    requested_size: str = ""
 
 
 @dataclass(frozen=True)
@@ -75,7 +87,7 @@ def _day(stamp: Optional[str]) -> Optional[str]:
 
 
 def decide(reading: Reading, identity: Optional[Identity], today: date, scope: frozenset = PHASE1_SCOPE,
-           requested_address: str = "") -> Decision:
+           requested_address: str = "", request: Optional[ReturnRequest] = None) -> Decision:
     # 1. threat of chargeback or legal action: always escalated (KB-REF-04), whatever the category; no account details are read
     if reading.mentions_chargeback_or_legal:
         return Decision(ESCALATE_HUMAN, "chargeback_or_legal_threat", "KB-REF-04")
@@ -104,6 +116,8 @@ def decide(reading: Reading, identity: Optional[Identity], today: date, scope: f
         return _cancellation(order, shipment, base)
     if reading.category == "address_change":
         return _address_change(order, shipment, base, requested_address)
+    if reading.category == "return_exchange":
+        return _return_exchange(order, shipment, base, request, today)
     # 4. by order state
     if order.status == "processing":
         deadline = resolve_deadline(reading.deadline_phrase, today)
@@ -144,3 +158,45 @@ def _address_change(order, shipment, base: dict, requested_address: str) -> Deci
     if order.status == "shipped" and shipment is not None:
         return Decision(DECLINE_POLICY, "address_change_after_dispatch", "KB-ADR-01", _shipment_facts(base, shipment))
     return Decision(ROUTE_TO_HUMAN, "order_state_not_covered", None)
+
+
+def _return_exchange(order, shipment, base: dict, request: Optional[ReturnRequest], today: date) -> Decision:
+    """KB-RET-01 to KB-RET-04 and KB-REF-03. The window is counted in code from the delivery date to the day the request was received
+    (KB-RET-01: a return "requested on the thirtieth day" is accepted); the model only says what was asked.
+    The agent proposes a label, exchange or replacement and a person arranges it; it never promises a refund."""
+    if order.status != "delivered" or shipment is None or not _day(shipment.delivered_at):
+        return Decision(ROUTE_TO_HUMAN, "order_state_not_covered", None)
+    delivered = date.fromisoformat(_day(shipment.delivered_at))
+    days = (today - delivered).days
+    within = 0 <= days <= RETURN_WINDOW_DAYS
+    kind = request.kind if request else "unclear"
+    facts = {**base, "delivered_date": delivered.isoformat(), "days_since_delivery": days, "within_return_window": within,
+             "return_window_days": RETURN_WINDOW_DAYS, "request_kind": kind,
+             "request_date": today.isoformat()}
+    if kind not in ("return", "exchange", "replacement"):
+        return Decision(ROUTE_TO_HUMAN, "request_not_covered", None, facts)                  # refunds and unclear requests: a person
+    if kind == "replacement":
+        if within:
+            return Decision(PROPOSE_REPLACEMENT, "replacement_within_window", "KB-REF-03", facts)
+        return Decision(ROUTE_TO_HUMAN, "replacement_outside_window", None, facts)
+    if not within:
+        return Decision(DECLINE_POLICY, "return_window_closed", "KB-RET-01", facts)
+    # With no item pinned down, a return is still proposed when nothing in the order is final sale (the answer cannot depend on the item);
+    # otherwise, and for any exchange (the size depends on the item), the customer is asked which item they mean.
+    if request.item is None and (kind == "exchange" or any(line.final_sale for line in order.items)):
+        names = [line.product for line in order.items]
+        return Decision(REQUEST_INFO, "item_unclear", "KB-RET-01", {**facts, "candidates": [{"order_id": order.order_id, "items": names}]})
+    if request.item is None:
+        return Decision(PROPOSE_RETURN_LABEL, "return_label", "KB-RET-01", facts)
+    facts["item"] = request.item.product
+    if request.item.final_sale:
+        return Decision(DECLINE_POLICY, "return_final_sale", "KB-RET-03", facts)
+    if kind == "return":
+        return Decision(PROPOSE_RETURN_LABEL, "return_label", "KB-RET-01", facts)
+    if not request.item.size:                                                              # an item without sizes: a person decides
+        return Decision(ROUTE_TO_HUMAN, "exchange_item_has_no_size", None, facts)
+    current = request.item.size
+    facts["current_size"] = current
+    if not request.requested_size or request.requested_size == current.upper():
+        return Decision(REQUEST_INFO, "size_missing", "KB-RET-04", {**facts, "candidates": [{"order_id": order.order_id}]})
+    return Decision(PROPOSE_EXCHANGE, "exchange_within_window", "KB-RET-04", {**facts, "requested_size": request.requested_size})

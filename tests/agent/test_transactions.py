@@ -138,7 +138,7 @@ def run(world, ticket_id, extract="oracle", transactions=TX):
 
 
 def scope_ids(world):
-    return [t for t, lab in world[1].items() if in_scope(lab, True) and not in_slice(lab)]
+    return [t for t, lab in world[1].items() if in_scope(lab, True) and not in_slice(lab) and lab["category"] in ("cancellation", "address_change")]
 
 
 def test_the_new_scope_contains_the_labelled_transactional_tickets(world):
