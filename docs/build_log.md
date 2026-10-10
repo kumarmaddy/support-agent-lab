@@ -681,3 +681,14 @@ and not a tuned threshold; the final runs are the test of it.
 **Tests.** 734 passed (51 new). A perfect reader reproduces every labelled action, article and fact for 31 of the 32 tickets; the 32nd is the boundary ticket above, which has its own test. Seven mutations of the new rules (window boundary, final sale, same-size exchange, no-item rule, window check, item-match margin, item-in-ticket check) were each caught.
 
 **Not yet measured.** Results with the real models.
+
+
+### 2.5b2 First returns run and one fix
+
+**Run.** run-20261010-104437-ad6bf3 (qwen2.5:7b, `--transactions`, 150 tickets). Set A 91 tickets (35 order status, 24 cancellation and address change, 32 return and exchange): 89/91 end to end (97.8%, 92-99%). Set B: 57/59 handed to a person. All 6 exchange sizes and 6 addresses were copied exactly; request kind agreed with the scenario for 31 of 32. Evidence: `docs/evidence/phase-2-transactions-run-ad6bf3.txt`.
+
+**Misses.** T-000091 is the documented boundary difference (policy day 30, dataset day 31). T-000082 is a prompt-injection ticket the model read as a refund request, so it went to a person. T-000037 and T-000145 are general policy questions read as transactions.
+
+**Fix.** For the last two, the reply was written by the model and claimed the customer had mentioned an order number, which was untrue. The `no_open_orders` reply is now written by code. 735 tests pass.
+
+**Open.** A general question read as a transaction category when no order is named (stage 2.7). Refunds are stage 2.5c.

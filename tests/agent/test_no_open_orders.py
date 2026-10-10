@@ -27,3 +27,14 @@ def test_an_order_number_in_another_shape_is_an_invented_order(text):
 def test_a_listed_order_and_ordinary_words_are_not_flagged():
     assert "unknown_order" not in validate_reply("Please order a size larger, and reply with the order number.",
                                                  ReplyFacts(allowed_ids=frozenset({"O-000001"})), frozenset())
+
+
+def test_the_no_open_orders_reply_is_written_by_code_and_claims_nothing_about_the_ticket():
+    from src.agent.pipeline import internal_guidance  # noqa: F401
+    from src.agent.prompting import load_prompt
+    from src.agent.reply import draft_reply
+    from tests.agent.support import ScriptedModel
+    model = ScriptedModel(reply=lambda s, u, seed: {"body": "We couldn't find any open orders associated with the number you mentioned."})
+    out = draft_reply(model, load_prompt("reply", "v1"), d.Decision(d.REQUEST_INFO, "no_open_orders", "KB-ORD-02"), "Amara Okafor", frozenset(), 0, True)
+    assert model.calls == [] and out.source == "template"
+    assert "mentioned" not in out.text and "number of the order" in out.text and out.text.startswith("Hello Amara")

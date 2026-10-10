@@ -112,7 +112,9 @@ def template_body(decision: d.Decision) -> str:
     if reason in ("needs_order_number", "multiple_order_ids"):
         return (f"So that we look at the right order, please reply with the order number you mean. "
                 f"The orders we can see are: {_candidate_text(f['candidates'])}.")
-    if reason in ("order_not_found", "no_account", "no_open_orders"):
+    if reason == "no_open_orders":
+        return "So that we can help, please reply with the number of the order you mean, as shown in your confirmation email."
+    if reason in ("order_not_found", "no_account"):
         return ("We could not find that order. Please check the order number in your confirmation email and reply with it, "
                 "so that we can look into it.")
     if reason == "item_unclear":
@@ -163,8 +165,9 @@ def template_body(decision: d.Decision) -> str:
     return "Thank you for your message. We have passed it to a colleague, who will reply to you."
 
 
-# Replies for these reasons are always built by code: they name items and sizes taken from the order, and a person follows up.
-TEMPLATE_ONLY = frozenset({"item_unclear", "size_missing"})
+# Replies for these reasons are always built by code: they name items and sizes taken from the order, a person follows up, or (no_open_orders)
+# a model-written version claimed the customer had mentioned an order number when none was given.
+TEMPLATE_ONLY = frozenset({"item_unclear", "size_missing", "no_open_orders"})
 
 RETRY_HINTS = {
     "unknown_date": "Use only the dates listed in the facts.",
