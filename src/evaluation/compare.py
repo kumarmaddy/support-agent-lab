@@ -48,14 +48,18 @@ def compare(a: dict, b: dict) -> dict:
     measures = []
     for name, subset, key in MEASURES:
         ra, rb = _rows(a, subset), _rows(b, subset)
+        ra = {t: r for t, r in ra.items() if t in rb}           # a ticket is compared only if both runs put it in the same set
+        rb = {t: r for t, r in rb.items() if t in ra}
         if not ra:
             continue
         only_a = sorted(t for t in ra if ra[t][key] and not rb[t][key])
         only_b = sorted(t for t in ra if rb[t][key] and not ra[t][key])
         measures.append({"measure": name, "n": len(ra), "a": sum(bool(r[key]) for r in ra.values()), "b": sum(bool(r[key]) for r in rb.values()),
                          "only_a": only_a, "only_b": only_b, "p": sign_test(len(only_a), len(only_b))})
+    set_a_a, set_a_b = set(_rows(a, "a")), set(_rows(b, "a"))
+    moved = sorted(set_a_a ^ set_a_b)                           # tickets whose in-scope status differs between the runs (a wider scope)
     changed = sorted(t for t in _rows(a, "all") if _rows(a, "all")[t]["action"] != _rows(b, "all")[t]["action"])
-    return {"a": a["run_id"], "b": b["run_id"], "measures": measures, "tickets_with_a_different_action": changed,
+    return {"a": a["run_id"], "b": b["run_id"], "measures": measures, "tickets_with_a_different_action": changed, "tickets_in_scope_in_only_one_run": moved,
             "configuration": {k: {"a": a.get(k), "b": b.get(k)} for k in CONFIG_KEYS if a.get(k) != b.get(k)},
             "replies": {"a": a["replies"], "b": b["replies"]}, "latency_ms": {"a": a["latency_ms"], "b": b["latency_ms"]}}
 
@@ -69,6 +73,8 @@ def render(result: dict) -> str:
         verdict = "no reliable difference" if m["p"] >= 0.05 else ("A better" if len(m["only_a"]) > len(m["only_b"]) else "B better")
         lines.append(f"  {m['measure']}: A {m['a']}/{m['n']}, B {m['b']}/{m['n']}; only A right {len(m['only_a'])}, only B right {len(m['only_b'])}; "
                      f"p = {m['p']:.3f} ({verdict})")
+    if result["tickets_in_scope_in_only_one_run"]:
+        lines.append(f"not compared (in scope in only one run): {len(result['tickets_in_scope_in_only_one_run'])} tickets")
     lines.append(f"tickets with a different action: {result['tickets_with_a_different_action'] or 'none'}")
     lines.append(f"template fallbacks: A {result['replies']['a']['template_fallbacks']}/{result['replies']['a']['drafts_by_model']}, "
                  f"B {result['replies']['b']['template_fallbacks']}/{result['replies']['b']['drafts_by_model']}")

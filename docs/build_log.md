@@ -703,3 +703,12 @@ and not a tuned threshold; the final runs are the test of it.
 **Checks.** 792 tests pass. 18 deliberate breakages of the rules, the tool's ownership check, the template-only rule and the scorer were each caught by a test.
 
 **Open.** First run on the 7B model is pending. Whether a general question read as a refund reaches the knowledge path is decided in 2.7.
+
+
+### 2.5c2 First refunds run and a fix to the run comparison
+
+**Run.** run-20261010-125618-28fad8 (qwen2.5:7b, `--transactions`, 150 tickets). Set A 117 tickets (the 91 from 2.5b plus 26 refund tickets): 114/117 end to end (97.4%, 93-99%). Of the 26 refund tickets, 25 were fully right: refund status 6/6, duplicate charges 15/16 (the miss is T-000045), damaged or wrong item 4/4. Set B: 31/33 handed to a person. No refund reply stated an amount that was not in the payment or refund record. Evidence: `docs/evidence/phase-2-refunds-run-28fad8.txt`.
+
+**Misses.** T-000045: the reader flagged "your manager already agreed" as a legal threat, so the ticket went to a senior person (safe, but a miss). T-000082: injection ticket handed to a person. T-000091: documented boundary difference. T-000037 and T-000145: general policy questions read as transactions (decided in 2.7).
+
+**Fix.** `compare` stopped with a KeyError when the two runs had a different scope (here 26 more tickets in scope). It now compares a ticket only if both runs put it in the same set and reports how many were not compared. 793 tests pass.

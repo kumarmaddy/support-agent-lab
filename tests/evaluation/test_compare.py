@@ -56,3 +56,15 @@ def test_main_prints_the_comparison(tmp_path, capsys):
         (tmp_path / name / "score.json").write_text(json.dumps(score(name, [True] * 3, [True] * 2)), encoding="utf-8")
     assert cp.main([str(tmp_path / "a"), str(tmp_path / "b")]) == 0
     assert "paired comparison" in capsys.readouterr().out
+
+
+def test_runs_with_a_wider_scope_compare_only_the_tickets_in_scope_in_both():
+    a = score("A", [True] * 10, [True] * 5)
+    b = score("B", [True] * 10, [True] * 5)
+    for row in a["rows"][7:10]:                                  # three tickets are out of scope in A (Set B) and in scope in B
+        row.update(in_slice=False, handed_to_person=True)
+    res = cp.compare(a, b)
+    ends = next(x for x in res["measures"] if x["measure"] == "Set A end to end")
+    handed = next(x for x in res["measures"] if x["measure"] == "Set B handed to a person")
+    assert (ends["n"], handed["n"]) == (7, 5) and len(res["tickets_in_scope_in_only_one_run"]) == 3
+    assert "not compared (in scope in only one run): 3 tickets" in cp.render(res)

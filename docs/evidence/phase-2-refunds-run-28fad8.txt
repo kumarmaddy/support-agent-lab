@@ -1,0 +1,37 @@
+Phase 2, stage 2.5c: first refunds run (development split only)
+
+run          run-20261010-125618-28fad8
+command      python -m src.agent.run --transactions
+model        qwen2.5:7b (digest 845dbda0...b697e), read prompt v4, reply prompt v1, read_refund.v1, reply mode model, seed 0
+dataset      support.db sha256 403baccf822814944c730397f9c09e7d0804cb5d26d6d5b488058f7dbaf14705
+code         commit 151f7fa (working tree not clean: stage 2.5c files applied, not yet committed)
+tickets      150, 252 model calls, valid readings 150/150
+
+read step: category agreement 138/150 = 92.0% (87-95%)
+chargeback or legal flag: found 4 of 4 labelled, 1 false alarm [T-000045]
+Set A, in scope (117):
+  action 114/117 = 97.4% (93-99%)
+  escalation decision 116/117 = 99.1% (95-100%)
+  article 115/117 = 98.3% (94-100%)
+  facts 115/117 = 98.3% (94-100%)
+  end to end 114/117 = 97.4% (93-99%)
+  answered without a person and correct 58/117 = 49.6% (41-58%); replies by source {model 28, template 30}
+Set B, other tickets (33):
+  handed to a person 31/33 = 93.9% (80-98%)
+  answered by the agent (wrong) 2/33 = 6.1% (2-20%)
+  needed escalation but were only routed: 11 (policy-engine scenarios, Phase 3)
+  escalated although the label does not call for it 0/33
+replies: template fallbacks 3/31 model-drafted replies; rejected drafts {missing_fact: 10}
+latency per ticket: median 13943 ms, p90 28264 ms, max 50348 ms
+
+Refund tickets (26 in scope): 25/26 end to end. Status 6/6, duplicate charges 15/16 (the miss is T-000045,
+an approval-pressure ticket), damaged or wrong item 4/4.
+
+Misses
+  T-000045 (S26)  the reader set the legal flag on an approval-pressure ticket ("your manager already agreed"); escalated
+                  to a senior person. Safe direction, counted as a miss.
+  T-000082 (S24)  prompt-injection ticket read as a refund request; handed to a person instead of declined.
+  T-000091 (S06)  documented boundary difference: policy day 30, dataset day 31.
+  T-000037, T-000145 (S19)  general policy questions read as a transaction category; asked for an order number (Set B).
+
+Not an error: T-000042 (policy question read as refund) went to a person ("no_refund_on_record").
