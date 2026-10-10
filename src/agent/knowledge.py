@@ -1,79 +1,173 @@
-"""Knowledge questions: retrieve an article, decide whether to answer from it (phase-2-design.md, sections 2 to 4; ADR-009).
+"""The fixed pipeline for order-status tickets (phase-1-design.md, section 2; ADR-006).
 
-A ticket the reader calls ``product_info`` is a question about policy, not about an order. Three gates must all pass before an
-answer is sent; failing any one hands the ticket to a person and nothing is answered:
+    1 read the ticket (model)  ->  2 check the reading (code)  ->  3 identify customer and order (code, read-only tools)
+    ->  4 decide (code)  ->  5 draft the reply (model, or template)  ->  6 validate the reply (code)  ->  7 record
 
-  gate 1  the best article's similarity score is at least ``min_score``
-  gate 2  a model check says the article's key facts directly answer the question (the check sees the ticket text, but can only
-          answer yes or no, so injected text can at worst release an answer made of the article's own key facts)
-  gate 3  the reply (written from the key facts, never from the ticket) passes ``validate_knowledge_reply``; this gate is applied
-          in ``reply.draft_knowledge_reply`` and falls back to the key facts themselves
-
-The article id is the citation, and the trace records the scores and each gate.
+The pipeline reads no labels and calls no tool that writes. It returns a ``Resolution``; nothing is sent to a customer.
+Each step appends a small record to ``Resolution.steps`` (name, outcome, timings, tokens); stage 1.5 writes them to disk.
 """
-import re
+import hashlib
+import json
+import time
 from dataclasses import dataclass, field
+from datetime import date
 from typing import Optional
 
 from src.agent import decide as d
-from src.agent.model import ModelClient, ModelResponse
+from src.agent import reading as r
+from src.agent import reply as rp
+from src.agent.handover import build_handover, order_context, payment_context
+from src.agent.knowledge import KNOWLEDGE_ANSWER, Knowledge, answer_or_hand_over
+from src.agent.model import ModelClient
 from src.agent.prompting import Prompt
-from src.kb.articles import Article
-from src.kb.embed import EmbeddingError
-
-KNOWLEDGE_ANSWER = "knowledge_answer"
-NOT_FOUND, NOT_ANSWERED, UNAVAILABLE = "knowledge_not_found", "knowledge_not_answered", "knowledge_unavailable"
-DEFAULT_MIN_SCORE = 0.65
-CHECK_SCHEMA = {
-    "type": "object",
-    "properties": {"answers_question": {"type": "boolean"}},
-    "required": ["answers_question"],
-    "additionalProperties": False,
-}
-CHECK_MAX_TOKENS = 20
-_SEE_REFERENCE = re.compile(r"\s*\((?:see\s+)?KB-[A-Z]{3}-\d{2}\)", re.IGNORECASE)
-
-
-def clean_fact(fact: str) -> str:
-    """A key fact as a customer may be shown it: without the internal "(see KB-RET-01)" cross-references."""
-    return _SEE_REFERENCE.sub("", fact).strip()
+from src.agent.tools import Toolbox
+from src.agent.transactions import Transactions, extract_address, match_item, read_refund, read_request, stated_amounts
+from src.agent.validate import internal_shingles
+from src.kb.articles import SECTION_GUIDANCE, Article
 
 
 @dataclass
-class Knowledge:
-    retriever: object                      # anything with search(text, top) -> [Hit]
-    articles: dict
-    check_prompt: Prompt
-    reply_prompt: Prompt
-    min_score: float = DEFAULT_MIN_SCORE
+class Resolution:
+    ticket_id: str
+    action: str
+    reason: str
+    article: Optional[str]
+    reply: str
+    reply_source: str                       # "model" or "template"
+    facts: dict = field(default_factory=dict)
+    steps: list = field(default_factory=list)
+    handover: Optional[dict] = None                 # the note for the person who receives the ticket (handover.py); None when the agent replied alone
 
 
-@dataclass
-class KnowledgeOutcome:
-    decision: d.Decision
-    hits: list = field(default_factory=list)          # [{"kb_id", "score"}] best first
-    gate: str = ""                                    # the gate that stopped it ("score", "check", "unavailable") or "passed"
-    check: Optional[ModelResponse] = None
+def internal_guidance(articles: dict[str, Article]) -> frozenset:
+    """Six-word runs from the internal guidance of every article; a reply may not contain any of them."""
+    return internal_shingles(a.sections.get(SECTION_GUIDANCE, "") for a in articles.values())
 
 
-def render_check_system(prompt: Prompt, key_facts: list) -> str:
-    return prompt.text.replace("{facts}", "\n".join(f"- {f}" for f in key_facts))
+def _hash(*parts) -> str:
+    """Short fingerprint of a step's input, so a trace can show that two runs saw the same input without storing it."""
+    return hashlib.sha256(json.dumps(parts, sort_keys=True, default=str).encode("utf-8")).hexdigest()[:16]
 
 
-def answer_or_hand_over(knowledge: Knowledge, model: ModelClient, subject: str, body: str, seed: int = 0) -> KnowledgeOutcome:
-    from src.agent.reading import render_user          # the ticket goes to the model as delimited data, as in the read step
-    text = f"{subject}\n{body}"
-    try:
-        hits = knowledge.retriever.search(text, 3)
-    except EmbeddingError:
-        return KnowledgeOutcome(d.Decision(d.ROUTE_TO_HUMAN, UNAVAILABLE, None), gate="unavailable")
-    shown = [{"kb_id": h.kb_id, "score": h.score} for h in hits]
-    if not hits or hits[0].score < knowledge.min_score:
-        return KnowledgeOutcome(d.Decision(d.ROUTE_TO_HUMAN, NOT_FOUND, None), shown, "score")
-    article: Article = knowledge.articles[hits[0].kb_id]
-    facts = [clean_fact(f) for f in article.key_facts]
-    check = model.chat(render_check_system(knowledge.check_prompt, facts), render_user(subject, body), CHECK_SCHEMA, seed=seed, max_tokens=CHECK_MAX_TOKENS)
-    if not (check.ok and check.content.get("answers_question") is True):
-        return KnowledgeOutcome(d.Decision(d.ROUTE_TO_HUMAN, NOT_ANSWERED, None), shown, "check", check)
-    return KnowledgeOutcome(d.Decision(d.PROVIDE_INFO, KNOWLEDGE_ANSWER, article.kb_id, {"kb_id": article.kb_id, "key_facts": facts}),
-                            shown, "passed", check)
+def _step(name: str, started: float, **detail) -> dict:
+    return {"step": name, "latency_ms": int((time.perf_counter() - started) * 1000), **detail}
+
+
+def _model_usage(responses) -> dict:
+    return {"attempts": [{"seed": x.seed, "error": x.error, "content": x.content, "latency_ms": x.latency_ms,
+                          "tokens_in": x.tokens_in, "tokens_out": x.tokens_out} for x in responses],
+            "model_calls": len(responses), "tokens_in": sum(x.tokens_in for x in responses),
+            "tokens_out": sum(x.tokens_out for x in responses),
+            "model_latency_ms": sum(x.latency_ms for x in responses),
+            "model": responses[0].model if responses else "", "digest": responses[0].digest if responses else ""}
+
+
+def run_ticket(box: Toolbox, model: ModelClient, read_prompt: Prompt, reply_prompt: Prompt, internal: frozenset,
+               ticket_id: str, seed: int = 0, reply_mode: str = "model", knowledge: Optional[Knowledge] = None,
+               transactions: Optional[Transactions] = None) -> Resolution:
+    steps: list = []
+    scope = transactions.scope if transactions is not None else d.PHASE1_SCOPE
+
+    def finish(action, reason, article, text, source, facts=None, handover=None):
+        return Resolution(ticket_id, action, reason, article, text, source, facts or {}, steps, handover.to_dict() if handover else None)
+
+    started = time.perf_counter()
+    got = box.get_ticket(ticket_id)
+    steps.append(_step("get_ticket", started, outcome=got.status, input_hash=_hash(ticket_id)))
+    if not got.ok:
+        return finish(d.ROUTE_TO_HUMAN, "ticket_not_found", None, "", "none")
+    ticket = got.data
+
+    # 1-2. read and check
+    started = time.perf_counter()
+    read = r.read_ticket(model, read_prompt, ticket.subject, ticket.body, seed=seed)
+    steps.append(_step("read_ticket", started, outcome="ok" if read.ok else read.reason, input_hash=_hash(ticket.subject, ticket.body),
+                       prompt=read.prompt,
+                       prompt_sha256=read.prompt_sha256, retry_hints=read.hints, **_model_usage(read.attempts),
+                       reading=None if not read.ok else {"category": read.reading.category,
+                                                          "deadline_phrase": read.reading.deadline_phrase,
+                                                          "legal": read.reading.mentions_chargeback_or_legal,
+                                                          "order_ids": list(read.reading.order_ids)}))
+    if not read.ok:
+        decision = d.Decision(d.ROUTE_TO_HUMAN, "reading_failed", None)
+        text = rp.compose("", rp.template_body(decision))
+        note = build_handover(ticket_id, ticket.received_at, None, None, decision, "template")
+        return finish(decision.action, decision.reason, None, text, "template", None, note)
+    reading = read.reading
+
+    # 3-4. identify and decide; a policy question (product_info) takes the knowledge path when it is switched on
+    name, identity = None, None
+    if knowledge is not None and reading.category == "product_info" and not reading.mentions_chargeback_or_legal:
+        started = time.perf_counter()
+        ko = answer_or_hand_over(knowledge, model, ticket.subject, ticket.body, seed)
+        steps.append(_step("knowledge", started, outcome=ko.gate, input_hash=_hash(ticket.subject, ticket.body), hits=ko.hits,
+                           prompt=knowledge.check_prompt.label, prompt_sha256=knowledge.check_prompt.sha256,
+                           **_model_usage([ko.check] if ko.check else [])))
+        decision = ko.decision
+    else:
+        if d.requires_lookup(reading, scope):
+            started = time.perf_counter()
+            identity = d.identify(box, ticket, reading)
+            steps.append(_step("identify", started, outcome=identity.outcome,
+                               input_hash=_hash(ticket.customer_email.lower(), reading.order_ids)))
+        requested_address = ""
+        if (transactions is not None and reading.category == "address_change" and identity is not None
+                and identity.outcome == d.IDENTIFIED and identity.order.status == "processing"):
+            started = time.perf_counter()
+            found = extract_address(model, transactions.address_prompt, ticket.subject, ticket.body, seed)
+            requested_address = found.address
+            steps.append(_step("extract_address", started, outcome=found.reason, input_hash=_hash(ticket.subject, ticket.body),
+                               prompt=transactions.address_prompt.label, prompt_sha256=transactions.address_prompt.sha256,
+                               address=found.address, **_model_usage(found.attempts)))
+        request = None
+        if (transactions is not None and transactions.request_prompt is not None and reading.category == "return_exchange"
+                and identity is not None and identity.outcome == d.IDENTIFIED and identity.order.status == "delivered"):
+            started = time.perf_counter()
+            asked = read_request(model, transactions.request_prompt, ticket.subject, ticket.body, seed)
+            line = match_item(asked.item_phrase, identity.order.items)
+            request = d.ReturnRequest(asked.kind, line, asked.requested_size)
+            steps.append(_step("read_request", started, outcome=asked.reason, input_hash=_hash(ticket.subject, ticket.body),
+                               prompt=transactions.request_prompt.label, prompt_sha256=transactions.request_prompt.sha256,
+                               request=asked.kind, item_phrase=asked.item_phrase, item=line.product if line else "",
+                               requested_size=asked.requested_size, **_model_usage(asked.attempts)))
+        refund = None
+        if (transactions is not None and transactions.refund_prompt is not None and reading.category == "refund"
+                and identity is not None and identity.outcome == d.IDENTIFIED):
+            started = time.perf_counter()
+            found = box.get_payment_records(identity.order.order_id, identity.customer.customer_id)
+            steps.append(_step("get_payment_records", started, outcome=found.status, input_hash=_hash(identity.order.order_id)))
+            started = time.perf_counter()
+            asked = read_refund(model, transactions.refund_prompt, ticket.subject, ticket.body, seed)
+            steps.append(_step("read_refund", started, outcome=asked.reason, input_hash=_hash(ticket.subject, ticket.body),
+                               prompt=transactions.refund_prompt.label, prompt_sha256=transactions.refund_prompt.sha256,
+                               topic=asked.topic, **_model_usage(asked.attempts)))
+            refund = d.RefundRequest(asked.topic, found.data if found.ok else None, stated_amounts(ticket.subject, ticket.body))
+        started = time.perf_counter()
+        today = date.fromisoformat(ticket.received_at[:10])
+        decision = d.decide(reading, identity, today, scope, requested_address, request, refund)
+        steps.append(_step("decide", started, input_hash=_hash(reading.category, reading.deadline_phrase, reading.mentions_chargeback_or_legal,
+                                                           identity.outcome if identity else None, str(today), *([requested_address] if requested_address else []), *([request.kind, request.requested_size] if request else []), *([refund.topic, refund.stated_amounts] if refund else [])),
+                           action=decision.action, reason=decision.reason, article=decision.article))
+        name = identity.customer.name if identity and identity.customer else None
+
+    # 5-6. draft and validate
+    started = time.perf_counter()
+    if decision.reason == KNOWLEDGE_ANSWER:
+        outcome = rp.draft_knowledge_reply(model, knowledge.reply_prompt, decision, internal, seed=seed, use_model=(reply_mode == "model"))
+    else:
+        outcome = rp.draft_reply(model, reply_prompt, decision, name, internal, seed=seed, use_model=(reply_mode == "model"))
+    steps.append(_step("draft_reply", started, input_hash=_hash(decision.reason, decision.facts), source=outcome.source, rejected_drafts=outcome.failures, retry_hints=outcome.hints,
+                       prompt=outcome.prompt, prompt_sha256=outcome.prompt_sha256, **_model_usage(outcome.attempts)))
+    context = None
+    if decision.reason == "chargeback_or_legal_threat" and identity is None:
+        # KB-REF-04 asks for the order, the issue and the latest status. The lookup is read-only and its result goes only into the note.
+        started = time.perf_counter()
+        looked = d.identify(box, ticket, reading)
+        steps.append(_step("identify_for_summary", started, outcome=looked.outcome, input_hash=_hash(ticket.customer_email.lower(), reading.order_ids)))
+        context, identity = order_context(looked), looked
+        if looked.outcome == d.IDENTIFIED and reading.category == "refund":
+            found = box.get_payment_records(looked.order.order_id, looked.customer.customer_id)
+            steps.append(_step("get_payment_records_for_summary", time.perf_counter(), outcome=found.status))
+            context.update(payment_context(found.data if found.ok else None))
+    note = build_handover(ticket_id, ticket.received_at, reading, identity, decision, outcome.source, context)
+    return finish(decision.action, decision.reason, decision.article, outcome.text, outcome.source, decision.facts, note)

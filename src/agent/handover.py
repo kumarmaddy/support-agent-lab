@@ -87,8 +87,9 @@ class Handover:
         return out
 
     def render(self) -> str:
+        read = f"Read as: {self.category_read or 'unknown'}" + ("; legal or chargeback threat flagged" if self.legal_flag else "") + "."
         lines = [f"Ticket {self.ticket_id}, received {self.received_at[:10]}. Queue: {self.queue}.",
-                 f"Agent action: {self.action} ({self.reason}).", f"Why: {self.why}"]
+                 f"Agent action: {self.action} ({self.reason}).", read, f"Why: {self.why}"]
         if self.order_ids:
             lines.append("Order: " + ", ".join(self.order_ids))
         lines.append("Records checked:" + ("" if self.records else " none"))
@@ -142,6 +143,24 @@ def order_context(identity) -> dict:
         if o.shipment.delivered_at:
             facts["delivered_date"] = o.shipment.delivered_at[:10]
     return facts
+
+
+def payment_context(records) -> dict:
+    """Refund facts for the note of a refund ticket that was escalated before any payment lookup: the single refund on the order, and the
+    single payment flagged as a duplicate, when the records show exactly one of each. Empty otherwise."""
+    if records is None:
+        return {}
+    out = {}
+    if len(records.refunds) == 1:
+        r = records.refunds[0]
+        out.update(refund_status=r.status, refund_amount_cents=r.amount_cents, refund_requested_date=r.requested_at[:10])
+        received = next((x.received_at[:10] for x in records.returns if x.status == "received" and x.received_at), None)
+        if received:
+            out["return_received_date"] = received
+    flagged = [p for p in records.payments if p.status == "duplicate_flagged"]
+    if len(flagged) == 1:
+        out.update(duplicate_amount_cents=flagged[0].amount_cents, duplicate_payment_id=flagged[0].payment_id)
+    return out
 
 
 def build_handover(ticket_id: str, received_at: str, reading, identity, decision: d.Decision, reply_source: str,

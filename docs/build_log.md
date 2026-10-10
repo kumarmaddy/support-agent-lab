@@ -721,3 +721,12 @@ and not a tuned threshold; the final runs are the test of it.
 **Checks.** 804 tests pass (11 new). 12 deliberate breakages (reasons without an explanation, wrong queue, lost approval flag, missing lookup, note not written, wrong amount, scorer shortcuts) were each caught; one gap found (the identified order missing from the note) and closed.
 
 **Open.** First run to measure notes on the 7B model, and a blind read of a sample of notes, in 2.7.
+
+
+### 2.6b First run with notes, and one improvement
+
+**Run.** run-20261010-141612-d0d271 (qwen2.5:7b, `--transactions`, clean tree at 2a1dc16). Actions and scores are unchanged from the refunds run. Notes: 90 needed, 90 present, 67 of 67 name the labelled order, none holds an email address. Evidence: `docs/evidence/phase-2-handover-run-d0d271.txt`.
+
+**Found by reading.** The note for a refund ticket escalated as a legal threat (T-000015) showed the order but not the refund. Such notes now also show the refund and any duplicate payment from the records (one extra read-only lookup, used only for the note). Every note now says what the ticket was read as. 807 tests pass; four deliberate breakages were each caught.
+
+**Also.** `tests/agent/test_pipeline.py` had been dropped from the 2.6 commit and was restored from git; the suite is 807 tests.

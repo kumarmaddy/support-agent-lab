@@ -1,0 +1,18 @@
+Phase 2, stage 2.6: first run with hand-over notes (development split only)
+
+run          run-20261010-141612-d0d271
+command      python -m src.agent.run --transactions
+model        qwen2.5:7b (digest 845dbda0...b697e), read prompt v4, reply prompt v1, reply mode model, seed 0
+dataset      support.db sha256 403baccf822814944c730397f9c09e7d0804cb5d26d6d5b488058f7dbaf14705
+code         commit 2a1dc16 (working tree clean); 804 tests passed
+
+Same actions and scores as run-20261010-125618-28fad8: Set A 114/117 end to end, Set B 31/33 handed to a person.
+Hand-over notes: needed 90 (12 senior, 78 standard); present 90/90 = 100% (96-100%);
+name the labelled order 67/67 = 100% (95-100%). Notes holding an email address: 0.
+Added step: identify_for_summary on the 5 legal-threat escalations (read-only; p50 1 ms).
+
+Read by hand (sample): T-000005 (order not on the sender's account): note names the order number the customer wrote and
+states nothing read about it. T-000010 (needed-by date): order status and the date needed. T-000091: delivery date, day
+count and window.
+Gap found: T-000015 (returned order, refund pending, chargeback threat) showed the order but not the refund. Fixed in
+stage 2.6b: a refund ticket escalated for a legal threat now also shows the refund and any duplicate payment from the records.

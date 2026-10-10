@@ -163,3 +163,31 @@ def test_the_order_the_agent_identified_is_named_even_when_the_ticket_gave_no_nu
     named = build_handover("T-000005", "2026-10-06T09:00:00", reading("cancellation", ids=("O-000001",)), Identity(d.IDENTIFIED, CUSTOMER),
                            Decision(d.PROPOSE_CANCELLATION, "cancellation_before_dispatch", "KB-CAN-01", facts), "template")
     assert named.order_ids == ("O-000001",)
+
+
+def test_a_refund_ticket_escalated_for_a_legal_threat_shows_the_refund_in_its_note(world):
+    res = run(world, "T-000015")                                  # returned order, refund pending, "I will dispute the charge"
+    text = "\n".join(res.handover["records"])
+    assert "Refund of $664.96" in text and "pending" in text and "return received" in text
+    assert "get_payment_records_for_summary" in [s["step"] for s in res.steps]
+    assert res.reply_source == "template" and "$" not in res.reply                  # the reply to the customer states no amount
+
+
+def test_the_note_says_what_the_ticket_was_read_as():
+    note = build_handover("T-000006", "2026-10-06T09:00:00", reading("account", legal=True), None,
+                          Decision(d.ESCALATE_HUMAN, "chargeback_or_legal_threat", "KB-REF-04"), "template")
+    assert "Read as: account; legal or chargeback threat flagged." in note.render()
+    assert "Read as: unknown." in build_handover("T-000006", "2026-10-06T09:00:00", None, None, Decision(d.ROUTE_TO_HUMAN, "reading_failed", None), "template").render()
+
+
+def test_payment_context_takes_only_what_the_records_show_exactly_once():
+    from src.agent.handover import payment_context
+    from src.agent.tools import Payment, PaymentRecords, RefundRecord, ReturnRecord
+    pay = lambda i, s: Payment(i, 5000, s, "2026-09-01T10:00:00")
+    one = PaymentRecords("O-1", (pay("P1", "captured"), pay("P2", "duplicate_flagged")),
+                         (RefundRecord("R1", "P1", 5000, "pending", "2026-10-01T10:00:00"),), (ReturnRecord("RT1", "received", None, "2026-10-01T10:00:00"),))
+    assert payment_context(one) == {"refund_status": "pending", "refund_amount_cents": 5000, "refund_requested_date": "2026-10-01",
+                                    "return_received_date": "2026-10-01", "duplicate_amount_cents": 5000, "duplicate_payment_id": "P2"}
+    two = PaymentRecords("O-1", (pay("P1", "duplicate_flagged"), pay("P2", "duplicate_flagged")),
+                         (RefundRecord("R1", "P1", 1, "pending", "2026-10-01T10:00:00"), RefundRecord("R2", "P1", 1, "pending", "2026-10-01T10:00:00")), ())
+    assert payment_context(two) == {} and payment_context(None) == {}
