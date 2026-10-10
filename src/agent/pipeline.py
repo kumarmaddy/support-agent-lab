@@ -16,7 +16,7 @@ from typing import Optional
 from src.agent import decide as d
 from src.agent import reading as r
 from src.agent import reply as rp
-from src.agent.handover import build_handover, order_context
+from src.agent.handover import build_handover, order_context, payment_context
 from src.agent.knowledge import KNOWLEDGE_ANSWER, Knowledge, answer_or_hand_over
 from src.agent.model import ModelClient
 from src.agent.prompting import Prompt
@@ -165,5 +165,9 @@ def run_ticket(box: Toolbox, model: ModelClient, read_prompt: Prompt, reply_prom
         looked = d.identify(box, ticket, reading)
         steps.append(_step("identify_for_summary", started, outcome=looked.outcome, input_hash=_hash(ticket.customer_email.lower(), reading.order_ids)))
         context, identity = order_context(looked), looked
+        if looked.outcome == d.IDENTIFIED and reading.category == "refund":
+            found = box.get_payment_records(looked.order.order_id, looked.customer.customer_id)
+            steps.append(_step("get_payment_records_for_summary", time.perf_counter(), outcome=found.status))
+            context.update(payment_context(found.data if found.ok else None))
     note = build_handover(ticket_id, ticket.received_at, reading, identity, decision, outcome.source, context)
     return finish(decision.action, decision.reason, decision.article, outcome.text, outcome.source, decision.facts, note)
