@@ -741,3 +741,16 @@ and not a tuned threshold; the final runs are the test of it.
 **Tests.** 816 tests pass (9 new). Seven mutations of the new rules (named-order condition, order-status exclusion, fall-through, legal exclusion, citation existence, citation correctness, scope) each fail a test.
 
 **Next.** Two combined runs (`--knowledge --transactions` with and without `--knowledge-first`), scored and compared.
+
+
+2.7a result. Runs 21c7b5 (--knowledge --transactions) and 946853 (adds --knowledge-first). Knowledge-first answered two misfiled policy questions (T-000042, T-000145) with the correct article, answered no transactional ticket from the knowledge base, and changed no other result (action 116→118 of 125; p = 0.50, two tickets). Decision: use --knowledge-first with --knowledge. Remaining policy-question misses: T-000016, T-000037, T-000038, T-000143.
+
+
+2.7b result. Run 9659c5 (llama3.2:3b, read v3, --knowledge --knowledge-first --transactions) vs 946853 (qwen2.5:7b, read v4). Set A end to end 114/125 vs 118/125 (p = 0.289); facts 116 vs 123 (p = 0.016, 7B better). Set B 25/25 handed over and 0 wrongly answered for both. Knowledge answers 6/6 vs 4/4 with correct citations. Template fallbacks 11/35 vs 3/35. Median latency 6.9 s vs 13.9 s. ADR-007 stands.
+
+
+### 2.7c Blind review tooling (replies and hand-over notes)
+
+**Built.** `review_notes` (make / rate / report): a seeded sample of hand-over notes spread over the actions, shown with the ticket and no labels; three questions per note; resumable; Wilson intervals; follow-up list. The Phase 1 reply review now also shows key facts for knowledge answers. 823 tests pass (16 new); six mutations of the new rules each fail a test (one by never finishing, which the timeout catches).
+
+**Next.** A template-only run, the reply review (model vs template) and the note review on the 7B run, then the Phase 2 evaluation report and the exit review.

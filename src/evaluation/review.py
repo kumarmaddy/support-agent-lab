@@ -21,7 +21,7 @@ from src.evaluation.compare import sign_test
 from src.evaluation.score import read_jsonl
 
 ROOT = Path("data/reviews")
-FACT_FIELDS = ("order_id", "status", "promised_date", "carrier", "tracking_no", "last_status", "candidates")
+FACT_FIELDS = ("order_id", "status", "promised_date", "carrier", "tracking_no", "last_status", "candidates", "key_facts")
 
 
 def side_of_model(ticket_id: str, seed: int) -> str:

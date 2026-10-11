@@ -1,6 +1,6 @@
 # Phase 2 Design: Knowledge-Base Answers and More Ticket Types
 
-- Version: 0.8 (draft for review)
+- Version: 0.9 (draft for review)
 - Date: 2026-10-09
 - Owner: Kumar Maddipatla, Project Lead
 - Builds on: phase-1-design.md v1.6, ADR-006 (fixed pipeline), ADR-007 (qwen2.5:7b, read prompt v4)
@@ -136,6 +136,11 @@ Policy: KB-REF-02
 - **Reach of the option.** In the development set every transactional ticket names an order, so the option can only change a ticket the reader has misfiled. The three known misfiles (T-000037, T-000042, T-000145) are policy questions with no order. The comparison of the two runs therefore measures whether those are answered and whether any transactional ticket is wrongly answered.
 - **Decision rule.** Keep the option if it answers the misfiled policy questions with the correct article and answers no transactional ticket from the knowledge base. Otherwise leave it off.
 - **Limits.** Three tickets is a very small sample; the result shows the mechanism works, not how often it helps on new tickets.
+
+## 5f. Blind review of replies and hand-over notes (stage 2.7c)
+- **Replies.** The Phase 1 pairwise review (`src.evaluation.review`) is reused: the reply the model wrote is shown beside the template reply for the same decision, in a seeded random order, without saying which is which. From this stage the sheet also shows an article's key facts for knowledge answers, so the reviewer can check the wording against the source.
+- **Notes.** `src.evaluation.review_notes` draws a seeded sample of hand-over notes spread over the actions that carry one, and shows the ticket beside each note. Labels, scenarios and expected actions are not shown. Three questions per note: could the reviewer act on it without opening anything else (yes / partly / no), is anything wrong compared with the ticket, is anything missing. Results carry 95% Wilson intervals, and every note not rated "yes" or flagged is listed for follow-up.
+- **Scope.** One reviewer, who also wrote the project, so the review shows usability problems and says nothing about agreement between reviewers. The held-out split is never reviewed here (the tool refuses it). A second reviewer is a Phase 4 item.
 
 ## 6. Safety rules carried over
 Ticket and article text are data, not instructions; the reply model sees only verified facts and article key facts; every reply passes the validator; any failure falls back to a template or a hand-over; write actions stay disabled until Phase 3.
