@@ -19,6 +19,7 @@ from typing import Callable, Optional
 from src.agent.knowledge import DEFAULT_MIN_SCORE, Knowledge
 from src.agent.model import ModelClient, OllamaClient
 from src.agent.pipeline import Resolution, internal_guidance, run_ticket
+from src.agent.policy import DEFAULT_POLICY_PATH, Policy, PolicyError, load_policy
 from src.agent.prompting import Prompt, load_prompt
 from src.agent.reading import MAX_TOKENS, READ_SCHEMA, render_system, render_user
 from src.agent.tools import Toolbox
@@ -68,7 +69,7 @@ def warm_up(model: ModelClient, read_prompt: Prompt) -> int:
 
 def build_meta(model: ModelClient, read_prompt: Prompt, reply_prompt: Prompt, db_path: Path, seed: int, ticket_ids: list,
                argv: Optional[list] = None, digest: str = "", warmup_ms: int = 0, reply_mode: str = "model", knowledge: Optional[Knowledge] = None,
-               embed_model: str = "", embed_digest: str = "", transactions: Optional[Transactions] = None) -> dict:
+               embed_model: str = "", embed_digest: str = "", transactions: Optional[Transactions] = None, policy: Optional[Policy] = None) -> dict:
     return {
         "started_at": datetime.now(timezone.utc).isoformat(timespec="seconds"),
         "model": {"tag": model.model, "digest": digest},
@@ -89,6 +90,8 @@ def build_meta(model: ModelClient, read_prompt: Prompt, reply_prompt: Prompt, db
                                                                                 "sha256": transactions.request_prompt.sha256},
             "refund_prompt": None if transactions.refund_prompt is None else {"label": transactions.refund_prompt.label,
                                                                               "sha256": transactions.refund_prompt.sha256}},
+        "policy": None if policy is None else {"version": policy.version, "sha256": policy.sha256, "rules": [r.rule_id for r in policy.rules],
+                                               "auto_execute_enabled": policy.auto_execute_enabled},
         "python": platform.python_version(),
         "argv": argv or [],
     }
@@ -96,10 +99,11 @@ def build_meta(model: ModelClient, read_prompt: Prompt, reply_prompt: Prompt, db
 
 def run_tickets(box: Toolbox, model: ModelClient, read_prompt: Prompt, reply_prompt: Prompt, internal: frozenset,
                 ticket_ids: list, writer: TraceWriter, seed: int = 0, reply_mode: str = "model", knowledge: Optional[Knowledge] = None,
-                transactions: Optional[Transactions] = None, progress: Optional[Callable[[int, int, Resolution], None]] = None) -> list:
+                transactions: Optional[Transactions] = None, progress: Optional[Callable[[int, int, Resolution], None]] = None,
+                policy: Optional[Policy] = None) -> list:
     results = []
     for index, ticket_id in enumerate(ticket_ids, 1):
-        resolution = run_ticket(box, model, read_prompt, reply_prompt, internal, ticket_id, seed, reply_mode, knowledge, transactions)
+        resolution = run_ticket(box, model, read_prompt, reply_prompt, internal, ticket_id, seed, reply_mode, knowledge, transactions, policy)
         writer.write(resolution)
         results.append(resolution)
         if progress:
@@ -133,10 +137,16 @@ def main(argv=None) -> int:
     p.add_argument("--embed-model", default="nomic-embed-text")
     p.add_argument("--min-score", type=float, default=DEFAULT_MIN_SCORE)
     p.add_argument("--check-prompt", default="v1", help="version of the knowledge check prompt (v1 default)")
+    p.add_argument("--policy", type=Path, default=DEFAULT_POLICY_PATH, help="policy rules for proposed actions (default config/policy.toml)")
+    p.add_argument("--no-policy", action="store_true", help="run without the policy engine (the Phase 2 behaviour)")
     p.add_argument("--limit", type=int, default=0, help="first N tickets by id (0 = all)")
     p.add_argument("--ids-file", type=Path, help="text file with one ticket id per line")
     args = p.parse_args(argv)
     check_not_heldout(args.db)
+    try:
+        policy = None if args.no_policy else load_policy(args.policy)
+    except PolicyError as exc:                    # fail closed: a run does not start on a policy it cannot read
+        raise SystemExit(f"Policy error: {exc}")
 
     box = Toolbox.from_path(args.db)
     model = OllamaClient(model=args.model)
@@ -154,10 +164,10 @@ def main(argv=None) -> int:
     transactions = Transactions(load_prompt("extract_address", "v1"), load_prompt("read_request", "v1"), load_prompt("read_refund", "v1")) if args.transactions else None
     meta = build_meta(model, read_prompt, reply_prompt, args.db, args.seed, ids, argv if argv is not None else sys.argv[1:], model.digest(), warmup_ms,
                       args.reply_mode, knowledge, args.embed_model if knowledge else "",
-                      model_digest(args.embed_model) if knowledge else "", transactions)
+                      model_digest(args.embed_model) if knowledge else "", transactions, policy)
     with TraceWriter(args.out, new_run_id(), meta) as writer:
         run_tickets(box, model, read_prompt, reply_prompt, internal_guidance(articles), ids, writer, args.seed, args.reply_mode, knowledge, transactions,
-                    progress=lambda i, n, r: print(f"[{i}/{n}] {r.ticket_id} {r.action} ({r.reason}) reply by {r.reply_source}", flush=True))
+                    policy=policy, progress=lambda i, n, r: print(f"[{i}/{n}] {r.ticket_id} {r.action} ({r.reason}) reply by {r.reply_source}", flush=True))
         summary = writer.close()
     print(f"\nrun {writer.run_id}: {summary['tickets']} tickets, {summary['model_calls']} model calls")
     print(f"actions {summary['actions']}")

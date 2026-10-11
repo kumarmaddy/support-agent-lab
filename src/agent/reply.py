@@ -198,7 +198,7 @@ def template_body(decision: d.Decision) -> str:
 # a model-written version claimed the customer had mentioned an order number when none was given.
 # Refund replies (refund_pending, refund_processed, remedy_unclear) are code-written too: they state money from the records, and a
 # model-written reply to a refund question could promise or misstate it (the validator forbids amounts and promises in model drafts).
-TEMPLATE_ONLY = frozenset({"item_unclear", "size_missing", "no_open_orders", "refund_pending", "refund_processed", "remedy_unclear"})
+TEMPLATE_ONLY = frozenset({"item_unclear", "size_missing", "no_open_orders", "refund_pending", "refund_processed", "remedy_unclear", "policy_denied"})
 
 RETRY_HINTS = {
     "unknown_date": "Use only the dates listed in the facts.",

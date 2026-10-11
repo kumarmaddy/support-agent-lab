@@ -52,6 +52,8 @@ class TraceWriter:
                   "reply": resolution.reply, "facts": resolution.facts}
         if getattr(resolution, "handover", None):
             record["handover"] = resolution.handover                  # stage 2.6: only for hand-overs and proposals
+        if getattr(resolution, "policy", None):
+            record["policy"] = resolution.policy                      # stage 3.2: rule id, outcome, evidence, policy hash
         self._resolutions.write(_line(record))
         self._trace.flush()
         self._resolutions.flush()

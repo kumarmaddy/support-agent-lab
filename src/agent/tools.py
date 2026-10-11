@@ -161,6 +161,8 @@ TOOL_SCHEMAS = {
     "get_payment_records": _schema("Return the payments, refunds and returns recorded for one order (amounts, statuses, dates; never card digits). "
                                    "Refuses an order that belongs to another customer.",
                                    order_id="Order id, for example O-000123", customer_id="The verified customer asking about the order"),
+    "count_refunds": _schema("Return how many refunds are recorded against all of a customer's orders (a number only; used by the policy engine).",
+                             customer_id="Customer id, for example C-000042"),
 }
 
 
@@ -233,6 +235,15 @@ class Toolbox:
         returns = tuple(ReturnRecord(*r) for r in self.conn.execute(
             "SELECT return_id, status, label_issued_at, received_at FROM returns WHERE order_id = ? ORDER BY return_id", (order_id,)))
         return ToolResult(OK, PaymentRecords(order_id, payments, refunds, returns))
+
+    def count_refunds(self, customer_id: str) -> ToolResult:
+        if not _matches(CUSTOMER_ID, customer_id):
+            return ToolResult(INVALID, detail="customer_id must look like C-000123")
+        if self.conn.execute("SELECT 1 FROM customers WHERE customer_id = ?", (customer_id,)).fetchone() is None:
+            return ToolResult(NOT_FOUND, detail="no such customer")
+        (count,) = self.conn.execute("SELECT COUNT(*) FROM refunds r JOIN payments p USING (payment_id) JOIN orders o ON o.order_id = p.order_id "
+                                     "WHERE o.customer_id = ?", (customer_id,)).fetchone()
+        return ToolResult(OK, count)
 
     # ------------------------------------------------------------------ dispatch by name (what a model-driven loop would use)
     def call(self, name: str, arguments: dict) -> dict:

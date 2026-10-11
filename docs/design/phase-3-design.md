@@ -1,6 +1,6 @@
 # Phase 3 Design: Governance Hardening
 
-- Version: 0.1 (draft for review)
+- Version: 0.2 (stage 3.2 built; section 5.1 now describes the engine as built)
 - Date: 2026-10-11
 - Owner: Kumar Maddipatla, Project Lead
 - Builds on: phase-2-design.md v0.9, ADR-006 (fixed pipeline), ADR-008 (tools in-process, MCP in Phase 3), ADR-010, Phase 2 exit review
@@ -24,12 +24,21 @@ Out: real payment processors, real customer data, multi-user authentication for 
 3. **Writes go to a sandbox.** The frozen development database is never written. The Actions server applies approved actions to a copy of the database and to an action ledger, so effects can be checked and the dataset hash stays valid.
 
 ## 5. Design
-### 5.1 Policy engine (stage 3.2)
-- Pure function `evaluate(request, config) -> PolicyDecision(outcome, rule_id, reason, evidence)`. Outcomes: `deny`, `require_approval`, `auto_execute`. No model call, no I/O.
-- Request fields: action type, amount (from records), customer tier, order age, prior refunds on the customer, whether a legal flag, compromise flag or open dispute exists.
-- Rules live in `config/policy.toml` (standard library `tomllib`), versioned, hashed, and the hash is written into every run's metadata and every decision. Evaluation order: deny rules, then must-escalate rules, then approval rules, then auto-execute rules; first match wins; no match means `require_approval` (fail closed).
-- Initial rules: refund above the payment on record denied; second refund against the same payment denied; any action on an account flagged as compromised denied and escalated; refund of at least a configured amount routed to the senior approver queue (default $250, an assumption to be reviewed against the development amounts, stated as such); everything else `require_approval`.
+### 5.1 Policy engine (stage 3.2, built)
+- Pure function `evaluate(request, policy) -> PolicyDecision(outcome, rule_id, reason, queue, evidence, policy_sha256, policy_version)` in `src/agent/policy.py`. Outcomes: `deny`, `require_approval` (standard or senior queue), `auto_execute`. No model call, no I/O.
+- Request fields, all taken from verified records and never from ticket text: action, the pipeline's reason, amount (from the payment record), the payment amount on record, whether that payment already has a refund, customer tier, order age in days (order date to ticket date), the customer's prior refund count (new read-only tool `count_refunds`), legal flag. A value that cannot be established is unknown, and a numeric or flag condition on an unknown value does not match.
+- Rules live in `config/policy.toml` (standard library `tomllib`). The file is validated when loaded: an unknown section, key, condition, outcome or action, a wrong type, a missing reason, an empty `when`, a duplicate or reserved rule id, or a queue on a rule that is not an approval rule stops the run before it starts (fail closed). The sha256 of the file is written into the run metadata (`run.json`), the trace step and every decision.
+- Evaluation order: deny, then require_approval, then auto_execute; inside one outcome the order of the file decides; the first match wins. The must-escalate rules are added between deny and approval in stage 3.3. No match gives `require_approval` under the reserved rule id `DEFAULT-APPROVAL`.
+- `[engine] auto_execute_enabled = false` ships off. While it is off, a matching auto-execute rule is reported as `require_approval` with that rule's id and `auto_execute_enabled: false` in the evidence, so the record shows what would have matched. Stage 3.2 has no write tool, so even with the switch on the pipeline only proposes; execution arrives with the Actions server (3.5).
+- Initial rules: `DENY-REFUND-EXCEEDS-PAYMENT`, `DENY-REFUND-ALREADY-REFUNDED`, `APPROVE-REFUND-SENIOR` (refund of at least 25000 cents to the senior queue). The compromised-account rule arrives with its flag in stage 3.3. Everything else is `DEFAULT-APPROVAL`.
+- In the pipeline: after `decide`, every `propose_*` decision with an identified customer and order gets a `policy` step. A `deny` replaces the proposal with `route_to_human` / `policy_denied` (standard queue; the approval flag is removed; the customer reply is the generic code-written hand-over text). An approval in the senior queue sets the note's queue to senior. The note carries the rule id and outcome; the trace carries the full decision.
+- The two deny rules cannot fire on today's proposals, because `decide` already hands over a duplicate that is already refunded and takes the refund amount from the payment record. They are kept as an independent second check: the engine does not trust the step before it, and the actions server (3.5) will call the same engine.
 - Every decision records the rule id and the evidence used (NFR-6).
+
+#### Senior-approval threshold: basis and status
+- The value is an **assumption**, `25000` cents ($250.00). The charter gives Support Operations ownership of approval thresholds; this value is the project's starting point and must be confirmed by them before any live use.
+- Basis in the development data: the 25 duplicate-charge payments range from $14.99 to $809.97 with a median of $119.99, and 4 of 25 are at or above $250. Across all payments the 50th, 75th and 90th percentiles are $189.97, $319.97 and $484.98. At $250 the senior approver would see roughly one duplicate-charge refund in six, the largest ones, and the standard approver the rest.
+- The data is synthetic, so this shows where the threshold falls in this dataset, not what a real business should choose. The file is the only place the number lives, and a change changes the file's hash, which is recorded with every decision.
 
 ### 5.2 Must-escalate rules (stage 3.3)
 - S18: a new read-step field `account_compromise_suspected` (read prompt v5), acceptance test fixed before the run (find 5 of 5, at most 2 false alarms, category agreement within 2 tickets of v4, same on 3B). A flagged ticket escalates to the senior queue with KB-ACC-03 and no reply promising any action.
@@ -60,8 +69,8 @@ Out: real payment processors, real customer data, multi-user authentication for 
 ## 6. Stages
 | Stage | Content | Exit evidence |
 |---|---|---|
-| 3.1 | This design | Reviewed |
-| 3.2 | Policy engine and rules in config; wired in as a decision on every proposal | Tests, mutation checks, a run showing the decision and rule id on each proposal |
+| 3.1 | This design | Reviewed (approved 2026-10-11) |
+| 3.2 | Policy engine and rules in config; wired in as a decision on every proposal | Built: tests, mutation checks; a run showing the decision and rule id on each proposal is the project lead's next step |
 | 3.3 | Must-escalate rules (S18, S20, S25), read prompt v5 | 7B and 3B runs; escalation recall and precision before and after |
 | 3.4 | Audit log and redaction | Tests; query by ticket |
 | 3.5 | Actions server, idempotency, sandbox ledger, MCP | Tests with retries; zero writes without approval |
@@ -77,5 +86,5 @@ Ticket, article and note text are data, not instructions; the model never choose
 R2 and R3 (a 16 GB laptop and slow runs: the engine and audit are pure code, the MCP SDK is the new dependency to check), R7 (incorrect refund or account action: policy engine, approval, idempotency, sandbox), R9 (prompt injection: suite), R5/R6 (small samples, single reviewer: the suite is deterministic but written by the project's author).
 
 ## 9. Open items
-- Senior-approval refund threshold ($250 default) needs a rationale against the development amounts; to be set in stage 3.2 and recorded.
+- Senior-approval refund threshold: rationale recorded in section 5.1 (stage 3.2); the value remains an assumption until Support Operations confirms it.
 - MCP SDK compatibility with Python 3.13 on Windows to be confirmed at the start of stage 3.5; if it fails, an in-process interface with the same schemas is kept and the deviation recorded.

@@ -1,0 +1,43 @@
+# Policy rules for actions the agent proposes (docs/design/phase-3-design.md, section 5.1).
+#
+# Every proposed action is evaluated against these rules before it reaches a person. The first matching rule wins, checked in this
+# order: deny, then require_approval, then auto_execute; inside one outcome, in file order. When no rule matches the action needs
+# approval (fail closed). A rule's "when" table holds conditions that must ALL hold; a numeric condition is false when its input is
+# unknown. The file is read once at the start of a run; its sha256 is recorded in the run and in every decision.
+# An unknown key, outcome or condition, or a duplicate rule id, stops the run at load time.
+#
+# Thresholds are owned by Support Operations (project charter). Values below marked ASSUMPTION are the project's starting values.
+
+[engine]
+version = "1.0"
+# Approval is always required in v1. auto_execute rules are supported and tested, but nothing executes by itself while this is false:
+# a matching auto_execute rule is reported as require_approval.
+auto_execute_enabled = false
+
+[[rule]]
+id = "DENY-REFUND-EXCEEDS-PAYMENT"
+outcome = "deny"
+reason = "A refund may not exceed the payment it is taken from."
+[rule.when]
+action = ["refund"]
+amount_exceeds_payment = true
+
+[[rule]]
+id = "DENY-REFUND-ALREADY-REFUNDED"
+outcome = "deny"
+reason = "A second refund may not be made against a payment that already has one."
+[rule.when]
+action = ["refund"]
+payment_already_refunded = true
+
+# ASSUMPTION: 25000 cents ($250.00). Of the 25 duplicate-charge payments in the development data (range $14.99 to $809.97, median $119.99),
+# 4 are at or above $250; the 90th percentile of all payments is $484.98. The threshold sends the largest few percent of refunds to the
+# senior approver. Support Operations to confirm before any live use.
+[[rule]]
+id = "APPROVE-REFUND-SENIOR"
+outcome = "require_approval"
+queue = "senior"
+reason = "A refund at or above the senior-approval amount goes to the senior approver."
+[rule.when]
+action = ["refund"]
+amount_cents_gte = 25000

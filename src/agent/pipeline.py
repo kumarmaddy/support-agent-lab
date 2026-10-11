@@ -19,6 +19,7 @@ from src.agent import reply as rp
 from src.agent.handover import build_handover, order_context, payment_context
 from src.agent.knowledge import KNOWLEDGE_ANSWER, KNOWLEDGE_FIRST_CATEGORIES, Knowledge, answer_or_hand_over
 from src.agent.model import ModelClient
+from src.agent import policy as pol
 from src.agent.prompting import Prompt
 from src.agent.tools import Toolbox
 from src.agent.transactions import Transactions, extract_address, match_item, read_refund, read_request, stated_amounts
@@ -37,6 +38,7 @@ class Resolution:
     facts: dict = field(default_factory=dict)
     steps: list = field(default_factory=list)
     handover: Optional[dict] = None                 # the note for the person who receives the ticket (handover.py); None when the agent replied alone
+    policy: Optional[dict] = None                   # stage 3.2: the policy decision on a proposed action (rule id, outcome, evidence); None otherwise
 
 
 def internal_guidance(articles: dict[str, Article]) -> frozenset:
@@ -62,14 +64,38 @@ def _model_usage(responses) -> dict:
             "model": responses[0].model if responses else "", "digest": responses[0].digest if responses else ""}
 
 
+POLICY_ACTIONS = {d.PROPOSE_CANCELLATION: "cancel_order", d.PROPOSE_ADDRESS_CHANGE: "change_address", d.PROPOSE_RETURN_LABEL: "return_label",
+                  d.PROPOSE_EXCHANGE: "exchange", d.PROPOSE_REPLACEMENT: "replacement", d.PROPOSE_REFUND: "refund"}
+
+
+def policy_request(box: Toolbox, decision: d.Decision, reading, identity, today: date, records) -> pol.PolicyRequest:
+    """The facts the policy is asked about, taken from verified records only (never from the ticket text). A value that cannot be
+    established is left unknown, and a numeric condition on an unknown value does not match."""
+    f = decision.facts
+    amount = f.get("duplicate_amount_cents")                       # an item refund states no amount: a person sets it
+    payment = next((p for p in records.payments if p.payment_id == f.get("duplicate_payment_id")), None) if records is not None else None
+    refunded = None
+    if records is not None and decision.action == d.PROPOSE_REFUND:
+        refunded = (any(r.payment_id == f.get("duplicate_payment_id") for r in records.refunds) if payment is not None
+                    else bool(records.refunds) or any(p.status == "refunded" for p in records.payments))
+    prior = box.count_refunds(identity.customer.customer_id)
+    try:
+        age = (today - date.fromisoformat(identity.order.placed_at[:10])).days
+    except ValueError:
+        age = None
+    return pol.PolicyRequest(POLICY_ACTIONS[decision.action], decision.reason, amount, payment.amount_cents if payment else None, refunded,
+                             identity.customer.tier, age, prior.data if prior.ok else None, bool(reading.mentions_chargeback_or_legal))
+
+
 def run_ticket(box: Toolbox, model: ModelClient, read_prompt: Prompt, reply_prompt: Prompt, internal: frozenset,
                ticket_id: str, seed: int = 0, reply_mode: str = "model", knowledge: Optional[Knowledge] = None,
-               transactions: Optional[Transactions] = None) -> Resolution:
+               transactions: Optional[Transactions] = None, policy: Optional[pol.Policy] = None) -> Resolution:
     steps: list = []
     scope = transactions.scope if transactions is not None else d.PHASE1_SCOPE
 
-    def finish(action, reason, article, text, source, facts=None, handover=None):
-        return Resolution(ticket_id, action, reason, article, text, source, facts or {}, steps, handover.to_dict() if handover else None)
+    def finish(action, reason, article, text, source, facts=None, handover=None, policy_decision=None):
+        return Resolution(ticket_id, action, reason, article, text, source, facts or {}, steps, handover.to_dict() if handover else None,
+                          policy_decision.to_dict() if policy_decision else None)
 
     started = time.perf_counter()
     got = box.get_ticket(ticket_id)
@@ -96,7 +122,7 @@ def run_ticket(box: Toolbox, model: ModelClient, read_prompt: Prompt, reply_prom
     reading = read.reading
 
     # 3-4. identify and decide; a policy question (product_info) takes the knowledge path when it is switched on
-    name, identity, decision = None, None, None
+    name, identity, decision, policy_decision = None, None, None, None
     knowledge_first = (knowledge is not None and knowledge.first and reading.category in KNOWLEDGE_FIRST_CATEGORIES and not reading.order_ids)
     if knowledge is not None and (reading.category == "product_info" or knowledge_first) and not reading.mentions_chargeback_or_legal:
         started = time.perf_counter()
@@ -132,7 +158,7 @@ def run_ticket(box: Toolbox, model: ModelClient, read_prompt: Prompt, reply_prom
                                prompt=transactions.request_prompt.label, prompt_sha256=transactions.request_prompt.sha256,
                                request=asked.kind, item_phrase=asked.item_phrase, item=line.product if line else "",
                                requested_size=asked.requested_size, **_model_usage(asked.attempts)))
-        refund = None
+        refund, payment_records = None, None
         if (transactions is not None and transactions.refund_prompt is not None and reading.category == "refund"
                 and identity is not None and identity.outcome == d.IDENTIFIED):
             started = time.perf_counter()
@@ -143,7 +169,8 @@ def run_ticket(box: Toolbox, model: ModelClient, read_prompt: Prompt, reply_prom
             steps.append(_step("read_refund", started, outcome=asked.reason, input_hash=_hash(ticket.subject, ticket.body),
                                prompt=transactions.refund_prompt.label, prompt_sha256=transactions.refund_prompt.sha256,
                                topic=asked.topic, **_model_usage(asked.attempts)))
-            refund = d.RefundRequest(asked.topic, found.data if found.ok else None, stated_amounts(ticket.subject, ticket.body))
+            payment_records = found.data if found.ok else None
+            refund = d.RefundRequest(asked.topic, payment_records, stated_amounts(ticket.subject, ticket.body))
         started = time.perf_counter()
         today = date.fromisoformat(ticket.received_at[:10])
         decision = d.decide(reading, identity, today, scope, requested_address, request, refund)
@@ -151,7 +178,14 @@ def run_ticket(box: Toolbox, model: ModelClient, read_prompt: Prompt, reply_prom
                                                            identity.outcome if identity else None, str(today), *([requested_address] if requested_address else []), *([request.kind, request.requested_size] if request else []), *([refund.topic, refund.stated_amounts] if refund else [])),
                            action=decision.action, reason=decision.reason, article=decision.article))
         name = identity.customer.name if identity and identity.customer else None
-
+        if policy is not None and decision.action in POLICY_ACTIONS and identity is not None and identity.outcome == d.IDENTIFIED:
+            started = time.perf_counter()
+            request_for_policy = policy_request(box, decision, reading, identity, today, payment_records)
+            policy_decision = pol.evaluate(request_for_policy, policy)
+            steps.append(_step("policy", started, input_hash=_hash(request_for_policy.__dict__), rule_id=policy_decision.rule_id,
+                               outcome=policy_decision.outcome, queue=policy_decision.queue, policy_sha256=policy.sha256))
+            if policy_decision.outcome == pol.DENY:         # the action is not allowed: a person handles the ticket, nothing is proposed
+                decision = d.Decision(d.ROUTE_TO_HUMAN, "policy_denied", None, {k: v for k, v in decision.facts.items() if k != "approval_required"})
     # 5-6. draft and validate
     started = time.perf_counter()
     if decision.reason == KNOWLEDGE_ANSWER:
@@ -171,5 +205,6 @@ def run_ticket(box: Toolbox, model: ModelClient, read_prompt: Prompt, reply_prom
             found = box.get_payment_records(looked.order.order_id, looked.customer.customer_id)
             steps.append(_step("get_payment_records_for_summary", time.perf_counter(), outcome=found.status))
             context.update(payment_context(found.data if found.ok else None))
-    note = build_handover(ticket_id, ticket.received_at, reading, identity, decision, outcome.source, context)
-    return finish(decision.action, decision.reason, decision.article, outcome.text, outcome.source, decision.facts, note)
+    note = build_handover(ticket_id, ticket.received_at, reading, identity, decision, outcome.source, context,
+                          policy_decision.to_dict() if policy_decision else None)
+    return finish(decision.action, decision.reason, decision.article, outcome.text, outcome.source, decision.facts, note, policy_decision)

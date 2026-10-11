@@ -29,6 +29,8 @@ REASONS = {
     "delivery_deadline_cannot_be_guaranteed": ("The customer needs the order by a date that falls inside the delivery period, and delivery cannot be guaranteed.",
                                                "Review what is possible (expedite or an alternative) and reply to the customer."),
     # routes
+    "policy_denied": ("The policy does not allow the action the agent would have proposed; the rule that denied it is named below.",
+                      "Read the ticket and the rule, then handle it as usual."),
     "out_of_slice": ("The ticket is in a category the agent does not handle yet.", "Handle the ticket as usual."),
     "ticket_not_found": ("The ticket could not be read from the database.", "Check the ticket id."),
     "reading_failed": ("The agent could not read the ticket reliably.", "Read the ticket and handle it as usual."),
@@ -80,6 +82,8 @@ class Handover:
     records: tuple = field(default_factory=tuple)   # plain-text lines, from verified facts only
     approval_required: bool = False
     reply_source: str = ""
+    policy_rule: str = ""                           # stage 3.2: the rule that decided, and its outcome
+    policy_outcome: str = ""
 
     def to_dict(self) -> dict:
         out = asdict(self)
@@ -94,6 +98,8 @@ class Handover:
             lines.append("Order: " + ", ".join(self.order_ids))
         lines.append("Records checked:" + ("" if self.records else " none"))
         lines += [f"  - {r}" for r in self.records]
+        if self.policy_rule:
+            lines.append(f"Policy rule: {self.policy_rule} ({self.policy_outcome}).")
         if self.approval_required:
             lines.append("Approval: required before anything is done.")
         lines.append(f"Suggested next step: {self.next_step}")
@@ -188,7 +194,7 @@ def order_lines(identity, facts: dict, reason: str) -> list:
 
 
 def build_handover(ticket_id: str, received_at: str, reading, identity, decision: d.Decision, reply_source: str,
-                   context: Optional[dict] = None) -> Optional[Handover]:
+                   context: Optional[dict] = None, policy: Optional[dict] = None) -> Optional[Handover]:
     """The note for the person who receives the ticket, or None when the agent replied by itself. ``context`` adds order facts the decision
     did not carry (see ``order_context``)."""
     if decision.action not in HANDOVER_ACTIONS:
@@ -199,8 +205,10 @@ def build_handover(ticket_id: str, received_at: str, reading, identity, decision
     facts = {**(context or {}), **decision.facts}
     if facts.get("order_id") and facts["order_id"] not in named:
         named.append(facts["order_id"])
-    senior = decision.action == d.ESCALATE_HUMAN
+    policy = policy or {}
+    senior = decision.action == d.ESCALATE_HUMAN or policy.get("queue") == SENIOR
     return Handover(ticket_id, received_at, SENIOR if senior else STANDARD, decision.action, decision.reason, why, step, decision.article,
                     reading.category if reading is not None else None, bool(reading.mentions_chargeback_or_legal) if reading is not None else False,
                     account, identity.customer.customer_id if identity is not None and identity.customer else None, tuple(named),
-                    tuple(_records(facts) + order_lines(identity, facts, decision.reason)), bool(facts.get("approval_required")), reply_source)
+                    tuple(_records(facts) + order_lines(identity, facts, decision.reason)), bool(facts.get("approval_required")), reply_source,
+                    policy.get("rule_id", ""), policy.get("outcome", ""))
