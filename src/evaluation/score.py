@@ -79,11 +79,14 @@ def facts_agree(resolution: dict, label: dict) -> bool:
 
 
 def score_ticket(resolution: dict, label: dict, read_category: Optional[str], read_legal: Optional[bool] = None,
-                 transactions: bool = False, refunds: bool = False, knowledge: bool = False, kb_ids: frozenset = frozenset()) -> dict:
+                 transactions: bool = False, refunds: bool = False, knowledge: bool = False, kb_ids: frozenset = frozenset(),
+                 read_compromise: Optional[bool] = None) -> dict:
     expected_action = label["expected_actions"][0]
     row = {"ticket_id": label["ticket_id"], "in_slice": in_scope(label, transactions, refunds, knowledge), "scenario_id": label["scenario_id"],
            "label_category": label["category"], "read_category": read_category, "category_ok": read_category == label["category"],
            "read_legal": read_legal, "label_legal": bool(label["priority_attributes"]["chargeback_or_legal_threat"]),
+           "read_compromise": read_compromise, "label_compromise": bool(label["priority_attributes"].get("account_compromise_suspected")),
+           "label_escalate": bool(label["expected_escalate"]), "escalated": resolution["action"] == "escalate_human",
            "action": resolution["action"], "reason": resolution["reason"], "reply_source": resolution["reply_source"],
            "expected_action": expected_action}
     row["knowledge_answer"] = resolution["reason"] == KNOWLEDGE_ANSWER
@@ -125,6 +128,37 @@ def read_results(trace: list) -> dict:
     return found
 
 
+def read_compromise_results(trace: list) -> dict:
+    """ticket_id -> the reader's compromise flag (stage 3.3), or None when the reading failed or the prompt did not ask for it."""
+    found = {}
+    for record in trace:
+        if record.get("step") == "read_ticket":
+            reading = record.get("reading")
+            found[record["ticket_id"]] = reading.get("compromise") if reading else None
+    return found
+
+
+def compromise_flag_counts(rows: list) -> dict:
+    """The reader's account-compromise flag against the label, over the tickets that were read (empty when the prompt had no such field)."""
+    read = [r for r in rows if r["read_compromise"] is not None]
+    tp = sum(1 for r in read if r["read_compromise"] and r["label_compromise"])
+    fp = sum(1 for r in read if r["read_compromise"] and not r["label_compromise"])
+    fn = sum(1 for r in read if not r["read_compromise"] and r["label_compromise"])
+    return {"read": len(read), "true_positive": tp, "false_positive": fp, "false_negative": fn,
+            "false_positive_tickets": [r["ticket_id"] for r in read if r["read_compromise"] and not r["label_compromise"]],
+            "missed_tickets": [r["ticket_id"] for r in read if not r["read_compromise"] and r["label_compromise"]]}
+
+
+def escalation_counts(rows: list) -> dict:
+    """Recall and precision of escalation over every ticket, in or out of the slice: a ticket is escalated when the action is escalate_human."""
+    tp = [r for r in rows if r["escalated"] and r["label_escalate"]]
+    fp = [r for r in rows if r["escalated"] and not r["label_escalate"]]
+    fn = [r for r in rows if not r["escalated"] and r["label_escalate"]]
+    return {"labelled_must_escalate": len(tp) + len(fn), "escalated": len(tp) + len(fp), "recall": rate(len(tp), len(tp) + len(fn)),
+            "precision": rate(len(tp), len(tp) + len(fp)), "missed_tickets": [r["ticket_id"] for r in fn],
+            "unnecessary_tickets": [r["ticket_id"] for r in fp]}
+
+
 def legal_flag_counts(rows: list) -> dict:
     """The reader's chargeback-or-legal flag against the label, over the tickets that were read."""
     read = [r for r in rows if r["read_legal"] is not None]
@@ -137,7 +171,8 @@ def legal_flag_counts(rows: list) -> dict:
 
 def score_run(run_dir: Path, labels: list, kb_dir: Path = Path("data/seed/kb")) -> dict:
     resolutions = read_jsonl(run_dir / "resolutions.jsonl")
-    results = read_results(read_jsonl(run_dir / "trace.jsonl"))
+    trace = read_jsonl(run_dir / "trace.jsonl")
+    results, compromise = read_results(trace), read_compromise_results(trace)
     by_id = {lab["ticket_id"]: lab for lab in labels}
     unknown = [r["ticket_id"] for r in resolutions if r["ticket_id"] not in by_id]
     if unknown:
@@ -147,7 +182,8 @@ def score_run(run_dir: Path, labels: list, kb_dir: Path = Path("data/seed/kb")) 
     refunds = bool((meta.get("transactions") or {}).get("refund_prompt"))        # the refund step was part of the run
     knowledge = bool(meta.get("knowledge"))                                       # the knowledge path was on
     kb_ids = frozenset(p.stem for p in Path(kb_dir).glob("KB-*.md"))
-    rows = [score_ticket(r, by_id[r["ticket_id"]], *results.get(r["ticket_id"], (None, None)), transactions, refunds, knowledge, kb_ids) for r in resolutions]
+    rows = [score_ticket(r, by_id[r["ticket_id"]], *results.get(r["ticket_id"], (None, None)), transactions, refunds, knowledge, kb_ids,
+                        read_compromise=compromise.get(r["ticket_id"])) for r in resolutions]
     a, b = [r for r in rows if r["in_slice"]], [r for r in rows if not r["in_slice"]]
     summary = json.loads((run_dir / "summary.json").read_text(encoding="utf-8")) if (run_dir / "summary.json").exists() else {}
     answered_correctly = [r for r in a if r["end_to_end_ok"] and r["action"] in ANSWERS]
@@ -156,7 +192,8 @@ def score_run(run_dir: Path, labels: list, kb_dir: Path = Path("data/seed/kb")) 
         "prompts": meta.get("prompts"), "code": meta.get("code"), "dataset": meta.get("dataset"), "tickets": len(rows),
         "read": {"valid_readings": rate(sum(1 for r in rows if r["read_category"] is not None), len(rows)),
                  "category_agreement": rate(sum(1 for r in rows if r["category_ok"]), len(rows)),
-                 "legal_flag": legal_flag_counts(rows)},
+                 "legal_flag": legal_flag_counts(rows), "compromise_flag": compromise_flag_counts(rows)},
+        "escalation": escalation_counts(rows),
         "set_a": {"tickets": len(a),
                   "action": rate(sum(r["action_ok"] for r in a), len(a)),
                   "escalation": rate(sum(r["escalation_ok"] for r in a), len(a)),
@@ -201,6 +238,10 @@ def render(score: dict) -> str:
              f"read step: valid readings {fmt(rd['valid_readings'])}; category agreement {fmt(rd['category_agreement'])}",
              f"chargeback or legal flag: found {rd['legal_flag']['true_positive']} of {rd['legal_flag']['true_positive'] + rd['legal_flag']['false_negative']} labelled, "
              f"{rd['legal_flag']['false_positive']} false alarms {rd['legal_flag']['false_positive_tickets']}",
+             *([f"account compromise flag: found {rd['compromise_flag']['true_positive']} of {rd['compromise_flag']['true_positive'] + rd['compromise_flag']['false_negative']} "
+                f"labelled, {rd['compromise_flag']['false_positive']} false alarms {rd['compromise_flag']['false_positive_tickets']}"] if rd["compromise_flag"]["read"] else []),
+             f"escalation over all tickets: {score['escalation']['escalated']} escalated; recall {fmt(score['escalation']['recall'])}; precision {fmt(score['escalation']['precision'])}; "
+             f"missed {score['escalation']['missed_tickets']}; not called for by the label {score['escalation']['unnecessary_tickets']}",
              f"Set A, in-slice ({a['tickets']}):",
              f"  action {fmt(a['action'])}", f"  escalation decision {fmt(a['escalation'])}", f"  article {fmt(a['article'])}",
              f"  facts {fmt(a['facts'])}", f"  end to end {fmt(a['end_to_end'])}",

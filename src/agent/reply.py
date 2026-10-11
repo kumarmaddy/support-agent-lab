@@ -189,6 +189,9 @@ def template_body(decision: d.Decision) -> str:
     if reason == "order_not_owned":
         return ("For security we cannot share order details in this conversation. We have passed your message to a colleague "
                 "who will follow up with you.")
+    if reason == "account_compromise_suspected":
+        return ("Thank you for telling us. For your security we have passed your message to a senior colleague, who will contact you about it. "
+                "In the meantime, please do not share your password with anyone.")
     if reason == "chargeback_or_legal_threat":
         return ("We are sorry for the trouble. We have passed your message to a senior colleague, who will contact you about it.")
     return "Thank you for your message. We have passed it to a colleague, who will reply to you."

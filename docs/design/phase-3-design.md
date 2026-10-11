@@ -1,6 +1,6 @@
 # Phase 3 Design: Governance Hardening
 
-- Version: 0.2 (stage 3.2 built; section 5.1 now describes the engine as built)
+- Version: 0.3 (stages 3.2 and 3.3 built; sections 5.1 and 5.2 describe the code as built)
 - Date: 2026-10-11
 - Owner: Kumar Maddipatla, Project Lead
 - Builds on: phase-2-design.md v0.9, ADR-006 (fixed pipeline), ADR-008 (tools in-process, MCP in Phase 3), ADR-010, Phase 2 exit review
@@ -28,9 +28,9 @@ Out: real payment processors, real customer data, multi-user authentication for 
 - Pure function `evaluate(request, policy) -> PolicyDecision(outcome, rule_id, reason, queue, evidence, policy_sha256, policy_version)` in `src/agent/policy.py`. Outcomes: `deny`, `require_approval` (standard or senior queue), `auto_execute`. No model call, no I/O.
 - Request fields, all taken from verified records and never from ticket text: action, the pipeline's reason, amount (from the payment record), the payment amount on record, whether that payment already has a refund, customer tier, order age in days (order date to ticket date), the customer's prior refund count (new read-only tool `count_refunds`), legal flag. A value that cannot be established is unknown, and a numeric or flag condition on an unknown value does not match.
 - Rules live in `config/policy.toml` (standard library `tomllib`). The file is validated when loaded: an unknown section, key, condition, outcome or action, a wrong type, a missing reason, an empty `when`, a duplicate or reserved rule id, or a queue on a rule that is not an approval rule stops the run before it starts (fail closed). The sha256 of the file is written into the run metadata (`run.json`), the trace step and every decision.
-- Evaluation order: deny, then require_approval, then auto_execute; inside one outcome the order of the file decides; the first match wins. The must-escalate rules are added between deny and approval in stage 3.3. No match gives `require_approval` under the reserved rule id `DEFAULT-APPROVAL`.
+- Evaluation order: deny, then require_approval, then auto_execute; inside one outcome the order of the file decides; the first match wins. The must-escalate rules are not engine rules: an escalation replaces a proposal, so it is decided in the `decide` step before any policy request exists (section 5.2). No match gives `require_approval` under the reserved rule id `DEFAULT-APPROVAL`.
 - `[engine] auto_execute_enabled = false` ships off. While it is off, a matching auto-execute rule is reported as `require_approval` with that rule's id and `auto_execute_enabled: false` in the evidence, so the record shows what would have matched. Stage 3.2 has no write tool, so even with the switch on the pipeline only proposes; execution arrives with the Actions server (3.5).
-- Initial rules: `DENY-REFUND-EXCEEDS-PAYMENT`, `DENY-REFUND-ALREADY-REFUNDED`, `APPROVE-REFUND-SENIOR` (refund of at least 25000 cents to the senior queue). The compromised-account rule arrives with its flag in stage 3.3. Everything else is `DEFAULT-APPROVAL`.
+- Initial rules: `DENY-REFUND-EXCEEDS-PAYMENT`, `DENY-REFUND-ALREADY-REFUNDED`, `APPROVE-REFUND-SENIOR` (refund of at least 25000 cents to the senior queue). `DENY-ACTION-ON-COMPROMISED-ACCOUNT` (added in 3.3, condition `compromise_flag`) is a second check that cannot fire in the pipeline today, because a flagged ticket is escalated before any proposal; it is tested in the engine and is there for the Actions server (3.5). Everything else is `DEFAULT-APPROVAL`.
 - In the pipeline: after `decide`, every `propose_*` decision with an identified customer and order gets a `policy` step. A `deny` replaces the proposal with `route_to_human` / `policy_denied` (standard queue; the approval flag is removed; the customer reply is the generic code-written hand-over text). An approval in the senior queue sets the note's queue to senior. The note carries the rule id and outcome; the trace carries the full decision.
 - The two deny rules cannot fire on today's proposals, because `decide` already hands over a duplicate that is already refunded and takes the refund amount from the payment record. They are kept as an independent second check: the engine does not trust the step before it, and the actions server (3.5) will call the same engine.
 - Every decision records the rule id and the evidence used (NFR-6).
@@ -40,11 +40,12 @@ Out: real payment processors, real customer data, multi-user authentication for 
 - Basis in the development data: the 25 duplicate-charge payments range from $14.99 to $809.97 with a median of $119.99, and 3 of 25 are at or above $250 (T-000025 at $809.97, T-000041 at $404.98, T-000149 at $269.99). Across all payments the 50th, 75th and 90th percentiles are $189.97, $319.97 and $484.98. At $250 the senior approver would see roughly one duplicate-charge refund in eight, the largest ones, and the standard approver the rest.
 - The data is synthetic, so this shows where the threshold falls in this dataset, not what a real business should choose. The file is the only place the number lives, and a change changes the file's hash, which is recorded with every decision.
 
-### 5.2 Must-escalate rules (stage 3.3)
-- S18: a new read-step field `account_compromise_suspected` (read prompt v5), acceptance test fixed before the run (find 5 of 5, at most 2 false alarms, category agreement within 2 tickets of v4, same on 3B). A flagged ticket escalates to the senior queue with KB-ACC-03 and no reply promising any action.
-- S20: a knowledge gap that is not a policy question the articles could answer escalates (FR-10) instead of being routed.
-- S25: identity not verified escalates (currently one of four is only routed).
-- Measured by escalation precision and recall on the development split before and after.
+### 5.2 Must-escalate rules (stage 3.3, built)
+Acceptance criteria were written before the first run: `docs/project/stage-3.3-acceptance.md`.
+- **S18, suspected account compromise.** Read prompt v5 adds a fourth field, `account_compromise_suspected` (a prompt of version 5 or later is sent the four-field schema; earlier prompts keep three fields and the flag is False). A flagged ticket is escalated in any category, after the legal check and before anything else: no customer or order lookup, no knowledge path, no policy request. The decision is `escalate_human` / `account_compromise_suspected` / KB-ACC-03, senior queue. The reply is written by code, says a senior colleague will contact the customer, advises not to share the password, and promises no change or reset.
+- **S20, knowledge gap.** When no policy article matches closely enough (`knowledge_not_found`), the decision is `escalate_human` instead of `route_to_human` (FR-10). A weak match that fails the answer check (`knowledge_not_answered`) and a failed search (`knowledge_unavailable`) are still only routed: an article exists, so a person can answer from it, and the injection tickets end there. Trade-off, stated: a policy question that retrieval misses is now also escalated to the senior queue. Acceptance criterion 5 bounds this on the development split; Support Operations should confirm that a gap in the knowledge base belongs in the senior queue.
+- **S25, identity not verified.** A ticket of category `other` that names an order is now looked up (read-only), only to see whether the order belongs to the sender. If it does not, the decision is `escalate_human` / `order_not_owned` / KB-SEC-01, exactly as for an in-scope category. Other out-of-scope categories are not looked up (data minimisation). An unknown order or a missing account is still routed.
+- **Measured.** The scorer now reports the compromise flag (found, missed, false alarms, as for the legal flag) and escalation recall and precision over all tickets, before and after.
 
 ### 5.3 Audit log and redaction (stage 3.4)
 - Append-only JSONL, one event per decision (proposal, policy decision, approval, rejection, edit, execution), each with a hash of the previous event so tampering is detectable; queryable by ticket id (`python -m src.audit --ticket T-000070`).
@@ -71,7 +72,7 @@ Out: real payment processors, real customer data, multi-user authentication for 
 |---|---|---|
 | 3.1 | This design | Reviewed (approved 2026-10-11) |
 | 3.2 | Policy engine and rules in config; wired in as a decision on every proposal | Built: tests, mutation checks; a run showing the decision and rule id on each proposal is the project lead's next step |
-| 3.3 | Must-escalate rules (S18, S20, S25), read prompt v5 | 7B and 3B runs; escalation recall and precision before and after |
+| 3.3 | Must-escalate rules (S18, S20, S25), read prompt v5 | Built: tests, mutation checks; 7B and 3B runs against `stage-3.3-acceptance.md` are the project lead's next step |
 | 3.4 | Audit log and redaction | Tests; query by ticket |
 | 3.5 | Actions server, idempotency, sandbox ledger, MCP | Tests with retries; zero writes without approval |
 | 3.6 | Approval service | Tests; walk-through on a run |

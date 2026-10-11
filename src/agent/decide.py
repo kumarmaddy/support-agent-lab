@@ -69,8 +69,12 @@ class Decision:
 
 
 def requires_lookup(reading: Reading, scope: frozenset = PHASE1_SCOPE) -> bool:
-    """Only tickets in scope without a legal threat need the customer and order (a legal threat is escalated in any category)."""
-    return reading.category in scope and not reading.mentions_chargeback_or_legal
+    """Only tickets in scope without a legal threat or a suspected compromise need the customer and order (both are escalated in any
+    category). A ticket of category "other" that names an order is looked up as well, only to see whether the order belongs to the sender
+    (that category is where a request about someone else's order lands)."""
+    if reading.mentions_chargeback_or_legal or reading.account_compromise_suspected:
+        return False
+    return reading.category in scope or (reading.category == "other" and bool(reading.order_ids))
 
 
 def identify(box: tools.Toolbox, ticket: tools.Ticket, reading: Reading) -> Identity:
@@ -103,8 +107,13 @@ def decide(reading: Reading, identity: Optional[Identity], today: date, scope: f
     # 1. threat of chargeback or legal action: always escalated (KB-REF-04), whatever the category; no account details are read
     if reading.mentions_chargeback_or_legal:
         return Decision(ESCALATE_HUMAN, "chargeback_or_legal_threat", "KB-REF-04")
-    # 2. out of slice
+    # 1b. someone else may have access to the account (KB-ACC-03): escalated in any category; the agent changes and confirms nothing
+    if reading.account_compromise_suspected:
+        return Decision(ESCALATE_HUMAN, "account_compromise_suspected", "KB-ACC-03")
+    # 2. out of slice; a named order that belongs to someone else is still an identity problem (KB-SEC-01)
     if reading.category not in scope:
+        if identity is not None and identity.outcome == ORDER_NOT_OWNED:
+            return Decision(ESCALATE_HUMAN, "order_not_owned", "KB-SEC-01")
         return Decision(ROUTE_TO_HUMAN, "out_of_slice", None)
     if identity is None:
         raise ValueError("an identity is required for a ticket in scope without a legal threat")

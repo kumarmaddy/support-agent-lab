@@ -22,7 +22,7 @@ def refund(amount=5000, payment=5000, refunded=False, **more):
 def test_the_shipped_file_loads_and_its_hash_is_the_hash_of_the_file():
     p = load_policy(SHIPPED)
     assert p.sha256 == hashlib.sha256(SHIPPED.read_bytes()).hexdigest()
-    assert [r.rule_id for r in p.rules] == ["DENY-REFUND-EXCEEDS-PAYMENT", "DENY-REFUND-ALREADY-REFUNDED", "APPROVE-REFUND-SENIOR"]
+    assert [r.rule_id for r in p.rules] == ["DENY-REFUND-EXCEEDS-PAYMENT", "DENY-REFUND-ALREADY-REFUNDED", "APPROVE-REFUND-SENIOR", "DENY-ACTION-ON-COMPROMISED-ACCOUNT"]
     assert p.auto_execute_enabled is False, "auto-execute ships switched off"
 
 

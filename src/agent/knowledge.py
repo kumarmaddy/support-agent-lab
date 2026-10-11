@@ -71,7 +71,7 @@ def answer_or_hand_over(knowledge: Knowledge, model: ModelClient, subject: str, 
         return KnowledgeOutcome(d.Decision(d.ROUTE_TO_HUMAN, UNAVAILABLE, None), gate="unavailable")
     shown = [{"kb_id": h.kb_id, "score": h.score} for h in hits]
     if not hits or hits[0].score < knowledge.min_score:
-        return KnowledgeOutcome(d.Decision(d.ROUTE_TO_HUMAN, NOT_FOUND, None), shown, "score")
+        return KnowledgeOutcome(d.Decision(d.ESCALATE_HUMAN, NOT_FOUND, None), shown, "score")       # a gap in the knowledge base is escalated (FR-10)
     article: Article = knowledge.articles[hits[0].kb_id]
     facts = [clean_fact(f) for f in article.key_facts]
     check = model.chat(render_check_system(knowledge.check_prompt, facts), render_user(subject, body), CHECK_SCHEMA, seed=seed, max_tokens=CHECK_MAX_TOKENS)

@@ -84,7 +84,8 @@ def policy_request(box: Toolbox, decision: d.Decision, reading, identity, today:
     except ValueError:
         age = None
     return pol.PolicyRequest(POLICY_ACTIONS[decision.action], decision.reason, amount, payment.amount_cents if payment else None, refunded,
-                             identity.customer.tier, age, prior.data if prior.ok else None, bool(reading.mentions_chargeback_or_legal))
+                             identity.customer.tier, age, prior.data if prior.ok else None, bool(reading.mentions_chargeback_or_legal),
+                             bool(reading.account_compromise_suspected))
 
 
 def run_ticket(box: Toolbox, model: ModelClient, read_prompt: Prompt, reply_prompt: Prompt, internal: frozenset,
@@ -113,6 +114,7 @@ def run_ticket(box: Toolbox, model: ModelClient, read_prompt: Prompt, reply_prom
                        reading=None if not read.ok else {"category": read.reading.category,
                                                           "deadline_phrase": read.reading.deadline_phrase,
                                                           "legal": read.reading.mentions_chargeback_or_legal,
+                                                          "compromise": read.reading.account_compromise_suspected,
                                                           "order_ids": list(read.reading.order_ids)}))
     if not read.ok:
         decision = d.Decision(d.ROUTE_TO_HUMAN, "reading_failed", None)
@@ -124,7 +126,8 @@ def run_ticket(box: Toolbox, model: ModelClient, read_prompt: Prompt, reply_prom
     # 3-4. identify and decide; a policy question (product_info) takes the knowledge path when it is switched on
     name, identity, decision, policy_decision = None, None, None, None
     knowledge_first = (knowledge is not None and knowledge.first and reading.category in KNOWLEDGE_FIRST_CATEGORIES and not reading.order_ids)
-    if knowledge is not None and (reading.category == "product_info" or knowledge_first) and not reading.mentions_chargeback_or_legal:
+    if (knowledge is not None and (reading.category == "product_info" or knowledge_first) and not reading.mentions_chargeback_or_legal
+            and not reading.account_compromise_suspected):
         started = time.perf_counter()
         ko = answer_or_hand_over(knowledge, model, ticket.subject, ticket.body, seed)
         steps.append(_step("knowledge", started, outcome=ko.gate, input_hash=_hash(ticket.subject, ticket.body), hits=ko.hits,

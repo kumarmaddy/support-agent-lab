@@ -21,7 +21,7 @@ from src.agent.model import ModelClient, OllamaClient
 from src.agent.pipeline import Resolution, internal_guidance, run_ticket
 from src.agent.policy import DEFAULT_POLICY_PATH, Policy, PolicyError, load_policy
 from src.agent.prompting import Prompt, load_prompt
-from src.agent.reading import MAX_TOKENS, READ_SCHEMA, render_system, render_user
+from src.agent.reading import MAX_TOKENS, render_system, render_user, schema_for
 from src.agent.tools import Toolbox
 from src.agent.transactions import Transactions
 from src.agent.tracing import TraceWriter, new_run_id
@@ -63,7 +63,7 @@ def warm_up(model: ModelClient, read_prompt: Prompt) -> int:
     """One throwaway call on the real read prompt and schema, so that loading the model and compiling the output grammar are
     not counted in any ticket's latency. Returns milliseconds."""
     started = time.perf_counter()
-    model.chat(render_system(read_prompt), render_user("Warm-up", "Where is my order?"), READ_SCHEMA, seed=0, max_tokens=MAX_TOKENS)
+    model.chat(render_system(read_prompt), render_user("Warm-up", "Where is my order?"), schema_for(read_prompt), seed=0, max_tokens=MAX_TOKENS)
     return int((time.perf_counter() - started) * 1000)
 
 

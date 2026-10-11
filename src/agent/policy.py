@@ -42,6 +42,7 @@ class PolicyRequest:
     order_age_days: Optional[int] = None
     prior_refunds: Optional[int] = None
     legal_flag: bool = False
+    compromise_flag: bool = False                       # the reader suspects the account was accessed by someone else (stage 3.3)
 
 
 @dataclass(frozen=True)
@@ -97,6 +98,7 @@ CONDITIONS = {
     "amount_exceeds_payment": ("flag", _exceeds),
     "payment_already_refunded": ("flag", lambda r: r.payment_already_refunded),
     "legal_flag": ("flag", lambda r: r.legal_flag),
+    "compromise_flag": ("flag", lambda r: r.compromise_flag),
 }
 RULE_KEYS = {"id", "outcome", "reason", "queue", "when"}
 ENGINE_KEYS = {"version", "auto_execute_enabled"}

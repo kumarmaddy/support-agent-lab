@@ -843,3 +843,16 @@ and not a tuned threshold; the final runs are the test of it.
 **Decided.** The senior-approval threshold stays at $250 as a documented assumption (basis in phase-3-design.md section 5.1); Support Operations owns the final value.
 
 **Open.** Nothing blocks the stage. Must-escalate rules and the compromise flag are stage 3.3.
+
+
+### 3.3 Must-escalate rules
+
+**Acceptance first.** `docs/project/stage-3.3-acceptance.md` was written before any run: ten criteria for the 7B model (compromise flag 5 of 5 with at most 2 false alarms; category agreement within 2 of 138; S20 5 of 5; S25 4 of 4; at most 2 new unnecessary escalations; at least 20 of 22 labelled must-escalate tickets end as escalations; no regression in Set A or Set B), a reduced set for 3B, and one allowed prompt revision, disclosed whatever the outcome.
+
+**Built.** Read prompt v5 and the four-field schema (`account_compromise_suspected`); the decision `account_compromise_suspected` (senior queue, KB-ACC-03, template reply that promises nothing); `knowledge_not_found` escalated instead of routed; an out-of-scope `other` ticket that names someone else's order escalated as `order_not_owned`; policy condition `compromise_flag` and rule `DENY-ACTION-ON-COMPROMISED-ACCOUNT`; scorer additions (compromise flag counts, escalation recall and precision over all tickets). `READ` token cap raised from 80 to 110 for the longer answer.
+
+**Verified.** 913 tests pass (892 before; 21 new, 1 updated for the `knowledge_not_found` change). With a perfect reader on the development data: all 5 S18 tickets, all 5 S20 tickets (given a weak knowledge match) and all 4 S25 tickets escalate, and no other ticket is flagged. 25 mutations applied, 24 caught; the survivor passes the compromise flag into the policy request, which cannot change a result today because a flagged ticket is escalated before any proposal (the engine rule is tested directly).
+
+**Not yet measured.** Everything above uses a perfect reader. Whether the 7B and 3B models flag S18 tickets and avoid false alarms is exactly what the acceptance run measures.
+
+**Decided / to confirm.** Knowledge gaps go to the senior queue (FR-10 as the project reads it); Support Operations to confirm.

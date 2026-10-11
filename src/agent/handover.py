@@ -24,6 +24,9 @@ REASONS = {
     "chargeback_or_legal_threat": ("The customer mentions a chargeback, a payment dispute or legal action. Such tickets are always escalated (KB-REF-04). "
                                    "The agent's reply argues nothing and concedes nothing.",
                                    "Review the order and the issue below and respond; policy is to make no concession in the first reply."),
+    "account_compromise_suspected": ("The customer says someone else may have access to their account (KB-ACC-03). Nothing on the account was read, "
+                                     "changed or confirmed, and the reply promises no action.",
+                                     "Treat as a security case: verify the customer's identity by another route before any account detail is shared or changed."),
     "order_not_owned": ("The order number in the ticket is not on the account of the sender's email address. Nothing about that order was read or shared.",
                         "Verify the customer's identity before sharing any order detail."),
     "delivery_deadline_cannot_be_guaranteed": ("The customer needs the order by a date that falls inside the delivery period, and delivery cannot be guaranteed.",
@@ -51,7 +54,8 @@ REASONS = {
     "refund_window_closed": ("A refund for a damaged or wrong item was asked for more than 30 days after delivery (KB-REF-03).", "Decide whether to make an exception."),
     "item_already_refunded": ("The order already has a refund recorded.", "Check the existing refund before acting."),
     "knowledge_unavailable": ("The knowledge base could not be searched.", "Answer the question from the policy."),
-    "knowledge_not_found": ("No policy article matched the question closely enough.", "Answer the question."),
+    "knowledge_not_found": ("No policy article matched the question closely enough, so the knowledge base cannot answer it (escalated, not routed).",
+                            "Answer the question, and tell the knowledge-base owner if it should be covered."),
     "knowledge_not_answered": ("A policy article matched but did not answer the question.", "Answer the question."),
     # proposals
     "cancellation_before_dispatch": ("The order has not been dispatched, so it can be cancelled (KB-CAN-01).", "Cancel the order and confirm to the customer."),

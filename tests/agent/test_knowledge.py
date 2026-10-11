@@ -44,7 +44,7 @@ def test_clean_fact_removes_internal_cross_references():
 def test_gate_one_a_weak_score_hands_over_without_asking_the_model(articles):
     model = ScriptedModel(check=YES)
     out = answer_or_hand_over(knowledge(articles, [Hit("KB-SIZ-01", 0.60)]), model, "s", "b")
-    assert (out.decision.action, out.decision.reason, out.gate) == (d.ROUTE_TO_HUMAN, NOT_FOUND, "score") and model.calls == []
+    assert (out.decision.action, out.decision.reason, out.gate) == (d.ESCALATE_HUMAN, NOT_FOUND, "score") and model.calls == []
 
 
 def test_no_hits_hands_over(articles):

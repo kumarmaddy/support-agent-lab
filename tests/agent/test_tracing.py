@@ -7,6 +7,7 @@ import pytest
 from src.agent import run as runner
 from src.agent.pipeline import internal_guidance, run_ticket
 from src.agent.prompting import load_prompt
+from src.agent.reading import schema_for
 from src.agent.tools import Toolbox
 from src.agent.tracing import RESOLUTIONS, RUN, SUMMARY, TRACE, TraceWriter, new_run_id, percentile, read_jsonl, summarise_run
 from tests.agent.support import ScriptedModel, in_slice, oracle_read
@@ -176,7 +177,7 @@ def test_select_ids_by_limit_and_by_file(world, tmp_path):
 def test_warm_up_makes_one_call_and_reports_milliseconds():
     model = ScriptedModel(read=lambda s, u, seed: {"ok": True})
     assert isinstance(runner.warm_up(model, READ), int) and len(model.calls) == 1
-    assert model.calls[0]["schema"] == runner.READ_SCHEMA and model.calls[0]["system"].startswith(READ.text[:20])
+    assert model.calls[0]["schema"] == schema_for(READ) and model.calls[0]["system"].startswith(READ.text[:20])
 
 
 def test_meta_names_the_model_prompts_dataset_and_seed(world):

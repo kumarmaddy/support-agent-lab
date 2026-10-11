@@ -41,3 +41,12 @@ reason = "A refund at or above the senior-approval amount goes to the senior app
 [rule.when]
 action = ["refund"]
 amount_cents_gte = 25000
+
+# Added in stage 3.3. A ticket the reader flags as a suspected account compromise is escalated before any action is proposed, so this
+# rule cannot fire in the pipeline today. It stays as the independent second check: the Actions server (stage 3.5) asks the same engine.
+[[rule]]
+id = "DENY-ACTION-ON-COMPROMISED-ACCOUNT"
+outcome = "deny"
+reason = "No action is taken on an account that may be compromised; a person handles it."
+[rule.when]
+compromise_flag = true
