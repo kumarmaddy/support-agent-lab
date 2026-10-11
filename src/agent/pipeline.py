@@ -17,7 +17,7 @@ from src.agent import decide as d
 from src.agent import reading as r
 from src.agent import reply as rp
 from src.agent.handover import build_handover, order_context, payment_context
-from src.agent.knowledge import KNOWLEDGE_ANSWER, Knowledge, answer_or_hand_over
+from src.agent.knowledge import KNOWLEDGE_ANSWER, KNOWLEDGE_FIRST_CATEGORIES, Knowledge, answer_or_hand_over
 from src.agent.model import ModelClient
 from src.agent.prompting import Prompt
 from src.agent.tools import Toolbox
@@ -96,15 +96,17 @@ def run_ticket(box: Toolbox, model: ModelClient, read_prompt: Prompt, reply_prom
     reading = read.reading
 
     # 3-4. identify and decide; a policy question (product_info) takes the knowledge path when it is switched on
-    name, identity = None, None
-    if knowledge is not None and reading.category == "product_info" and not reading.mentions_chargeback_or_legal:
+    name, identity, decision = None, None, None
+    knowledge_first = (knowledge is not None and knowledge.first and reading.category in KNOWLEDGE_FIRST_CATEGORIES and not reading.order_ids)
+    if knowledge is not None and (reading.category == "product_info" or knowledge_first) and not reading.mentions_chargeback_or_legal:
         started = time.perf_counter()
         ko = answer_or_hand_over(knowledge, model, ticket.subject, ticket.body, seed)
         steps.append(_step("knowledge", started, outcome=ko.gate, input_hash=_hash(ticket.subject, ticket.body), hits=ko.hits,
                            prompt=knowledge.check_prompt.label, prompt_sha256=knowledge.check_prompt.sha256,
                            **_model_usage([ko.check] if ko.check else [])))
-        decision = ko.decision
-    else:
+        if reading.category == "product_info" or ko.decision.action == d.PROVIDE_INFO:       # a first try that fails falls through to the normal path
+            decision = ko.decision
+    if decision is None:
         if d.requires_lookup(reading, scope):
             started = time.perf_counter()
             identity = d.identify(box, ticket, reading)

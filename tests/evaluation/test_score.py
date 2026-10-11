@@ -184,3 +184,37 @@ def test_a_missed_legal_threat_is_a_false_negative(world, tmp_path):
         return read
     flag = sc.score_run(make_run(world, tmp_path, "run-n", reader), labels)["read"]["legal_flag"]
     assert (flag["true_positive"], flag["false_negative"], flag["false_positive"]) == (3, 1, 0) and flag["recall"]["successes"] == 3 and flag["recall"]["n"] == 4
+
+
+# ------------------------------------------------------------------ stage 2.7a: knowledge answers
+def _label(world, category, **over):
+    lab = next(l for l in world[1] if l["category"] == category and l["scenario_id"] == "S19") if category == "product_info" else next(l for l in world[1] if l["category"] == category)
+    return {**lab, **over}
+
+
+def _answer(article):
+    return {"action": "provide_info", "reason": "knowledge_answer", "reply_source": "template", "article": article, "facts": {}}
+
+
+def test_knowledge_answers_are_in_scope_only_when_the_knowledge_path_is_on(world):
+    lab = _label(world, "product_info")
+    assert sc.score_ticket(_answer("x"), lab, "product_info")["in_slice"] is False
+    assert sc.score_ticket(_answer("x"), lab, "product_info", knowledge=True)["in_slice"] is True
+
+
+def test_a_citation_must_exist_and_is_correct_only_when_it_is_the_labelled_article(world):
+    lab = _label(world, "product_info")
+    right = lab["required_kb_ids"][0]
+    kb = frozenset({right, "KB-OTHER-01"})
+    ok = sc.score_ticket(_answer(right), lab, "product_info", knowledge=True, kb_ids=kb)
+    assert (ok["knowledge_answer"], ok["citation_exists"], ok["citation_labelled"]) == (True, True, True)
+    other = sc.score_ticket(_answer("KB-OTHER-01"), lab, "product_info", knowledge=True, kb_ids=kb)
+    assert (other["citation_exists"], other["citation_labelled"]) == (True, False)
+    invented = sc.score_ticket(_answer("KB-ZZZ-99"), lab, "product_info", knowledge=True, kb_ids=kb)
+    assert (invented["citation_exists"], invented["citation_labelled"]) == (False, False)
+
+
+def test_a_non_knowledge_resolution_carries_no_citation_fields(world):
+    lab = _label(world, "order_status")
+    row = sc.score_ticket({"action": "route_to_human", "reason": "out_of_slice", "reply_source": "template", "article": None, "facts": {}}, lab, "order_status")
+    assert row["knowledge_answer"] is False and "citation_exists" not in row

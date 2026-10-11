@@ -80,7 +80,7 @@ def build_meta(model: ModelClient, read_prompt: Prompt, reply_prompt: Prompt, db
         "dataset": {"db_file": Path(db_path).name, "db_sha256": file_sha256(db_path)},
         "tickets": len(ticket_ids),
         "code": code_version(),
-        "knowledge": None if knowledge is None else {"embed_model": embed_model, "embed_digest": embed_digest, "min_score": knowledge.min_score,
+        "knowledge": None if knowledge is None else {"embed_model": embed_model, "embed_digest": embed_digest, "min_score": knowledge.min_score, "first": knowledge.first,
                                                        "check_prompt": {"label": knowledge.check_prompt.label, "sha256": knowledge.check_prompt.sha256},
                                                        "reply_prompt": {"label": knowledge.reply_prompt.label, "sha256": knowledge.reply_prompt.sha256}},
         "transactions": None if transactions is None else {
@@ -127,6 +127,8 @@ def main(argv=None) -> int:
     p.add_argument("--reply-mode", choices=["model", "template"], default="model",
                    help="template: every reply is built by code (the comparison baseline for model-written replies)")
     p.add_argument("--knowledge", action="store_true", help="answer policy questions from the knowledge base (needs the embedding model; ADR-009)")
+    p.add_argument("--knowledge-first", action="store_true",
+                   help="with --knowledge: try the knowledge path first for a cancellation, address-change, return or refund ticket that names no order")
     p.add_argument("--transactions", action="store_true", help="handle cancellation, address-change, return, exchange and refund tickets (read-only; proposals go to a person)")
     p.add_argument("--embed-model", default="nomic-embed-text")
     p.add_argument("--min-score", type=float, default=DEFAULT_MIN_SCORE)
@@ -146,7 +148,9 @@ def main(argv=None) -> int:
     if args.knowledge:
         from src.kb.embed import EmbeddingIndex
         knowledge = Knowledge(EmbeddingIndex(articles, args.embed_model), articles, load_prompt("knowledge_check", args.check_prompt),
-                              load_prompt("knowledge_reply", "v1"), args.min_score)
+                              load_prompt("knowledge_reply", "v1"), args.min_score, args.knowledge_first)
+    elif args.knowledge_first:
+        raise SystemExit("--knowledge-first needs --knowledge")
     transactions = Transactions(load_prompt("extract_address", "v1"), load_prompt("read_request", "v1"), load_prompt("read_refund", "v1")) if args.transactions else None
     meta = build_meta(model, read_prompt, reply_prompt, args.db, args.seed, ids, argv if argv is not None else sys.argv[1:], model.digest(), warmup_ms,
                       args.reply_mode, knowledge, args.embed_model if knowledge else "",

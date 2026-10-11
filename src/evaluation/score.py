@@ -33,6 +33,7 @@ REFUND_FACT_KEYS = {"refund_status": "refund_status", "refund_amount_cents": "re
                     "return_received_date": "return_received_date", "duplicate_amount_cents": "duplicate_amount_cents",
                     "duplicate_payment_id": "duplicate_payment_id", "approval_required": "approval_required"}
 REFUND_SCOPE_CATEGORIES = ("return_exchange", "refund")
+KNOWLEDGE_ANSWER = "knowledge_answer"
 HELDOUT_REFUSAL = "Refusing to score against the held-out split (it is opened once, in Phase 4)."
 
 
@@ -78,13 +79,17 @@ def facts_agree(resolution: dict, label: dict) -> bool:
 
 
 def score_ticket(resolution: dict, label: dict, read_category: Optional[str], read_legal: Optional[bool] = None,
-                 transactions: bool = False, refunds: bool = False) -> dict:
+                 transactions: bool = False, refunds: bool = False, knowledge: bool = False, kb_ids: frozenset = frozenset()) -> dict:
     expected_action = label["expected_actions"][0]
-    row = {"ticket_id": label["ticket_id"], "in_slice": in_scope(label, transactions, refunds), "scenario_id": label["scenario_id"],
+    row = {"ticket_id": label["ticket_id"], "in_slice": in_scope(label, transactions, refunds, knowledge), "scenario_id": label["scenario_id"],
            "label_category": label["category"], "read_category": read_category, "category_ok": read_category == label["category"],
            "read_legal": read_legal, "label_legal": bool(label["priority_attributes"]["chargeback_or_legal_threat"]),
            "action": resolution["action"], "reason": resolution["reason"], "reply_source": resolution["reply_source"],
            "expected_action": expected_action}
+    row["knowledge_answer"] = resolution["reason"] == KNOWLEDGE_ANSWER
+    if row["knowledge_answer"]:                                       # a citation is valid when the article exists; it is correct when it is the labelled one
+        row["citation_exists"] = resolution["article"] in kb_ids
+        row["citation_labelled"] = resolution["article"] in (label["required_kb_ids"] or [])
     row["note_needed"] = resolution["action"] in NOTE_ACTIONS
     if row["note_needed"]:
         note = resolution.get("handover")
@@ -130,7 +135,7 @@ def legal_flag_counts(rows: list) -> dict:
             "precision": rate(tp, tp + fp), "recall": rate(tp, tp + fn), "false_positive_tickets": [r["ticket_id"] for r in read if r["read_legal"] and not r["label_legal"]]}
 
 
-def score_run(run_dir: Path, labels: list) -> dict:
+def score_run(run_dir: Path, labels: list, kb_dir: Path = Path("data/seed/kb")) -> dict:
     resolutions = read_jsonl(run_dir / "resolutions.jsonl")
     results = read_results(read_jsonl(run_dir / "trace.jsonl"))
     by_id = {lab["ticket_id"]: lab for lab in labels}
@@ -140,7 +145,9 @@ def score_run(run_dir: Path, labels: list) -> dict:
     meta = json.loads((run_dir / "run.json").read_text(encoding="utf-8")) if (run_dir / "run.json").exists() else {}
     transactions = bool(meta.get("transactions"))                  # the scope is whatever the run was switched on to handle
     refunds = bool((meta.get("transactions") or {}).get("refund_prompt"))        # the refund step was part of the run
-    rows = [score_ticket(r, by_id[r["ticket_id"]], *results.get(r["ticket_id"], (None, None)), transactions, refunds) for r in resolutions]
+    knowledge = bool(meta.get("knowledge"))                                       # the knowledge path was on
+    kb_ids = frozenset(p.stem for p in Path(kb_dir).glob("KB-*.md"))
+    rows = [score_ticket(r, by_id[r["ticket_id"]], *results.get(r["ticket_id"], (None, None)), transactions, refunds, knowledge, kb_ids) for r in resolutions]
     a, b = [r for r in rows if r["in_slice"]], [r for r in rows if not r["in_slice"]]
     summary = json.loads((run_dir / "summary.json").read_text(encoding="utf-8")) if (run_dir / "summary.json").exists() else {}
     answered_correctly = [r for r in a if r["end_to_end_ok"] and r["action"] in ANSWERS]
@@ -163,6 +170,12 @@ def score_run(run_dir: Path, labels: list) -> dict:
                   "wrongly_answered": rate(sum(r["wrongly_answered"] for r in b), len(b)),
                   "should_escalate_but_routed": sum(r["should_escalate_but_routed"] for r in b),
                   "escalated_unnecessarily": rate(sum(r["escalated_unnecessarily"] for r in b), len(b))},
+        "knowledge": {"on": knowledge, "first": bool((meta.get("knowledge") or {}).get("first")),
+                      "answers": sum(r["knowledge_answer"] for r in rows),
+                      "citation_exists": rate(sum(r.get("citation_exists", False) for r in rows if r["knowledge_answer"]), sum(r["knowledge_answer"] for r in rows)),
+                      "citation_labelled": rate(sum(r.get("citation_labelled", False) for r in rows if r["knowledge_answer"]), sum(r["knowledge_answer"] for r in rows)),
+                      "answered_but_not_in_scope": [r["ticket_id"] for r in rows if r["knowledge_answer"] and not r["in_slice"]],
+                      "transactional_tickets_answered_from_the_knowledge_base": [r["ticket_id"] for r in rows if r["knowledge_answer"] and r["label_category"] != "product_info"]},
         "notes": {"needed": sum(r["note_needed"] for r in rows),
                   "present": rate(sum(r.get("note_present", False) for r in rows if r["note_needed"]), sum(r["note_needed"] for r in rows)),
                   "name_the_labelled_order": rate(sum(bool(r["note_names_order"]) for r in rows if r.get("note_names_order") is not None),
@@ -196,6 +209,10 @@ def render(score: dict) -> str:
              f"  handed to a person {fmt(b['handed_to_person'])}", f"  answered by the agent (wrong) {fmt(b['wrongly_answered'])}",
              f"  needed escalation but were only routed: {b['should_escalate_but_routed']}",
              f"  escalated although the label does not call for it {fmt(b['escalated_unnecessarily'])}",
+             *([f"knowledge answers: {score['knowledge']['answers']}; cited article exists {fmt(score['knowledge']['citation_exists'])}; "
+                f"is the labelled one {fmt(score['knowledge']['citation_labelled'])}; answered outside the policy-question set "
+                f"{score['knowledge']['answered_but_not_in_scope']}; transactional tickets answered from the knowledge base "
+                f"{score['knowledge']['transactional_tickets_answered_from_the_knowledge_base']}"] if score["knowledge"]["on"] else []),
              f"hand-over notes: needed {score['notes']['needed']}; present {fmt(score['notes']['present'])}; "
              f"name the labelled order {fmt(score['notes']['name_the_labelled_order'])} {score['notes']['missing_the_order']}",
              f"replies: template fallbacks {score['replies']['template_fallbacks']}/{score['replies']['drafts_by_model']}; rejected {score['replies']['rejected_draft_codes']}",
@@ -208,11 +225,12 @@ def render(score: dict) -> str:
 def main(argv=None) -> int:
     p = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     p.add_argument("run_dir", type=Path)
+    p.add_argument("--kb", type=Path, default=Path("data/seed/kb"))
     p.add_argument("--labels", type=Path, default=Path("data/labels/dev/labels.jsonl"))
     args = p.parse_args(argv)
     labels = read_jsonl(args.labels)
     check_labels(labels, args.labels)
-    score = score_run(args.run_dir, labels)
+    score = score_run(args.run_dir, labels, args.kb)
     (args.run_dir / "score.json").write_text(json.dumps(score, indent=2, sort_keys=True, ensure_ascii=False) + "\n", encoding="utf-8")
     print(render(score))
     return 0

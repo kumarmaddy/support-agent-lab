@@ -730,3 +730,14 @@ and not a tuned threshold; the final runs are the test of it.
 **Found by reading.** The note for a refund ticket escalated as a legal threat (T-000015) showed the order but not the refund. Such notes now also show the refund and any duplicate payment from the records (one extra read-only lookup, used only for the note). Every note now says what the ticket was read as. 807 tests pass; four deliberate breakages were each caught.
 
 **Also.** `tests/agent/test_pipeline.py` had been dropped from the 2.6 commit and was restored from git; the suite is 807 tests.
+
+
+### 2.7a Scoring knowledge answers, and the "knowledge first" option
+
+**Built.** The scorer counts knowledge answers and checks the cited article (valid: exists; correct: the labelled article). `--knowledge-first` (with `--knowledge`) tries the knowledge path first for a cancellation, address-change, return or refund ticket that names no order and carries no legal flag; a failed first try falls through to the normal path. The product_info tickets join the in-scope set when the knowledge path is on.
+
+**Finding.** Every transactional development ticket names an order, so the option can only affect tickets the reader has misfiled (T-000037, T-000042, T-000145). The comparison of the two runs is therefore a test of the mechanism on three tickets, and is reported as such.
+
+**Tests.** 816 tests pass (9 new). Seven mutations of the new rules (named-order condition, order-status exclusion, fall-through, legal exclusion, citation existence, citation correctness, scope) each fail a test.
+
+**Next.** Two combined runs (`--knowledge --transactions` with and without `--knowledge-first`), scored and compared.

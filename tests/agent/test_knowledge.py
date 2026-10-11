@@ -5,6 +5,7 @@ from src.agent.knowledge import (CHECK_SCHEMA, KNOWLEDGE_ANSWER, NOT_ANSWERED, N
                                  clean_fact)
 from src.agent.pipeline import internal_guidance, run_ticket
 from src.agent.prompting import load_prompt
+from src.agent.reading import extract_order_ids
 from src.agent.reply import draft_knowledge_reply, knowledge_template_body
 from src.agent.tools import Toolbox
 from src.agent.validate import validate_knowledge_reply
@@ -212,3 +213,64 @@ def test_a_sentence_sharing_exactly_two_content_words_is_supported():
 def test_a_short_courtesy_sentence_with_one_matching_word_is_not_penalised():
     facts = ["Footwear is sized 7 to 13.", "Our hiking boots fit true to size."]
     assert validate_knowledge_reply("Thank you for asking about boots.", facts) == []
+
+
+# ------------------------------------------------------------------ stage 2.7a: --knowledge-first
+def first_knowledge(articles, hits, first=True):
+    return Knowledge(FixedRetriever(hits), articles, CHECK, KREPLY, 0.65, first)
+
+
+def names_an_order(box, tid):
+    t = box.get_ticket(tid).data
+    return bool(extract_order_ids(t.subject, t.body))
+
+
+def misread_ticket(by_id, box):
+    """A policy question (labelled product_info) that names no order: the ticket the reader may wrongly file under a transaction."""
+    return next(t for t in sorted(by_id) if by_id[t]["category"] == "product_info" and not by_id[t]["priority_attributes"]["chargeback_or_legal_threat"]
+                and not names_an_order(box, t))
+
+
+def run_first(world, tid, k, check=YES, category="return_exchange"):
+    box, by_id, articles = world
+    read = lambda s, u, seed: {**oracle_read(by_id, box, tid), **({"category": category} if category else {})}
+    return run_ticket(box, ScriptedModel(read=read, check=check), READ, REPLY, internal_guidance(articles), tid, 0, "template", k)
+
+
+def test_knowledge_first_answers_a_transactional_ticket_that_names_no_order(world):
+    box, by_id, articles = world
+    tid = misread_ticket(by_id, box)
+    k = first_knowledge(articles, [Hit("KB-SIZ-01", 0.9)])
+    res = run_first(world, tid, k)
+    assert (res.action, res.reason, res.article) == (d.PROVIDE_INFO, KNOWLEDGE_ANSWER, "KB-SIZ-01")
+    assert k.retriever.queries and "identify" not in [s["step"] for s in res.steps]
+
+
+def test_knowledge_first_is_off_unless_asked_for(world):
+    box, by_id, articles = world
+    tid = misread_ticket(by_id, box)
+    k = first_knowledge(articles, [Hit("KB-SIZ-01", 0.9)], first=False)
+    res = run_first(world, tid, k)
+    assert res.reason != KNOWLEDGE_ANSWER and k.retriever.queries == []
+
+
+@pytest.mark.parametrize("hits,check", [([], YES), ([Hit("KB-SIZ-01", 0.3)], YES), ([Hit("KB-SIZ-01", 0.9)], NO)])
+def test_a_failed_first_try_falls_through_to_the_normal_path(world, hits, check):
+    box, by_id, articles = world
+    tid = misread_ticket(by_id, box)
+    plain = run_first(world, tid, None)
+    res = run_first(world, tid, first_knowledge(articles, hits), check)
+    assert (res.action, res.reason, res.reply) == (plain.action, plain.reason, plain.reply)
+    assert [s["step"] for s in res.steps][2] == "knowledge"
+
+
+def test_knowledge_first_never_applies_to_order_status_legal_or_named_orders(world):
+    box, by_id, articles = world
+    k = first_knowledge(articles, [Hit("KB-SIZ-01", 0.9)])
+    status = next(t for t in sorted(by_id) if by_id[t]["category"] == "order_status" and not names_an_order(box, t))
+    run_first(world, status, k, category="order_status")
+    legal = next(t for t in sorted(by_id) if by_id[t]["priority_attributes"]["chargeback_or_legal_threat"])
+    run_first(world, legal, k, category="refund")
+    named = next(t for t in sorted(by_id) if by_id[t]["category"] == "return_exchange" and names_an_order(box, t))
+    run_first(world, named, k)
+    assert k.retriever.queries == []

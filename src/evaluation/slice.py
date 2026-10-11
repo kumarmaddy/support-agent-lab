@@ -18,8 +18,14 @@ TRANSACTION_SCENARIOS = ("S05", "S06", "S07", "S08", "S11", "S13", "S14", "S15",
 REFUND_SCENARIOS = ("S09", "S10", "S11", "S23", "S24", "S26")
 
 
-def in_scope(label: dict, transactions: bool = False, refunds: bool = False) -> bool:
+# Stage 2.7a: with the knowledge path on, the policy questions (category product_info: S19, and the S24 sizing question) join. Their answer is
+# an article's key facts, so the scorer checks the action and the cited article.
+KNOWLEDGE_CATEGORIES = ("product_info",)
+
+
+def in_scope(label: dict, transactions: bool = False, refunds: bool = False, knowledge: bool = False) -> bool:
     """The Phase 1 slice, plus the transactional scenarios when the run used --transactions (and, from stage 2.5c, the refund tickets)."""
     return (in_slice(label)
             or (transactions and label["category"] in TRANSACTION_CATEGORIES and label["scenario_id"] in TRANSACTION_SCENARIOS)
-            or (refunds and label["category"] == "refund" and label["scenario_id"] in REFUND_SCENARIOS))
+            or (refunds and label["category"] == "refund" and label["scenario_id"] in REFUND_SCENARIOS)
+            or (knowledge and label["category"] in KNOWLEDGE_CATEGORIES))

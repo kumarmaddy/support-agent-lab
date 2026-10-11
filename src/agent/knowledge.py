@@ -31,6 +31,7 @@ CHECK_SCHEMA = {
     "additionalProperties": False,
 }
 CHECK_MAX_TOKENS = 20
+KNOWLEDGE_FIRST_CATEGORIES = ("cancellation", "address_change", "return_exchange", "refund")   # never order_status: "where is my order" needs the order
 _SEE_REFERENCE = re.compile(r"\s*\((?:see\s+)?KB-[A-Z]{3}-\d{2}\)", re.IGNORECASE)
 
 
@@ -46,6 +47,7 @@ class Knowledge:
     check_prompt: Prompt
     reply_prompt: Prompt
     min_score: float = DEFAULT_MIN_SCORE
+    first: bool = False                    # try the knowledge path before a transactional ticket that names no order (stage 2.7a)
 
 
 @dataclass

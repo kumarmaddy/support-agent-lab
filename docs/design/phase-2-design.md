@@ -1,6 +1,6 @@
 # Phase 2 Design: Knowledge-Base Answers and More Ticket Types
 
-- Version: 0.7 (draft for review)
+- Version: 0.8 (draft for review)
 - Date: 2026-10-09
 - Owner: Kumar Maddipatla, Project Lead
 - Builds on: phase-1-design.md v1.6, ADR-006 (fixed pipeline), ADR-007 (qwen2.5:7b, read prompt v4)
@@ -71,7 +71,9 @@ With embeddings the best score separates unanswerable from answerable questions 
 | 2.4 | Knowledge-question path in the pipeline: retrieve, three gates, reply from article key facts, knowledge validator (built; measured on the probes by the project lead's run) |
 | 2.5 | Cancellations and address changes (2.5a), returns, exchanges and replacements (2.5b), refunds (2.5c): reading, decision rules, reply facts (read-only; proposed actions go to a person) |
 | 2.6 | Hand-over note for the person who receives a ticket (built; section 5d) |
-| 2.7 | Phase 2 evaluation (3B and 7B), citation validity, blind review, report, exit review |
+| 2.7a | Knowledge answers scored (action, cited article); optional "knowledge first" routing; two combined runs (section 5e) |
+| 2.7b | Phase 2 evaluation: 3B and 7B compared |
+| 2.7c | Blind review of a sample of replies and notes, Phase 2 report, exit review |
 
 ## 5a. Cancellations and address changes (stage 2.5a)
 Opt-in with `--transactions`; without it these tickets go to a person as in Phase 1. The agent proposes and a person acts: no tool writes.
@@ -127,6 +129,13 @@ Policy: KB-REF-02
 ```
 - **Scoring.** The scorer counts how many tickets needed a note, how many had one, and how many name the labelled order. Whether a person finds a note useful is not measured by code: the blind review in stage 2.7 reads a sample.
 - **Limits.** The next steps are fixed wording written for this project; they are not read from the articles automatically, so a change to an article needs a matching change to `REASONS`. The explanation texts mention the 30-day and 7-day periods as numbers.
+
+## 5e. Scoring knowledge answers and the routing option (stage 2.7a)
+- **Scorer.** With `--knowledge`, the product_info tickets (the S19 policy questions and the S24 sizing question) join the in-scope set. An answer is a `provide_info` with reason `knowledge_answer`; the scorer checks the action and the cited article. A citation is **valid** when the article exists in the knowledge base and **correct** when it is the article the label requires. `score.json` gains a `knowledge` block: answers given, citation validity, citation correctness, answers given outside the policy-question set, and transactional tickets answered from the knowledge base (the wrong-answer count for the routing option below).
+- **Routing option.** A policy question that the reader files under a transaction category never reached the knowledge path (deferred from 2.5c). `--knowledge-first` (needs `--knowledge`) tries the knowledge path first when the reader files the ticket under cancellation, address change, return or exchange, or refund, names no order, and flags no legal or chargeback threat. If the three gates pass, the article answer is used; if any gate fails, the ticket continues through the normal path unchanged. Order-status tickets are never tried first, because they need the order.
+- **Reach of the option.** In the development set every transactional ticket names an order, so the option can only change a ticket the reader has misfiled. The three known misfiles (T-000037, T-000042, T-000145) are policy questions with no order. The comparison of the two runs therefore measures whether those are answered and whether any transactional ticket is wrongly answered.
+- **Decision rule.** Keep the option if it answers the misfiled policy questions with the correct article and answers no transactional ticket from the knowledge base. Otherwise leave it off.
+- **Limits.** Three tickets is a very small sample; the result shows the mechanism works, not how often it helps on new tickets.
 
 ## 6. Safety rules carried over
 Ticket and article text are data, not instructions; the reply model sees only verified facts and article key facts; every reply passes the validator; any failure falls back to a template or a hand-over; write actions stay disabled until Phase 3.
