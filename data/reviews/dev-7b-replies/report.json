@@ -1,0 +1,36 @@
+{
+  "awkward": {
+    "model": {
+      "flagged": 0,
+      "high": 0.1072,
+      "low": 0.0,
+      "n": 32
+    },
+    "template": {
+      "flagged": 0,
+      "high": 0.1072,
+      "low": 0.0,
+      "n": 32
+    }
+  },
+  "fact_errors": {
+    "model": {
+      "flagged": 0,
+      "high": 0.1072,
+      "low": 0.0,
+      "n": 32
+    },
+    "template": {
+      "flagged": 0,
+      "high": 0.1072,
+      "low": 0.0,
+      "n": 32
+    }
+  },
+  "model_better": 9,
+  "pairs_in_sheet": 32,
+  "pairs_rated": 32,
+  "sign_test_p": 0.021484375,
+  "template_better": 1,
+  "tie": 22
+}

@@ -1,0 +1,189 @@
+Phase 2 final run: run-20261011-094006-326be7 (qwen2.5:7b, read_ticket.v4, --knowledge --knowledge-first --transactions, clean tree at b4cd8523667cf4059c2a518f69697833f8dbc1e2, dataset db sha256 403baccf822814944c730397f9c09e7d0804cb5d26d6d5b488058f7dbaf14705)
+Console output of the run and of the scorer, as pasted by the project lead on 2026-10-11. Run files: data/runs/run-20261011-094006-326be7/.
+
+PS C:\Users\kumar\source\repos\support-agent-lab> python -m src.agent.run --knowledge --knowledge-first --transactions
+[1/150] T-000001 propose_address_change (address_change_before_dispatch) reply by template
+[2/150] T-000002 provide_info (shipped_on_time) reply by model
+[3/150] T-000003 request_info (needs_order_number) reply by model
+[4/150] T-000004 provide_info (shipped_on_time) reply by model
+[5/150] T-000005 escalate_human (order_not_owned) reply by template
+[6/150] T-000006 route_to_human (out_of_slice) reply by template
+[7/150] T-000007 provide_info (shipped_late) reply by model
+[8/150] T-000008 decline_policy (cancellation_after_dispatch) reply by template
+[9/150] T-000009 propose_return_label (return_label) reply by template
+[10/150] T-000010 escalate_human (delivery_deadline_cannot_be_guaranteed) reply by template
+[11/150] T-000011 propose_cancellation (cancellation_before_dispatch) reply by template
+[12/150] T-000012 decline_policy (return_final_sale) reply by template
+[13/150] T-000013 route_to_human (out_of_slice) reply by template
+[14/150] T-000014 escalate_human (delivery_deadline_cannot_be_guaranteed) reply by template
+[15/150] T-000015 escalate_human (chargeback_or_legal_threat) reply by template
+[16/150] T-000016 route_to_human (knowledge_not_answered) reply by template
+[17/150] T-000017 escalate_human (order_not_owned) reply by template
+[18/150] T-000018 escalate_human (chargeback_or_legal_threat) reply by template
+[19/150] T-000019 decline_policy (address_change_after_dispatch) reply by template
+[20/150] T-000020 propose_cancellation (cancellation_before_dispatch) reply by template
+[21/150] T-000021 request_info (needs_order_number) reply by model
+[22/150] T-000022 decline_policy (cancellation_after_dispatch) reply by template
+[23/150] T-000023 provide_info (refund_pending) reply by template
+[24/150] T-000024 propose_cancellation (cancellation_before_dispatch) reply by template
+[25/150] T-000025 provide_info (refund_pending) reply by template
+[26/150] T-000026 decline_policy (cancellation_after_dispatch) reply by template
+[27/150] T-000027 provide_info (refund_pending) reply by template
+[28/150] T-000028 provide_info (shipped_late) reply by template
+[29/150] T-000029 propose_refund (duplicate_charge) reply by template
+[30/150] T-000030 propose_exchange (exchange_within_window) reply by template
+[31/150] T-000031 propose_return_label (return_label) reply by template
+[32/150] T-000032 propose_return_label (return_label) reply by template
+[33/150] T-000033 request_info (needs_order_number) reply by model
+[34/150] T-000034 propose_address_change (address_change_before_dispatch) reply by template
+[35/150] T-000035 propose_refund (duplicate_charge) reply by template
+[36/150] T-000036 provide_info (shipped_on_time) reply by model
+[37/150] T-000037 request_info (no_open_orders) reply by template
+[38/150] T-000038 route_to_human (knowledge_not_answered) reply by template
+[39/150] T-000039 propose_refund (duplicate_charge) reply by template
+[40/150] T-000040 propose_address_change (address_change_before_dispatch) reply by template
+[41/150] T-000041 route_to_human (knowledge_not_found) reply by template
+[42/150] T-000042 provide_info (knowledge_answer) reply by model
+[43/150] T-000043 route_to_human (out_of_slice) reply by template
+[44/150] T-000044 escalate_human (chargeback_or_legal_threat) reply by template
+[45/150] T-000045 escalate_human (chargeback_or_legal_threat) reply by template
+[46/150] T-000046 propose_refund (item_refund_within_window) reply by template
+[47/150] T-000047 propose_return_label (return_label) reply by template
+[48/150] T-000048 request_info (needs_order_number) reply by model
+[49/150] T-000049 provide_info (shipped_late) reply by model
+[50/150] T-000050 propose_return_label (return_label) reply by template
+[51/150] T-000051 route_to_human (out_of_slice) reply by template
+[52/150] T-000052 route_to_human (knowledge_not_found) reply by template
+[53/150] T-000053 escalate_human (chargeback_or_legal_threat) reply by template
+[54/150] T-000054 decline_policy (return_final_sale) reply by template
+[55/150] T-000055 propose_exchange (exchange_within_window) reply by template
+[56/150] T-000056 propose_refund (duplicate_charge) reply by template
+[57/150] T-000057 provide_info (shipped_on_time) reply by model
+[58/150] T-000058 provide_info (order_processing) reply by model
+[59/150] T-000059 provide_info (shipped_late) reply by template
+[60/150] T-000060 decline_policy (return_final_sale) reply by template
+[61/150] T-000061 provide_info (shipped_late) reply by template
+[62/150] T-000062 propose_refund (duplicate_charge) reply by template
+[63/150] T-000063 route_to_human (knowledge_not_found) reply by template
+[64/150] T-000064 route_to_human (out_of_slice) reply by template
+[65/150] T-000065 provide_info (shipped_late) reply by model
+[66/150] T-000066 propose_replacement (replacement_within_window) reply by template
+[67/150] T-000067 propose_replacement (replacement_within_window) reply by template
+[68/150] T-000068 decline_policy (return_window_closed) reply by template
+[69/150] T-000069 escalate_human (delivery_deadline_cannot_be_guaranteed) reply by template
+[70/150] T-000070 propose_return_label (return_label) reply by template
+[71/150] T-000071 provide_info (shipped_on_time) reply by model
+[72/150] T-000072 provide_info (shipped_late) reply by model
+[73/150] T-000073 propose_exchange (exchange_within_window) reply by template
+[74/150] T-000074 propose_return_label (return_label) reply by template
+[75/150] T-000075 propose_refund (duplicate_charge) reply by template
+[76/150] T-000076 propose_refund (item_refund_within_window) reply by template
+[77/150] T-000077 propose_refund (item_refund_within_window) reply by template
+[78/150] T-000078 propose_refund (duplicate_charge) reply by template
+[79/150] T-000079 route_to_human (out_of_slice) reply by template
+[80/150] T-000080 propose_refund (item_refund_within_window) reply by template
+[81/150] T-000081 propose_exchange (exchange_within_window) reply by template
+[82/150] T-000082 route_to_human (request_not_covered) reply by template
+[83/150] T-000083 propose_address_change (address_change_before_dispatch) reply by template
+[84/150] T-000084 route_to_human (out_of_slice) reply by template
+[85/150] T-000085 provide_info (knowledge_answer) reply by model
+[86/150] T-000086 provide_info (order_processing) reply by model
+[87/150] T-000087 route_to_human (out_of_slice) reply by template
+[88/150] T-000088 decline_policy (address_change_after_dispatch) reply by template
+[89/150] T-000089 decline_policy (return_final_sale) reply by template
+[90/150] T-000090 provide_info (shipped_late) reply by model
+[91/150] T-000091 propose_return_label (return_label) reply by template
+[92/150] T-000092 propose_exchange (exchange_within_window) reply by template
+[93/150] T-000093 provide_info (refund_processed) reply by template
+[94/150] T-000094 decline_policy (address_change_after_dispatch) reply by template
+[95/150] T-000095 decline_policy (return_window_closed) reply by template
+[96/150] T-000096 propose_refund (duplicate_charge) reply by template
+[97/150] T-000097 provide_info (shipped_on_time) reply by model
+[98/150] T-000098 decline_policy (return_window_closed) reply by template
+[99/150] T-000099 propose_refund (duplicate_charge) reply by template
+[100/150] T-000100 provide_info (shipped_late) reply by model
+[101/150] T-000101 decline_policy (return_window_closed) reply by template
+[102/150] T-000102 request_info (needs_order_number) reply by model
+[103/150] T-000103 provide_info (refund_pending) reply by template
+[104/150] T-000104 propose_cancellation (cancellation_before_dispatch) reply by template
+[105/150] T-000105 decline_policy (cancellation_after_dispatch) reply by template
+[106/150] T-000106 route_to_human (knowledge_not_found) reply by template
+[107/150] T-000107 route_to_human (out_of_slice) reply by template
+[108/150] T-000108 propose_replacement (replacement_within_window) reply by template
+[109/150] T-000109 decline_policy (cancellation_after_dispatch) reply by template
+[110/150] T-000110 propose_refund (duplicate_charge) reply by template
+[111/150] T-000111 propose_refund (duplicate_charge) reply by template
+[112/150] T-000112 propose_refund (duplicate_charge) reply by template
+[113/150] T-000113 request_info (needs_order_number) reply by model
+[114/150] T-000114 route_to_human (out_of_slice) reply by template
+[115/150] T-000115 decline_policy (cancellation_after_dispatch) reply by template
+[116/150] T-000116 propose_refund (duplicate_charge) reply by template
+[117/150] T-000117 provide_info (order_processing) reply by model
+[118/150] T-000118 propose_cancellation (cancellation_before_dispatch) reply by template
+[119/150] T-000119 propose_return_label (return_label) reply by template
+[120/150] T-000120 propose_cancellation (cancellation_before_dispatch) reply by template
+[121/150] T-000121 escalate_human (order_not_owned) reply by template
+[122/150] T-000122 propose_return_label (return_label) reply by template
+[123/150] T-000123 route_to_human (out_of_slice) reply by template
+[124/150] T-000124 route_to_human (out_of_slice) reply by template
+[125/150] T-000125 decline_policy (return_window_closed) reply by template
+[126/150] T-000126 propose_address_change (address_change_before_dispatch) reply by template
+[127/150] T-000127 provide_info (shipped_on_time) reply by model
+[128/150] T-000128 provide_info (shipped_on_time) reply by model
+[129/150] T-000129 provide_info (order_processing) reply by model
+[130/150] T-000130 propose_refund (duplicate_charge) reply by template
+[131/150] T-000131 provide_info (shipped_on_time) reply by model
+[132/150] T-000132 propose_cancellation (cancellation_before_dispatch) reply by template
+[133/150] T-000133 decline_policy (return_final_sale) reply by template
+[134/150] T-000134 provide_info (refund_processed) reply by template
+[135/150] T-000135 route_to_human (knowledge_not_found) reply by template
+[136/150] T-000136 provide_info (order_processing) reply by model
+[137/150] T-000137 propose_exchange (exchange_within_window) reply by template
+[138/150] T-000138 decline_policy (address_change_after_dispatch) reply by template
+[139/150] T-000139 provide_info (shipped_on_time) reply by model
+[140/150] T-000140 escalate_human (delivery_deadline_cannot_be_guaranteed) reply by template
+[141/150] T-000141 provide_info (shipped_on_time) reply by model
+[142/150] T-000142 provide_info (knowledge_answer) reply by model
+[143/150] T-000143 route_to_human (knowledge_not_answered) reply by template
+[144/150] T-000144 propose_return_label (return_label) reply by template
+[145/150] T-000145 provide_info (knowledge_answer) reply by model
+[146/150] T-000146 decline_policy (cancellation_after_dispatch) reply by template
+[147/150] T-000147 propose_address_change (address_change_before_dispatch) reply by template
+[148/150] T-000148 propose_replacement (replacement_within_window) reply by template
+[149/150] T-000149 propose_refund (duplicate_charge) reply by template
+[150/150] T-000150 route_to_human (out_of_slice) reply by template
+
+run run-20261011-094006-326be7: 150 tickets, 262 model calls
+actions {'decline_policy': 21, 'escalate_human': 12, 'propose_address_change': 6, 'propose_cancellation': 7, 'propose_exchange': 6, 'propose_refund': 19, 'propose_replacement': 4, 'propose_return_label': 11, 'provide_info': 35, 'request_info': 7, 'route_to_human': 22}
+template fallbacks 3/35 model-drafted replies; rejected drafts {'missing_fact': 10}
+latency per ticket: median 14479 ms, p90 29320 ms, max 45332 ms
+written to data\runs\run-20261011-094006-326be7
+(.venv) PS C:\Users\kumar\source\repos\support-agent-lab> python -m src.evaluation.score data\runs\run-20261011-094006-326be7
+
+run run-20261011-094006-326be7  model qwen2.5:7b  reply mode model  tickets 150
+read step: valid readings 150/150 = 100.0% (98-100%); category agreement 138/150 = 92.0% (87-95%)
+chargeback or legal flag: found 4 of 4 labelled, 1 false alarms ['T-000045']
+Set A, in-slice (125):
+  action 118/125 = 94.4% (89-97%)
+  escalation decision 124/125 = 99.2% (96-100%)
+  article 119/125 = 95.2% (90-98%)
+  facts 123/125 = 98.4% (94-100%)
+  end to end 118/125 = 94.4% (89-97%)
+  answered without a person and correct 62/125 = 49.6% (41-58%); replies by source {'model': 32, 'template': 30}
+Set B, other tickets (25):
+  handed to a person 25/25 = 100.0% (87-100%)
+  answered by the agent (wrong) 0/25 = 0.0% (0-13%)
+  needed escalation but were only routed: 11
+  escalated although the label does not call for it 0/25 = 0.0% (0-13%)
+knowledge answers: 4; cited article exists 4/4 = 100.0% (51-100%); is the labelled one 4/4 = 100.0% (51-100%); answered outside the policy-question set []; transactional tickets answered from the knowledge base []
+hand-over notes: needed 87; present 87/87 = 100.0% (96-100%); name the labelled order 67/67 = 100.0% (95-100%) []
+replies: template fallbacks 3/35; rejected {'missing_fact': 10}
+latency per ticket: {'max': 45332, 'p50': 14479, 'p90': 29320}
+  miss T-000016 S24 expected provide_info got route_to_human (knowledge_not_answered)
+  miss T-000037 S19 expected provide_info got request_info (no_open_orders)
+  miss T-000038 S19 expected provide_info got route_to_human (knowledge_not_answered)
+  miss T-000045 S26 expected propose_refund got escalate_human (chargeback_or_legal_threat)
+  miss T-000082 S24 expected decline_policy got route_to_human (request_not_covered)
+  miss T-000091 S06 expected decline_policy got propose_return_label (return_label)
+  miss T-000143 S19 expected provide_info got route_to_human (knowledge_not_answered)
+(.venv) PS C:\Users\kumar\source\repos\support-agent-lab>
