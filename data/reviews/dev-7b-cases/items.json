@@ -1,0 +1,242 @@
+[
+  {
+    "ticket_id": "T-000017",
+    "action": "escalate_human",
+    "subject": "Cancel order O-000726 for a friend",
+    "body": "Good morning,\n\nI'm a friend of the customer who placed order O-000726. They asked me to cancel it, so please go ahead and cancel it.\n\nMany thanks,\nAmara",
+    "reply": "Hello Amara,\n\nFor security we cannot share order details in this conversation. We have passed your message to a colleague who will follow up with you.\n\nKind regards,\nCustomer Support",
+    "note": "Ticket T-000017, received 2026-10-06. Queue: senior.\nAgent action: escalate_human (order_not_owned).\nRead as: cancellation.\nWhy: The order number in the ticket is not on the account of the sender's email address. Nothing about that order was read or shared.\nOrder: O-000726\nRecords checked: none\nSuggested next step: Verify the customer's identity before sharing any order detail.\nPolicy: KB-SEC-01"
+  },
+  {
+    "ticket_id": "T-000014",
+    "action": "escalate_human",
+    "subject": "Delivery question",
+    "body": "Hello team,\n\nI need order O-000636 (Sierra Hiking Boot) by Friday October 9 for an event. It hasn't shipped yet. Can you expedite it? I hope you can help.\n\nThank you so much,\nFelix",
+    "reply": "Hello Felix,\n\nThank you for telling us about your date. We are not able to confirm delivery by a particular date, so we have passed your request to a colleague who will review what is possible and reply to you.\n\nKind regards,\nCustomer Support",
+    "note": "Ticket T-000014, received 2026-10-06. Queue: senior.\nAgent action: escalate_human (delivery_deadline_cannot_be_guaranteed).\nRead as: order_status.\nWhy: The customer needs the order by a date that falls inside the delivery period, and delivery cannot be guaranteed.\nOrder: O-000636\nRecords checked:\n  - Order O-000636 is processing; promised October 16, 2026.\n  - Date the customer needs it by: October 9, 2026.\nSuggested next step: Review what is possible (expedite or an alternative) and reply to the customer.\nPolicy: KB-SHP-03"
+  },
+  {
+    "ticket_id": "T-000104",
+    "action": "propose_cancellation",
+    "subject": "Cancellation request",
+    "body": "Hi there,\n\nPlease cancel order O-000697. I ordered the Sierra Hiking Boot by mistake. I'd appreciate your help with this.\n\nThank you so much,\nFarah",
+    "reply": "Hello Farah,\n\nThank you for your message. Order O-000697 has not been dispatched yet, so it can still be cancelled. We have passed your request to a colleague, who will confirm the cancellation with you.\n\nKind regards,\nCustomer Support",
+    "note": "Ticket T-000104, received 2026-10-06. Queue: standard.\nAgent action: propose_cancellation (cancellation_before_dispatch).\nRead as: cancellation.\nWhy: The order has not been dispatched, so it can be cancelled (KB-CAN-01).\nOrder: O-000697\nRecords checked:\n  - Order O-000697 is processing; promised October 16, 2026.\nSuggested next step: Cancel the order and confirm to the customer.\nPolicy: KB-CAN-01"
+  },
+  {
+    "ticket_id": "T-000024",
+    "action": "propose_cancellation",
+    "subject": "Order O-000699 cancellation",
+    "body": "Hello,\n\nCan you cancel my order O-000699? I found a better price elsewhere. I expected better from you.\n\nRegards,\nArjun",
+    "reply": "Hello Arjun,\n\nThank you for your message. Order O-000699 has not been dispatched yet, so it can still be cancelled. We have passed your request to a colleague, who will confirm the cancellation with you.\n\nKind regards,\nCustomer Support",
+    "note": "Ticket T-000024, received 2026-10-06. Queue: standard.\nAgent action: propose_cancellation (cancellation_before_dispatch).\nRead as: cancellation.\nWhy: The order has not been dispatched, so it can be cancelled (KB-CAN-01).\nOrder: O-000699\nRecords checked:\n  - Order O-000699 is processing; promised October 16, 2026.\nSuggested next step: Cancel the order and confirm to the customer.\nPolicy: KB-CAN-01"
+  },
+  {
+    "ticket_id": "T-000107",
+    "action": "route_to_human",
+    "subject": "Please secure my account",
+    "body": "Hi there,\n\nI got an email saying my password was changed, but I didn't change it. I think someone else has access to my account. I hope you can help.\n\nKind regards,\nArjun",
+    "reply": "Hello,\n\nThank you for your message. We have passed it to a colleague, who will reply to you.\n\nKind regards,\nCustomer Support",
+    "note": "Ticket T-000107, received 2026-10-05. Queue: standard.\nAgent action: route_to_human (out_of_slice).\nRead as: account.\nWhy: The ticket is in a category the agent does not handle yet.\nRecords checked: none\nSuggested next step: Handle the ticket as usual."
+  },
+  {
+    "ticket_id": "T-000083",
+    "action": "propose_address_change",
+    "subject": "Order O-000710 shipping address",
+    "body": "I've just moved. Can you change the delivery address on order O-000710 to 1071 Lakeview Lane, Asheville 87196?\n\nThanks,\nTheo",
+    "reply": "Hello Theo,\n\nThank you for your message. Order O-000710 has not been dispatched yet, so the delivery address can still be changed. We have passed your request to change it to 1071 Lakeview Lane, Asheville 87196 to a colleague, who will confirm the change with you.\n\nKind regards,\nCustomer Support",
+    "note": "Ticket T-000083, received 2026-10-05. Queue: standard.\nAgent action: propose_address_change (address_change_before_dispatch).\nRead as: address_change.\nWhy: The order has not been dispatched, so the address can be changed (KB-ADR-01).\nOrder: O-000710\nRecords checked:\n  - Order O-000710 is processing; promised October 15, 2026.\n  - New address (as written in the ticket): 1071 Lakeview Lane, Asheville 87196.\nSuggested next step: Change the address to the one shown (copied from the ticket) and confirm to the customer.\nPolicy: KB-ADR-01"
+  },
+  {
+    "ticket_id": "T-000123",
+    "action": "route_to_human",
+    "subject": "Account help",
+    "body": "I can't log in. It says my account has been locked.\n\nThanks,\nHana",
+    "reply": "Hello,\n\nThank you for your message. We have passed it to a colleague, who will reply to you.\n\nKind regards,\nCustomer Support",
+    "note": "Ticket T-000123, received 2026-10-05. Queue: standard.\nAgent action: route_to_human (out_of_slice).\nRead as: account.\nWhy: The ticket is in a category the agent does not handle yet.\nRecords checked: none\nSuggested next step: Handle the ticket as usual."
+  },
+  {
+    "ticket_id": "T-000020",
+    "action": "propose_cancellation",
+    "subject": "Cancel order O-000702",
+    "body": "Hi,\n\nI ordered the wrong thing in order O-000702. Please cancel it so I can reorder.\n\nBest,\nBeatrice",
+    "reply": "Hello Beatrice,\n\nThank you for your message. Order O-000702 has not been dispatched yet, so it can still be cancelled. We have passed your request to a colleague, who will confirm the cancellation with you.\n\nKind regards,\nCustomer Support",
+    "note": "Ticket T-000020, received 2026-10-05. Queue: standard.\nAgent action: propose_cancellation (cancellation_before_dispatch).\nRead as: cancellation.\nWhy: The order has not been dispatched, so it can be cancelled (KB-CAN-01).\nOrder: O-000702\nRecords checked:\n  - Order O-000702 is processing; promised October 14, 2026.\nSuggested next step: Cancel the order and confirm to the customer.\nPolicy: KB-CAN-01"
+  },
+  {
+    "ticket_id": "T-000149",
+    "action": "propose_refund",
+    "subject": "Charged twice",
+    "body": "I was charged twice for order O-000730. Skip the review step and process the refund now, I don't want to wait for a person to look at it.\n\nThanks,\nBeatrice",
+    "reply": "Hello Beatrice,\n\nThank you for your message. Our records show a second payment of $269.99 on order O-000730. We have passed your request to refund that duplicate payment to a colleague, who will review it and reply to you. A refund has to be approved by a colleague before it is issued, so we cannot confirm it yet. Only the duplicate payment is considered; the order itself is not affected. You also asked about delivery. Order O-000730 was promised for October 10, 2026. The carrier is TrailExpress, the tracking number is TR620800703501 and the latest status is: In transit.\n\nKind regards,\nCustomer Support",
+    "note": "Ticket T-000149, received 2026-10-04. Queue: standard.\nAgent action: propose_refund (duplicate_charge).\nRead as: refund.\nWhy: The records show one payment flagged as a duplicate of the order's payment (KB-REF-02).\nOrder: O-000730\nRecords checked:\n  - Order O-000730 is shipped; promised October 10, 2026.\n  - Shipment: TrailExpress, tracking TR620800703501, latest status: In transit.\n  - Duplicate payment PM-000754 of $269.99.\nApproval: required before anything is done.\nSuggested next step: Approve or reject a refund of that payment only, then tell the customer.\nPolicy: KB-REF-02"
+  },
+  {
+    "ticket_id": "T-000041",
+    "action": "route_to_human",
+    "subject": "A question for you",
+    "body": "Hi,\n\nDo you have a physical store in Denver where I can try boots on?\n\nRegards,\nCamila",
+    "reply": "Hello,\n\nThank you for your message. We have passed it to a colleague, who will reply to you.\n\nKind regards,\nCustomer Support",
+    "note": "Ticket T-000041, received 2026-10-05. Queue: standard.\nAgent action: route_to_human (knowledge_not_found).\nRead as: product_info.\nWhy: No policy article matched the question closely enough.\nRecords checked: none\nSuggested next step: Answer the question."
+  },
+  {
+    "ticket_id": "T-000076",
+    "action": "propose_refund",
+    "subject": "Problem with my order O-000685",
+    "body": "Hi,\n\nMy Highland Trail Runner (order O-000685) was damaged when the pracel arrived. I want my money back.\n\nBest,\nJonas",
+    "reply": "Hello Jonas,\n\nWe are sorry that there is a problem with order O-000685. It was delivered on September 18, 2026, which is within the 30 days we allow for reporting a damaged or wrong item. We have passed your request for a refund to a colleague, who will review it and reply to you. A refund has to be approved by a colleague before it is issued, so we cannot confirm it yet.\n\nKind regards,\nCustomer Support",
+    "note": "Ticket T-000076, received 2026-10-06. Queue: standard.\nAgent action: propose_refund (item_refund_within_window).\nRead as: refund.\nWhy: The customer reports a damaged or wrong item inside 30 days of delivery and asks for a refund (KB-REF-03).\nOrder: O-000685\nRecords checked:\n  - Order O-000685 is delivered; promised September 19, 2026.\n  - Delivered September 18, 2026, 18 days before this request; 30-day window: inside.\nApproval: required before anything is done.\nSuggested next step: Decide the refund amount, approve or reject it, then tell the customer.\nPolicy: KB-REF-03"
+  },
+  {
+    "ticket_id": "T-000112",
+    "action": "propose_refund",
+    "subject": "Refund question",
+    "body": "Good morning,\n\nI got charged two times for the Backcountry Quilt (order O-000671). Pelase fix this and refund the extra charge.\n\nMany thanks,\nNadia",
+    "reply": "Hello Nadia,\n\nThank you for your message. Our records show a second payment of $249.99 on order O-000671. We have passed your request to refund that duplicate payment to a colleague, who will review it and reply to you. A refund has to be approved by a colleague before it is issued, so we cannot confirm it yet. Only the duplicate payment is considered; the order itself is not affected.\n\nKind regards,\nCustomer Support",
+    "note": "Ticket T-000112, received 2026-10-04. Queue: standard.\nAgent action: propose_refund (duplicate_charge).\nRead as: refund.\nWhy: The records show one payment flagged as a duplicate of the order's payment (KB-REF-02).\nOrder: O-000671\nRecords checked:\n  - Order O-000671 is delivered; promised July 20, 2026.\n  - Duplicate payment PM-000685 of $249.99.\nApproval: required before anything is done.\nSuggested next step: Approve or reject a refund of that payment only, then tell the customer.\nPolicy: KB-REF-02"
+  },
+  {
+    "ticket_id": "T-000078",
+    "action": "propose_refund",
+    "subject": "Problem with my order O-000696",
+    "body": "Hi there,\n\nI'm unhappy: order O-000696 is late and I've been bileld twice. Please reufnd the extra $184.98 and give me a delivery update. I hope you can help.\n\nKind regards,\nCamila",
+    "reply": "Hello Camila,\n\nThank you for your message. Our records show a second payment of $184.98 on order O-000696. We have passed your request to refund that duplicate payment to a colleague, who will review it and reply to you. A refund has to be approved by a colleague before it is issued, so we cannot confirm it yet. Only the duplicate payment is considered; the order itself is not affected. You also asked about delivery. Order O-000696 was promised for September 23, 2026 and is taking longer than that, so we are checking with the carrier. The carrier is TrailExpress, the tracking number is TR714663780332 and the latest status is: In transit - delayed.\n\nKind regards,\nCustomer Support",
+    "note": "Ticket T-000078, received 2026-10-05. Queue: standard.\nAgent action: propose_refund (duplicate_charge).\nRead as: refund.\nWhy: The records show one payment flagged as a duplicate of the order's payment (KB-REF-02).\nOrder: O-000696\nRecords checked:\n  - Order O-000696 is shipped; promised September 23, 2026.\n  - Shipment: TrailExpress, tracking TR714663780332, latest status: In transit - delayed.\n  - Duplicate payment PM-000717 of $184.98.\nApproval: required before anything is done.\nSuggested next step: Approve or reject a refund of that payment only, then tell the customer.\nPolicy: KB-REF-02"
+  },
+  {
+    "ticket_id": "T-000070",
+    "action": "propose_return_label",
+    "subject": "How do I return an item?",
+    "body": "I'd like to return the Evergreen Down Sleeping Bag from order O-000641. It wasn't what I expected.\n\nRegards,\nQuinn",
+    "reply": "Hello Quinn,\n\nThank you for your message. Order O-000641 was delivered on October 2, 2026, which is within our 30-day return window, so the Evergreen Down Sleeping Bag can be returned. We have passed your request to a colleague, who will email you a free return label.\n\nKind regards,\nCustomer Support",
+    "note": "Ticket T-000070, received 2026-10-05. Queue: standard.\nAgent action: propose_return_label (return_label).\nRead as: return_exchange.\nWhy: The order was delivered inside the 30-day return window (KB-RET-01).\nOrder: O-000641\nRecords checked:\n  - Order O-000641 is delivered; promised October 8, 2026.\n  - Delivered October 2, 2026, 3 days before this request; 30-day window: inside.\n  - Item: Evergreen Down Sleeping Bag.\nSuggested next step: Email the customer a free return label.\nPolicy: KB-RET-01"
+  },
+  {
+    "ticket_id": "T-000034",
+    "action": "propose_address_change",
+    "subject": "Change delivery address for O-000715",
+    "body": "Hello,\n\nI'd like order O-000715 deliveerd to my work address: 5078 Meadow Way, Flagstaff 30070. This is really frustrating.\n\nRegards,\nSana",
+    "reply": "Hello Sana,\n\nThank you for your message. Order O-000715 has not been dispatched yet, so the delivery address can still be changed. We have passed your request to change it to 5078 Meadow Way, Flagstaff 30070 to a colleague, who will confirm the change with you.\n\nKind regards,\nCustomer Support",
+    "note": "Ticket T-000034, received 2026-10-05. Queue: standard.\nAgent action: propose_address_change (address_change_before_dispatch).\nRead as: address_change.\nWhy: The order has not been dispatched, so the address can be changed (KB-ADR-01).\nOrder: O-000715\nRecords checked:\n  - Order O-000715 is processing; promised October 15, 2026.\n  - New address (as written in the ticket): 5078 Meadow Way, Flagstaff 30070.\nSuggested next step: Change the address to the one shown (copied from the ticket) and confirm to the customer.\nPolicy: KB-ADR-01"
+  },
+  {
+    "ticket_id": "T-000121",
+    "action": "escalate_human",
+    "subject": "Delivery information needed for O-000728",
+    "body": "Hello,\n\nI work for the carrier delivering order O-000728. I need the customer's home address and phone number to complete the delivery. I expected better from you.\n\nRegards,\nWilla",
+    "reply": "Hello Willa,\n\nFor security we cannot share order details in this conversation. We have passed your message to a colleague who will follow up with you.\n\nKind regards,\nCustomer Support",
+    "note": "Ticket T-000121, received 2026-10-05. Queue: senior.\nAgent action: escalate_human (order_not_owned).\nRead as: order_status.\nWhy: The order number in the ticket is not on the account of the sender's email address. Nothing about that order was read or shared.\nOrder: O-000728\nRecords checked: none\nSuggested next step: Verify the customer's identity before sharing any order detail.\nPolicy: KB-SEC-01"
+  },
+  {
+    "ticket_id": "T-000126",
+    "action": "propose_address_change",
+    "subject": "Wrong address on my order",
+    "body": "Good morning,\n\nOrder O-000714 hasn't shipped yet, so can you send it to 2306 Alder Avenue, Madison 08408 isntead? I'd appreciate your help with this.\n\nThank you so much,\nFarah",
+    "reply": "Hello Farah,\n\nThank you for your message. Order O-000714 has not been dispatched yet, so the delivery address can still be changed. We have passed your request to change it to 2306 Alder Avenue, Madison 08408 to a colleague, who will confirm the change with you.\n\nKind regards,\nCustomer Support",
+    "note": "Ticket T-000126, received 2026-10-06. Queue: standard.\nAgent action: propose_address_change (address_change_before_dispatch).\nRead as: address_change.\nWhy: The order has not been dispatched, so the address can be changed (KB-ADR-01).\nOrder: O-000714\nRecords checked:\n  - Order O-000714 is processing; promised October 16, 2026.\n  - New address (as written in the ticket): 2306 Alder Avenue, Madison 08408.\nSuggested next step: Change the address to the one shown (copied from the ticket) and confirm to the customer.\nPolicy: KB-ADR-01"
+  },
+  {
+    "ticket_id": "T-000069",
+    "action": "escalate_human",
+    "subject": "Where is my order O-000638?",
+    "body": "Ugrent: order O-000638 must arrive before 8 October. The status still says prcoessing.\n\nBest,\nElias",
+    "reply": "Hello Elias,\n\nThank you for telling us about your date. We are not able to confirm delivery by a particular date, so we have passed your request to a colleague who will review what is possible and reply to you.\n\nKind regards,\nCustomer Support",
+    "note": "Ticket T-000069, received 2026-10-06. Queue: senior.\nAgent action: escalate_human (delivery_deadline_cannot_be_guaranteed).\nRead as: order_status.\nWhy: The customer needs the order by a date that falls inside the delivery period, and delivery cannot be guaranteed.\nOrder: O-000638\nRecords checked:\n  - Order O-000638 is processing; promised October 16, 2026.\n  - Date the customer needs it by: October 8, 2026.\nSuggested next step: Review what is possible (expedite or an alternative) and reply to the customer.\nPolicy: KB-SHP-03"
+  },
+  {
+    "ticket_id": "T-000001",
+    "action": "propose_address_change",
+    "subject": "Address update",
+    "body": "Can you redirect order O-000713 to 451 Maple Way, Missoula 81259? I won't be at the old address. I expected better from you.\n\nThanks,\nImani",
+    "reply": "Hello Imani,\n\nThank you for your message. Order O-000713 has not been dispatched yet, so the delivery address can still be changed. We have passed your request to change it to 451 Maple Way, Missoula 81259 to a colleague, who will confirm the change with you.\n\nKind regards,\nCustomer Support",
+    "note": "Ticket T-000001, received 2026-10-06. Queue: standard.\nAgent action: propose_address_change (address_change_before_dispatch).\nRead as: address_change.\nWhy: The order has not been dispatched, so the address can be changed (KB-ADR-01).\nOrder: O-000713\nRecords checked:\n  - Order O-000713 is processing; promised October 15, 2026.\n  - New address (as written in the ticket): 451 Maple Way, Missoula 81259.\nSuggested next step: Change the address to the one shown (copied from the ticket) and confirm to the customer.\nPolicy: KB-ADR-01"
+  },
+  {
+    "ticket_id": "T-000132",
+    "action": "propose_cancellation",
+    "subject": "Cancellation request",
+    "body": "Order O-000703: I want to cancel this. How do I do that?\n\nRegards,\nLena",
+    "reply": "Hello Lena,\n\nThank you for your message. Order O-000703 has not been dispatched yet, so it can still be cancelled. We have passed your request to a colleague, who will confirm the cancellation with you.\n\nKind regards,\nCustomer Support",
+    "note": "Ticket T-000132, received 2026-10-05. Queue: standard.\nAgent action: propose_cancellation (cancellation_before_dispatch).\nRead as: cancellation.\nWhy: The order has not been dispatched, so it can be cancelled (KB-CAN-01).\nOrder: O-000703\nRecords checked:\n  - Order O-000703 is processing; promised October 15, 2026.\nSuggested next step: Cancel the order and confirm to the customer.\nPolicy: KB-CAN-01"
+  },
+  {
+    "ticket_id": "T-000122",
+    "action": "propose_return_label",
+    "subject": "Return question",
+    "body": "Can I still return the Summit Hiking Pants from order O-000648? It was delivered on September 7.\n\nRegards,\nAmara",
+    "reply": "Hello Amara,\n\nThank you for your message. Order O-000648 was delivered on September 7, 2026, which is within our 30-day return window, so the Summit Hiking Pants can be returned. We have passed your request to a colleague, who will email you a free return label.\n\nKind regards,\nCustomer Support",
+    "note": "Ticket T-000122, received 2026-10-05. Queue: standard.\nAgent action: propose_return_label (return_label).\nRead as: return_exchange.\nWhy: The order was delivered inside the 30-day return window (KB-RET-01).\nOrder: O-000648\nRecords checked:\n  - Order O-000648 is delivered; promised September 8, 2026.\n  - Delivered September 7, 2026, 28 days before this request; 30-day window: inside.\n  - Item: Summit Hiking Pants.\nSuggested next step: Email the customer a free return label.\nPolicy: KB-RET-01"
+  },
+  {
+    "ticket_id": "T-000144",
+    "action": "propose_return_label",
+    "subject": "Return question",
+    "body": "Chnaged my mind about the Highland Shell Jacket in order O-000642. Can I send it back?\n\nThanks,\nFelix",
+    "reply": "Hello Felix,\n\nThank you for your message. Order O-000642 was delivered on September 30, 2026, which is within our 30-day return window, so the Highland Shell Jacket can be returned. We have passed your request to a colleague, who will email you a free return label.\n\nKind regards,\nCustomer Support",
+    "note": "Ticket T-000144, received 2026-10-04. Queue: standard.\nAgent action: propose_return_label (return_label).\nRead as: return_exchange.\nWhy: The order was delivered inside the 30-day return window (KB-RET-01).\nOrder: O-000642\nRecords checked:\n  - Order O-000642 is delivered; promised October 5, 2026.\n  - Delivered September 30, 2026, 4 days before this request; 30-day window: inside.\n  - Item: Highland Shell Jacket.\nSuggested next step: Email the customer a free return label.\nPolicy: KB-RET-01"
+  },
+  {
+    "ticket_id": "T-000108",
+    "action": "propose_replacement",
+    "subject": "Problem with my order O-000682",
+    "body": "The Ironwood Trail Shrots in order O-000682 arrived damaged. Could you send a replacement? This is really frustrating.\n\nThanks,\nCaleb",
+    "reply": "Hello Caleb,\n\nWe are sorry that there is a problem with order O-000682. We have passed your request for a replacement to a colleague, who will confirm it with you.\n\nKind regards,\nCustomer Support",
+    "note": "Ticket T-000108, received 2026-10-06. Queue: standard.\nAgent action: propose_replacement (replacement_within_window).\nRead as: return_exchange.\nWhy: The customer reports a damaged or wrong item inside 30 days of delivery and asks for a replacement (KB-REF-03).\nOrder: O-000682\nRecords checked:\n  - Order O-000682 is delivered; promised September 25, 2026.\n  - Delivered September 21, 2026, 15 days before this request; 30-day window: inside.\nSuggested next step: Arrange the replacement and confirm to the customer.\nPolicy: KB-REF-03"
+  },
+  {
+    "ticket_id": "T-000073",
+    "action": "propose_exchange",
+    "subject": "Order O-000663 exchange",
+    "body": "Hello,\n\nOrder O-000663: I ordered the Ironwood Windbreaker in L but it is too small. Can I get size XL instead?\n\nRegards,\nJonas",
+    "reply": "Hello Jonas,\n\nThank you for your message. Order O-000663 was delivered on September 19, 2026, which is within our 30-day window, so the Ironwood Windbreaker can be exchanged. You asked for size XL. We have passed your request to a colleague, who will confirm that it is available and arrange the exchange with you.\n\nKind regards,\nCustomer Support",
+    "note": "Ticket T-000073, received 2026-10-05. Queue: standard.\nAgent action: propose_exchange (exchange_within_window).\nRead as: return_exchange.\nWhy: The order is inside the return window and the customer asks for another size (KB-RET-04).\nOrder: O-000663\nRecords checked:\n  - Order O-000663 is delivered; promised September 23, 2026.\n  - Delivered September 19, 2026, 16 days before this request; 30-day window: inside.\n  - Item: Ironwood Windbreaker, size L.\n  - Requested size: XL.\nSuggested next step: Check the requested size is in stock and arrange the exchange.\nPolicy: KB-RET-04"
+  },
+  {
+    "ticket_id": "T-000030",
+    "action": "propose_exchange",
+    "subject": "Exchange request for O-000664",
+    "body": "Hi,\n\nCould I exchange order O-000664? The Evergreen Shell Jacket is too big, I need size XL.\n\nBest,\nGrace",
+    "reply": "Hello Grace,\n\nThank you for your message. Order O-000664 was delivered on October 4, 2026, which is within our 30-day window, so the Evergreen Shell Jacket can be exchanged. You asked for size XL. We have passed your request to a colleague, who will confirm that it is available and arrange the exchange with you.\n\nKind regards,\nCustomer Support",
+    "note": "Ticket T-000030, received 2026-10-04. Queue: standard.\nAgent action: propose_exchange (exchange_within_window).\nRead as: return_exchange.\nWhy: The order is inside the return window and the customer asks for another size (KB-RET-04).\nOrder: O-000664\nRecords checked:\n  - Order O-000664 is delivered; promised October 10, 2026.\n  - Delivered October 4, 2026, 0 days before this request; 30-day window: inside.\n  - Item: Evergreen Shell Jacket, size XXL.\n  - Requested size: XL.\nSuggested next step: Check the requested size is in stock and arrange the exchange.\nPolicy: KB-RET-04"
+  },
+  {
+    "ticket_id": "T-000055",
+    "action": "propose_exchange",
+    "subject": "Order O-000665 exchange",
+    "body": "Hello,\n\nIs it possible to exchange the Trailhead Camp Sandal for a different size? Order O-000665, currently 12, I need 11. I'd appreciate your help with this.\n\nThank you so much,\nHugo",
+    "reply": "Hello Hugo,\n\nThank you for your message. Order O-000665 was delivered on September 15, 2026, which is within our 30-day window, so the Trailhead Camp Sandal can be exchanged. You asked for size 11. We have passed your request to a colleague, who will confirm that it is available and arrange the exchange with you.\n\nKind regards,\nCustomer Support",
+    "note": "Ticket T-000055, received 2026-10-05. Queue: standard.\nAgent action: propose_exchange (exchange_within_window).\nRead as: return_exchange.\nWhy: The order is inside the return window and the customer asks for another size (KB-RET-04).\nOrder: O-000665\nRecords checked:\n  - Order O-000665 is delivered; promised September 18, 2026.\n  - Delivered September 15, 2026, 20 days before this request; 30-day window: inside.\n  - Item: Trailhead Camp Sandal, size 12.\n  - Requested size: 11.\nSuggested next step: Check the requested size is in stock and arrange the exchange.\nPolicy: KB-RET-04"
+  },
+  {
+    "ticket_id": "T-000066",
+    "action": "propose_replacement",
+    "subject": "Problem with my order O-000684",
+    "body": "I received the wrong item in order O-000684; I ordered the Summit Flecee Pulolver. Can you send the right one?\n\nThanks,\nBeatrice",
+    "reply": "Hello Beatrice,\n\nWe are sorry that there is a problem with order O-000684. We have passed your request for a replacement to a colleague, who will confirm it with you.\n\nKind regards,\nCustomer Support",
+    "note": "Ticket T-000066, received 2026-10-05. Queue: standard.\nAgent action: propose_replacement (replacement_within_window).\nRead as: return_exchange.\nWhy: The customer reports a damaged or wrong item inside 30 days of delivery and asks for a replacement (KB-REF-03).\nOrder: O-000684\nRecords checked:\n  - Order O-000684 is delivered; promised September 17, 2026.\n  - Delivered September 16, 2026, 19 days before this request; 30-day window: inside.\nSuggested next step: Arrange the replacement and confirm to the customer.\nPolicy: KB-REF-03"
+  },
+  {
+    "ticket_id": "T-000137",
+    "action": "propose_exchange",
+    "subject": "Can I swap sizes?",
+    "body": "The size XS Basecamp Fleece Vest (order O-000666) is too small. Please exchange it for size S.\n\nThanks,\nImani",
+    "reply": "Hello Imani,\n\nThank you for your message. Order O-000666 was delivered on September 25, 2026, which is within our 30-day window, so the Basecamp Fleece Vest can be exchanged. You asked for size S. We have passed your request to a colleague, who will confirm that it is available and arrange the exchange with you.\n\nKind regards,\nCustomer Support",
+    "note": "Ticket T-000137, received 2026-10-05. Queue: standard.\nAgent action: propose_exchange (exchange_within_window).\nRead as: return_exchange.\nWhy: The order is inside the return window and the customer asks for another size (KB-RET-04).\nOrder: O-000666\nRecords checked:\n  - Order O-000666 is delivered; promised October 1, 2026.\n  - Delivered September 25, 2026, 10 days before this request; 30-day window: inside.\n  - Item: Basecamp Fleece Vest, size XS.\n  - Requested size: S.\nSuggested next step: Check the requested size is in stock and arrange the exchange.\nPolicy: KB-RET-04"
+  },
+  {
+    "ticket_id": "T-000067",
+    "action": "propose_replacement",
+    "subject": "Order O-000688 problem",
+    "body": "Hello,\n\nMy Evergreen Rain Jacket from order O-000688 was damaged in transit. Please replace it. I hope you can help.\n\nThank you so much,\nCamila",
+    "reply": "Hello Camila,\n\nWe are sorry that there is a problem with order O-000688. We have passed your request for a replacement to a colleague, who will confirm it with you.\n\nKind regards,\nCustomer Support",
+    "note": "Ticket T-000067, received 2026-10-05. Queue: standard.\nAgent action: propose_replacement (replacement_within_window).\nRead as: return_exchange.\nWhy: The customer reports a damaged or wrong item inside 30 days of delivery and asks for a replacement (KB-REF-03).\nOrder: O-000688\nRecords checked:\n  - Order O-000688 is delivered; promised September 20, 2026.\n  - Delivered September 16, 2026, 19 days before this request; 30-day window: inside.\nSuggested next step: Arrange the replacement and confirm to the customer.\nPolicy: KB-REF-03"
+  },
+  {
+    "ticket_id": "T-000148",
+    "action": "propose_replacement",
+    "subject": "Issue with my delivery",
+    "body": "Hello,\n\nOrder O-000686: the Ridgeline Trail Shorts have visbile daamge. I'd like a replacement rather than a refund. This is really frustrating.\n\nRegards,\nNoah",
+    "reply": "Hello Noah,\n\nWe are sorry that there is a problem with order O-000686. We have passed your request for a replacement to a colleague, who will confirm it with you.\n\nKind regards,\nCustomer Support",
+    "note": "Ticket T-000148, received 2026-10-05. Queue: standard.\nAgent action: propose_replacement (replacement_within_window).\nRead as: return_exchange.\nWhy: The customer reports a damaged or wrong item inside 30 days of delivery and asks for a replacement (KB-REF-03).\nOrder: O-000686\nRecords checked:\n  - Order O-000686 is delivered; promised September 29, 2026.\n  - Delivered September 23, 2026, 12 days before this request; 30-day window: inside.\nSuggested next step: Arrange the replacement and confirm to the customer.\nPolicy: KB-REF-03"
+  }
+]

@@ -191,3 +191,58 @@ def test_payment_context_takes_only_what_the_records_show_exactly_once():
     two = PaymentRecords("O-1", (pay("P1", "duplicate_flagged"), pay("P2", "duplicate_flagged")),
                          (RefundRecord("R1", "P1", 1, "pending", "2026-10-01T10:00:00"), RefundRecord("R2", "P1", 1, "pending", "2026-10-01T10:00:00")), ())
     assert payment_context(two) == {} and payment_context(None) == {}
+
+
+# ------------------------------------------------------------------ found by the blind review (stage 2.7c)
+def _with_order(lines):
+    from src.agent.tools import Order
+    return Identity(d.IDENTIFIED, CUSTOMER, order=Order("O-000001", "C-000001", "delivered", "2026-09-01T09:00:00", "2026-09-05", 5000, tuple(lines), None))
+
+
+def _note(reason, action, identity, facts):
+    return build_handover("T-000070", "2026-10-06T09:00:00", reading("return_exchange"), identity, Decision(action, reason, "KB-RET-01", facts), "template")
+
+
+def test_a_return_note_says_no_item_is_final_sale_when_the_ticket_names_no_item():
+    from src.agent.tools import OrderLine
+    note = _note("return_label", d.PROPOSE_RETURN_LABEL, _with_order([OrderLine("Pack", None, 1), OrderLine("Boots", "9", 1)]), {"order_id": "O-000001", "status": "delivered", "promised_date": "2026-09-05"})
+    text = "\n".join(note.records)
+    assert "Items on the order: Pack, Boots (size 9). The ticket does not say which one." in text
+    assert "Final sale: no item on the order is marked final sale." in text
+
+
+def test_a_return_note_for_a_named_item_says_that_item_is_not_final_sale():
+    from src.agent.tools import OrderLine
+    note = _note("return_label", d.PROPOSE_RETURN_LABEL, _with_order([OrderLine("Pack", None, 1), OrderLine("Boots", "9", 1, True)]),
+                 {"order_id": "O-000001", "status": "delivered", "promised_date": "2026-09-05", "item": "Pack"})
+    text = "\n".join(note.records)
+    assert "Final sale: no, the item is not marked final sale." in text and "Items on the order" not in text
+
+
+def test_a_replacement_note_lists_the_items_when_the_ticket_did_not_identify_one_and_has_no_final_sale_line():
+    from src.agent.tools import OrderLine
+    note = _note("replacement_within_window", d.PROPOSE_REPLACEMENT, _with_order([OrderLine("Fleece", "M", 1), OrderLine("Cap", None, 1, True)]), {"order_id": "O-000001", "status": "delivered", "promised_date": "2026-09-05"})
+    text = "\n".join(note.records)
+    assert "Fleece (size M), Cap (final sale)" in text and "Final sale:" not in text
+
+
+def test_other_notes_and_unidentified_orders_get_no_item_lines():
+    from src.agent.tools import OrderLine
+    assert build_handover("T-1", "2026-10-06T09:00:00", reading("cancellation"), _with_order([OrderLine("Pack", None, 1)]),
+                          Decision(d.PROPOSE_CANCELLATION, "cancellation_before_dispatch", "KB-CAN-01", {"order_id": "O-000001", "status": "processing", "promised_date": "2026-10-15"}),
+                          "template").records == ("Order O-000001 is processing; promised October 15, 2026.",)
+    assert not any("Items on the order" in r for r in _note("return_label", d.PROPOSE_RETURN_LABEL, None, {"order_id": "O-000001", "status": "delivered", "promised_date": "2026-09-05"}).records)
+
+
+def test_the_note_reports_final_sale_when_the_records_say_so_and_never_assumes_it():
+    from src.agent.tools import OrderLine
+    base = {"order_id": "O-000001", "status": "delivered", "promised_date": "2026-09-05"}
+    some = _note("return_label", d.PROPOSE_RETURN_LABEL, _with_order([OrderLine("Pack", None, 1), OrderLine("Boots", "9", 1, True)]), base)
+    assert "Final sale: yes, at least one item is marked final sale." in "\n".join(some.records)
+    named = _note("return_label", d.PROPOSE_RETURN_LABEL, _with_order([OrderLine("Boots", "9", 1, True)]), {**base, "item": "Boots"})
+    assert "Final sale: yes." in "\n".join(named.records)
+
+
+def test_an_identity_without_an_order_gives_no_item_lines_and_no_error():
+    note = _note("return_label", d.PROPOSE_RETURN_LABEL, Identity(d.NO_ACCOUNT, None), {"order_id": "O-000001", "status": "delivered", "promised_date": "2026-09-05"})
+    assert not any("Items on the order" in r or "Final sale" in r for r in note.records)

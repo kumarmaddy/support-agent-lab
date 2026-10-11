@@ -163,6 +163,30 @@ def payment_context(records) -> dict:
     return out
 
 
+ITEM_REASONS = ("return_label", "exchange_within_window", "replacement_within_window", "item_refund_within_window")
+FINAL_SALE_REASONS = ("return_label", "exchange_within_window")
+
+
+def order_lines(identity, facts: dict, reason: str) -> list:
+    """Lines for a return, exchange, replacement or item-refund note, from the order's own records (stage 2.7c, found by the blind review):
+    the items on the order when the ticket did not pin one down, and the final-sale check that a return or exchange depends on."""
+    if reason not in ITEM_REASONS or identity is None or identity.outcome != d.IDENTIFIED:
+        return []
+    items, out = identity.order.items, []
+    if "item" not in facts and items:
+        out.append("Items on the order: " + ", ".join(line.product + (f" (size {line.size})" if line.size else "") + (" (final sale)" if line.final_sale else "")
+                                                      for line in items) + ". The ticket does not say which one.")
+    if reason in FINAL_SALE_REASONS:
+        if "item" in facts:
+            line = next((i for i in items if i.product == facts["item"]), None)
+            if line is not None:
+                out.append("Final sale: " + ("yes." if line.final_sale else "no, the item is not marked final sale."))
+        else:
+            out.append("Final sale: " + ("yes, at least one item is marked final sale." if any(i.final_sale for i in items)
+                                         else "no item on the order is marked final sale."))
+    return out
+
+
 def build_handover(ticket_id: str, received_at: str, reading, identity, decision: d.Decision, reply_source: str,
                    context: Optional[dict] = None) -> Optional[Handover]:
     """The note for the person who receives the ticket, or None when the agent replied by itself. ``context`` adds order facts the decision
@@ -179,4 +203,4 @@ def build_handover(ticket_id: str, received_at: str, reading, identity, decision
     return Handover(ticket_id, received_at, SENIOR if senior else STANDARD, decision.action, decision.reason, why, step, decision.article,
                     reading.category if reading is not None else None, bool(reading.mentions_chargeback_or_legal) if reading is not None else False,
                     account, identity.customer.customer_id if identity is not None and identity.customer else None, tuple(named),
-                    tuple(_records(facts)), bool(facts.get("approval_required")), reply_source)
+                    tuple(_records(facts) + order_lines(identity, facts, decision.reason)), bool(facts.get("approval_required")), reply_source)

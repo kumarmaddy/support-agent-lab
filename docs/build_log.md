@@ -754,3 +754,36 @@ and not a tuned threshold; the final runs are the test of it.
 **Built.** `review_notes` (make / rate / report): a seeded sample of hand-over notes spread over the actions, shown with the ticket and no labels; three questions per note; resumable; Wilson intervals; follow-up list. The Phase 1 reply review now also shows key facts for knowledge answers. 823 tests pass (16 new); six mutations of the new rules each fail a test (one by never finishing, which the timeout catches).
 
 **Next.** A template-only run, the reply review (model vs template) and the note review on the 7B run, then the Phase 2 evaluation report and the exit review.
+
+
+### 2.7c Blind review tooling (cases across all categories)
+
+**Why.** The pairwise reply review only reaches replies written by the model, which are almost all order-status replies and knowledge answers; replies for the other categories are templates and have nothing to be paired with.
+
+**Built.** `review_notes` (make / rate / report): a seeded sample of cases spread over the actions that carry a note, so every category is covered. Each case shows the ticket, the reply the customer would get and the hand-over note, with no labels. Four questions per case; resumable; Wilson intervals; follow-up list. The pairwise review also shows key facts for knowledge answers. 824 tests pass; mutations of the new rules each fail a test.
+
+**Next.** A template-only run, the pairwise reply review and the case review on the 7B run, then the Phase 2 evaluation report and the exit review.
+
+
+### 2.7c Blind review results (7B run 946853), and one fix
+
+**Case review** (`dev-7b-cases`, 30 cases spread over eight actions, one reviewer). Could act on the note without opening anything else: yes 28/30 (95% interval 79-98%), partly 1, no 1. Reply wrong or inappropriate: 1/30. Something wrong in a note: 0/30. Something missing: 0/30. Every action group rated "yes" in full except replacement (3/4) and return label (2/3).
+
+**Follow-ups.** T-000070: the note did not say whether the item is final sale, which the return depends on. T-000066: the ticket did not identify the item and the note did not list the items on the order. Both fixed in the note builder: a return, exchange, replacement or item-refund note now lists the order's items when none was identified, and a return or exchange note states the final-sale check, read from the order's records. T-000014: reply flagged without comment (see the follow-up in the conversation).
+
+**Tests.** 830 tests pass (6 new); mutations of the new lines each fail a test.
+
+**Limits.** One reviewer who also wrote the project; 30 cases; replies and notes judged on the development set only. The fix was checked by tests and by the dev tickets, not by a second review.
+
+
+### 2.7c Blind review results (7B run 946853), and one fix
+
+**Case review** (`dev-7b-cases`, 30 cases spread over eight actions, one reviewer). Could act on the note without opening anything else: yes 28/30 (95% interval 79-98%), partly 1, no 1. Reply wrong or inappropriate: 1/30. Something wrong in a note: 0/30. Something missing: 0/30. Every action group rated "yes" in full except replacement (3/4) and return label (2/3).
+
+**Follow-ups.** T-000070: the note did not say whether the item is final sale, which the return depends on. T-000066: the ticket did not identify the item and the note did not list the items on the order. Both fixed in the note builder: a return, exchange, replacement or item-refund note now lists the order's items when none was identified, and a return or exchange note states the final-sale check, read from the order's records. T-000014: reply flagged without comment (see the follow-up in the conversation).
+
+**Tests.** 830 tests pass (6 new); mutations of the new lines each fail a test.
+
+**Limits.** One reviewer who also wrote the project; 30 cases; replies and notes judged on the development set only. The fix was checked by tests and by the dev tickets, not by a second review.
+
+**Amended rating.** The reviewer reported a typing slip in one rating (the answer entered was not the one intended). The tool had no way to correct it, so `review_notes amend --ticket` was added: it asks the four questions again and appends the new rating; the report uses the latest rating, and the original line stays in `ratings.jsonl` as the record. The rating was amended after the reviewer had seen a reading of the case in conversation, which is disclosed here. The same change fixed the tool not asking for a comment when only the reply was flagged. 833 tests pass.

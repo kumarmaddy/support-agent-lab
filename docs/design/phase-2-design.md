@@ -128,6 +128,7 @@ Suggested next step: Approve or reject a refund of that payment only, then tell 
 Policy: KB-REF-02
 ```
 - **Scoring.** The scorer counts how many tickets needed a note, how many had one, and how many name the labelled order. Whether a person finds a note useful is not measured by code: the blind review in stage 2.7 reads a sample.
+- **Order items and final sale (added in 2.7c, found by the blind review).** For a return, exchange, replacement or item-refund proposal, the note lists the items on the order when the ticket did not pin one down, and for a return or exchange states whether the item (or any item on the order) is marked final sale, read from the order's own records.
 - **Limits.** The next steps are fixed wording written for this project; they are not read from the articles automatically, so a change to an article needs a matching change to `REASONS`. The explanation texts mention the 30-day and 7-day periods as numbers.
 
 ## 5e. Scoring knowledge answers and the routing option (stage 2.7a)
@@ -139,7 +140,7 @@ Policy: KB-REF-02
 
 ## 5f. Blind review of replies and hand-over notes (stage 2.7c)
 - **Replies.** The Phase 1 pairwise review (`src.evaluation.review`) is reused: the reply the model wrote is shown beside the template reply for the same decision, in a seeded random order, without saying which is which. From this stage the sheet also shows an article's key facts for knowledge answers, so the reviewer can check the wording against the source.
-- **Notes.** `src.evaluation.review_notes` draws a seeded sample of hand-over notes spread over the actions that carry one, and shows the ticket beside each note. Labels, scenarios and expected actions are not shown. Three questions per note: could the reviewer act on it without opening anything else (yes / partly / no), is anything wrong compared with the ticket, is anything missing. Results carry 95% Wilson intervals, and every note not rated "yes" or flagged is listed for follow-up.
+- **Cases across all categories.** The pairwise reply review only reaches replies written by the model, which are almost all order-status replies and knowledge answers; replies for cancellations, address changes, returns, refunds and escalations are templates and have nothing to be paired with. `src.evaluation.review_notes` therefore draws a seeded sample of cases spread over the actions that carry a hand-over note (so every category is covered) and shows the ticket, the reply the customer would get and the note, without labels, scenarios or expected actions. Four questions per case: is the reply wrong or inappropriate, could the reviewer act on the note without opening anything else (yes / partly / no), is anything in the note wrong, is anything missing. Results carry 95% Wilson intervals and every case flagged or not rated "yes" is listed for follow-up.
 - **Scope.** One reviewer, who also wrote the project, so the review shows usability problems and says nothing about agreement between reviewers. The held-out split is never reviewed here (the tool refuses it). A second reviewer is a Phase 4 item.
 
 ## 6. Safety rules carried over

@@ -1,0 +1,84 @@
+{
+  "actionable_no": {
+    "count": 0,
+    "high": 0.1135,
+    "low": 0.0,
+    "n": 30
+  },
+  "actionable_partly": {
+    "count": 1,
+    "high": 0.1667,
+    "low": 0.0059,
+    "n": 30
+  },
+  "actionable_yes": {
+    "count": 29,
+    "high": 0.9941,
+    "low": 0.8333,
+    "n": 30
+  },
+  "by_action": {
+    "escalate_human": {
+      "actionable_yes": 4,
+      "rated": 4
+    },
+    "propose_address_change": {
+      "actionable_yes": 4,
+      "rated": 4
+    },
+    "propose_cancellation": {
+      "actionable_yes": 4,
+      "rated": 4
+    },
+    "propose_exchange": {
+      "actionable_yes": 4,
+      "rated": 4
+    },
+    "propose_refund": {
+      "actionable_yes": 4,
+      "rated": 4
+    },
+    "propose_replacement": {
+      "actionable_yes": 4,
+      "rated": 4
+    },
+    "propose_return_label": {
+      "actionable_yes": 2,
+      "rated": 3
+    },
+    "route_to_human": {
+      "actionable_yes": 3,
+      "rated": 3
+    }
+  },
+  "missing": {
+    "count": 0,
+    "high": 0.1135,
+    "low": 0.0,
+    "n": 30
+  },
+  "notes_in_sheet": 30,
+  "notes_rated": 30,
+  "reply_problem": {
+    "count": 0,
+    "high": 0.1135,
+    "low": 0.0,
+    "n": 30
+  },
+  "to_follow_up": [
+    {
+      "actionable": "p",
+      "comment": "i wanted to know if the item was in final sale. I would like to know if it is a final sale  yes/no before I answer this confidently",
+      "missing": false,
+      "reply_problem": false,
+      "ticket_id": "T-000070",
+      "wrong": false
+    }
+  ],
+  "wrong": {
+    "count": 0,
+    "high": 0.1135,
+    "low": 0.0,
+    "n": 30
+  }
+}
