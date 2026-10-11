@@ -59,7 +59,7 @@ def test_refuses_heldout_database(tmp_path):
         demo.main(["--db", str(tmp_path / "heldout" / "support.db"), "--list", "1"])
 
 
-def test_defaults_are_the_adr_007_model_and_the_v4_prompt():
+def test_defaults_are_the_adr_007_model_and_the_adr_011_prompt():
     from src.agent.run import DEFAULT_MODEL, DEFAULT_READ_PROMPT
-    assert (DEFAULT_MODEL, DEFAULT_READ_PROMPT) == ("qwen2.5:7b", "v4")
+    assert (DEFAULT_MODEL, DEFAULT_READ_PROMPT) == ("qwen2.5:7b", "v5")
     load_prompt("read_ticket", DEFAULT_READ_PROMPT)

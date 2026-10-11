@@ -856,3 +856,18 @@ and not a tuned threshold; the final runs are the test of it.
 **Not yet measured.** Everything above uses a perfect reader. Whether the 7B and 3B models flag S18 tickets and avoid false alarms is exactly what the acceptance run measures.
 
 **Decided / to confirm.** Knowledge gaps go to the senior queue (FR-10 as the project reads it); Support Operations to confirm.
+
+
+### 3.3 Must-escalate rules
+
+**Acceptance first.** `docs/project/stage-3.3-acceptance.md` was written before any run: ten criteria for the 7B, a reduced gating set for the 3B, and one allowed prompt revision.
+
+**Built.** Read prompt v5 and the four-field schema (`account_compromise_suspected`); the decision `account_compromise_suspected` (senior queue, KB-ACC-03, template reply that promises nothing); `knowledge_not_found` escalated instead of routed; an out-of-scope `other` ticket naming someone else's order escalated as `order_not_owned`; policy condition `compromise_flag` and rule `DENY-ACTION-ON-COMPROMISED-ACCOUNT`; scorer additions (compromise flag counts; escalation recall and precision over all tickets). Read token cap 80 to 110. Read prompt v6 (v3 plus the same field) for the 3B.
+
+**Verified.** 914 tests pass (892 before). 25 mutations of the new code were applied, 24 caught; the survivor passes the compromise flag into the policy request, which cannot change a result today because a flagged ticket is escalated before any proposal (the engine rule is tested directly). The deny rules of stage 3.2 are equivalent mutants for the same reason.
+
+**Measured** (`stage-3.3-results.md`, evidence in `docs/evidence/stage-3.3-runs.txt`). 7B with v5: all ten criteria met; compromise flag 5 of 5 with no false alarms; escalation recall 11/22 to 22/22; Set A 119/125; Set B 0 wrongly answered. 3B: v5 failed (5 invalid readings, Set A 109); v6, the one allowed revision, meets four of five gating criteria and misses category agreement by one ticket (134 against a floor of 135); escalation recall 11/22 to 21/22. T-000087 is still only routed on the 3B (it does not read the ticket as category `other`).
+
+**Decided.** ADR-011: v5 for the 7B, v6 for the 3B; the miss is recorded as a miss. Knowledge gaps go to the senior queue (FR-10 as the project reads it); Support Operations to confirm.
+
+**Also changed.** The default read prompt in `run.py` is now v5 (the 3B needs `--read-prompt v6`).

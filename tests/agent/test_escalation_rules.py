@@ -240,3 +240,12 @@ def test_a_scored_run_reports_the_flag_and_the_escalation_counts(world, tmp_path
     assert score["escalation"]["escalated"] == 7 and score["escalation"]["missed_tickets"] == tickets(world, "S20")[:1]
     text = render(score)
     assert "account compromise flag: found 5 of 5 labelled, 0 false alarms []" in text and "escalation over all tickets: 7 escalated" in text
+
+
+def test_prompt_v6_is_the_three_b_family_prompt_v3_with_the_same_fourth_field():
+    v3, v5, v6 = (load_prompt("read_ticket", v) for v in ("v3", "v5", "v6"))
+    assert has_compromise_field(v6) and "{categories}" in v6.text and "{rules}" in v6.text
+    field4 = v5.text[v5.text.index("4. account_compromise_suspected"):v5.text.index("Answer with JSON only.")]
+    assert field4 in v6.text and "Fill in exactly four fields." in v6.text
+    assert "All of these are false: being unhappy or angry; asking for a refund" not in v6.text            # v4's longer legal wording is not in v6
+    assert v6.text.replace(field4, "").replace("four fields", "three fields") == v3.text

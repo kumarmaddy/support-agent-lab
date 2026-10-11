@@ -28,10 +28,10 @@ from src.agent.tracing import TraceWriter, new_run_id
 from src.kb.embed import model_digest
 from src.kb.articles import load_articles
 
-# ADR-007: qwen2.5:7b with read prompt v4 is the default. llama3.2:3b is the fast development model and needs --read-prompt v3
-# (v4 makes it invent a deadline phrase on three address-change tickets; the check rejects them and they go to a person).
+# ADR-007 and ADR-011: qwen2.5:7b with read prompt v5 is the default. llama3.2:3b is the fast development model and needs --read-prompt v6
+# (v4 and v5 make it invent a deadline phrase on address-change tickets; the check rejects them and they go to a person).
 DEFAULT_MODEL = "qwen2.5:7b"
-DEFAULT_READ_PROMPT = "v4"
+DEFAULT_READ_PROMPT = "v5"
 
 HELDOUT_REFUSAL = "Refusing to run on the held-out split (it is opened once, in Phase 4)."
 

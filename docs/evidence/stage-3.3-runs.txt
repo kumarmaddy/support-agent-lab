@@ -1,0 +1,40 @@
+Stage 3.3 acceptance runs (development split, 150 tickets). Console output of the scorer as pasted by the project lead on 2026-10-11.
+All runs use --knowledge --knowledge-first --transactions. Run files: data/runs/<run id>/.
+
+=== qwen2.5:7b, read_ticket.v5: run-20261011-130535-872514 ===
+read step: valid readings 150/150 = 100.0% (98-100%); category agreement 139/150 = 92.7% (87-96%)
+chargeback or legal flag: found 4 of 4 labelled, 0 false alarms []
+account compromise flag: found 5 of 5 labelled, 0 false alarms []
+escalation over all tickets: 22 escalated; recall 22/22 = 100.0% (85-100%); precision 22/22 = 100.0% (85-100%); missed []; not called for by the label []
+Set A, in-slice (125): action 119/125 = 95.2%; escalation decision 125/125; article 120/125 = 96.0%; facts 124/125 = 99.2%; end to end 119/125 = 95.2% (90-98%)
+Set B, other tickets (25): handed to a person 25/25; answered by the agent (wrong) 0/25; needed escalation but were only routed: 0; escalated although the label does not call for it 0/25
+hand-over notes: needed 87; present 87/87; name the labelled order 67/67
+misses: T-000016, T-000037, T-000038, T-000082, T-000091, T-000143
+
+=== llama3.2:3b, read_ticket.v5: run-20261011-141216-0b6f8a ===
+read step: valid readings 145/150 = 96.7% (92-99%); category agreement 130/150 = 86.7% (80-91%)
+chargeback or legal flag: found 4 of 4 labelled, 0 false alarms []
+account compromise flag: found 5 of 5 labelled, 0 false alarms []
+escalation over all tickets: 22 escalated; recall 21/22 = 95.5%; precision 21/22 = 95.5%; missed ['T-000087']; not called for by the label ['T-000037']
+Set A: action 109/125 = 87.2%; end to end 109/125 = 87.2% (80-92%)
+Set B: handed to a person 25/25; wrongly answered 0/25; needed escalation but only routed: 1
+hand-over notes: needed 88; present 88/88; name the labelled order 64/69 = 92.8% ['T-000034', 'T-000083', 'T-000126', 'T-000131', 'T-000138']
+reading_failed on T-000034, T-000083, T-000126, T-000131, T-000138
+
+=== llama3.2:3b, read_ticket.v6: run-20261011-144656-c04e1f ===
+read step: valid readings 148/150 = 98.7% (95-100%); category agreement 134/150 = 89.3% (83-93%)
+chargeback or legal flag: found 4 of 4 labelled, 0 false alarms []
+account compromise flag: found 5 of 5 labelled, 0 false alarms []
+escalation over all tickets: 22 escalated; recall 21/22 = 95.5% (78-99%); precision 21/22 = 95.5% (78-99%); missed ['T-000087']; not called for by the label ['T-000037']
+Set A, in-slice (125): action 113/125 = 90.4%; end to end 113/125 = 90.4% (84-94%)
+Set B, other tickets (25): handed to a person 25/25; answered by the agent (wrong) 0/25; needed escalation but were only routed: 1
+hand-over notes: needed 86; present 86/86; name the labelled order 65/67 = 97.0% ['T-000034', 'T-000126']
+reading_failed on T-000034, T-000126
+
+=== llama3.2:3b, read_ticket.v3, baseline: run-20261011-041841-9659c5 (knowledge on, first on, transactions on) ===
+read step: valid readings 150/150 = 100.0% (98-100%); category agreement 137/150 = 91.3% (86-95%)
+chargeback or legal flag: found 4 of 4 labelled, 0 false alarms []
+escalation over all tickets: 11 escalated; recall 11/22 = 50.0% (31-69%); precision 11/11 = 100.0% (74-100%); missed ['T-000006', 'T-000013', 'T-000041', 'T-000051', 'T-000052', 'T-000063', 'T-000087', 'T-000106', 'T-000107', 'T-000135', 'T-000150']
+Set A, in-slice (125): action 114/125 = 91.2%; end to end 114/125 = 91.2% (85-95%)
+Set B, other tickets (25): handed to a person 25/25; answered by the agent (wrong) 0/25; needed escalation but were only routed: 11
+hand-over notes: needed 88; present 88/88; name the labelled order 68/68

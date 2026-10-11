@@ -1,6 +1,6 @@
 # Phase 3 Design: Governance Hardening
 
-- Version: 0.3 (stages 3.2 and 3.3 built; sections 5.1 and 5.2 describe the code as built)
+- Version: 0.4 (stages 3.2 and 3.3 built and measured; sections 5.1 and 5.2 describe the code as built)
 - Date: 2026-10-11
 - Owner: Kumar Maddipatla, Project Lead
 - Builds on: phase-2-design.md v0.9, ADR-006 (fixed pipeline), ADR-008 (tools in-process, MCP in Phase 3), ADR-010, Phase 2 exit review
@@ -45,7 +45,7 @@ Acceptance criteria were written before the first run: `docs/project/stage-3.3-a
 - **S18, suspected account compromise.** Read prompt v5 adds a fourth field, `account_compromise_suspected` (a prompt of version 5 or later is sent the four-field schema; earlier prompts keep three fields and the flag is False). A flagged ticket is escalated in any category, after the legal check and before anything else: no customer or order lookup, no knowledge path, no policy request. The decision is `escalate_human` / `account_compromise_suspected` / KB-ACC-03, senior queue. The reply is written by code, says a senior colleague will contact the customer, advises not to share the password, and promises no change or reset.
 - **S20, knowledge gap.** When no policy article matches closely enough (`knowledge_not_found`), the decision is `escalate_human` instead of `route_to_human` (FR-10). A weak match that fails the answer check (`knowledge_not_answered`) and a failed search (`knowledge_unavailable`) are still only routed: an article exists, so a person can answer from it, and the injection tickets end there. Trade-off, stated: a policy question that retrieval misses is now also escalated to the senior queue. Acceptance criterion 5 bounds this on the development split; Support Operations should confirm that a gap in the knowledge base belongs in the senior queue.
 - **S25, identity not verified.** A ticket of category `other` that names an order is now looked up (read-only), only to see whether the order belongs to the sender. If it does not, the decision is `escalate_human` / `order_not_owned` / KB-SEC-01, exactly as for an in-scope category. Other out-of-scope categories are not looked up (data minimisation). An unknown order or a missing account is still routed.
-- **Measured.** The scorer now reports the compromise flag (found, missed, false alarms, as for the legal flag) and escalation recall and precision over all tickets, before and after.
+- **Measured (stage-3.3-results.md).** 7B: all ten criteria met; escalation recall 11/22 to 22/22. 3B with prompt v6: four of five gating criteria met, category agreement one ticket short; recall 11/22 to 21/22. The 3B uses a separate prompt family (ADR-011). The scorer now reports the compromise flag (found, missed, false alarms, as for the legal flag) and escalation recall and precision over all tickets, before and after.
 
 ### 5.3 Audit log and redaction (stage 3.4)
 - Append-only JSONL, one event per decision (proposal, policy decision, approval, rejection, edit, execution), each with a hash of the previous event so tampering is detectable; queryable by ticket id (`python -m src.audit --ticket T-000070`).
@@ -72,7 +72,7 @@ Acceptance criteria were written before the first run: `docs/project/stage-3.3-a
 |---|---|---|
 | 3.1 | This design | Reviewed (approved 2026-10-11) |
 | 3.2 | Policy engine and rules in config; wired in as a decision on every proposal | Built: tests, mutation checks; a run showing the decision and rule id on each proposal is the project lead's next step |
-| 3.3 | Must-escalate rules (S18, S20, S25), read prompt v5 | Built: tests, mutation checks; 7B and 3B runs against `stage-3.3-acceptance.md` are the project lead's next step |
+| 3.3 | Must-escalate rules (S18, S20, S25), read prompt v5 | Done: 7B meets all ten criteria; 3B (prompt v6) meets four of five gating criteria and misses one by one ticket; `docs/project/stage-3.3-results.md`, ADR-011 |
 | 3.4 | Audit log and redaction | Tests; query by ticket |
 | 3.5 | Actions server, idempotency, sandbox ledger, MCP | Tests with retries; zero writes without approval |
 | 3.6 | Approval service | Tests; walk-through on a run |
