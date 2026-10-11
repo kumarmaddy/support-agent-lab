@@ -787,3 +787,12 @@ and not a tuned threshold; the final runs are the test of it.
 **Limits.** One reviewer who also wrote the project; 30 cases; replies and notes judged on the development set only. The fix was checked by tests and by the dev tickets, not by a second review.
 
 **Amended rating.** The reviewer reported a typing slip in one rating (the answer entered was not the one intended). The tool had no way to correct it, so `review_notes amend --ticket` was added: it asks the four questions again and appends the new rating; the report uses the latest rating, and the original line stays in `ratings.jsonl` as the record. The rating was amended after the reviewer had seen a reading of the case in conversation, which is disclosed here. The same change fixed the tool not asking for a comment when only the reply was flagged. 833 tests pass.
+
+
+### 3.1 Phase 3 design
+
+**Written.** `docs/design/phase-3-design.md` v0.1: policy engine with rules in configuration (fail closed to approval), must-escalate rules for the 11 only-routed tickets, audit log with redaction, Actions server with idempotency keys and a sandbox ledger, approval web page, read-only MCP adapter, injection and misuse suite, nine stages.
+
+**Decided with the project lead.** Approval is always required in v1 (auto-execute exists in config and is tested, shipped off). The approval service is a local web page. Writes never touch the frozen development database.
+
+**Open.** Senior-approval refund threshold (default $250, to be justified in 3.2); MCP SDK check on Python 3.13 and Windows (3.5).
