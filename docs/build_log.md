@@ -809,3 +809,37 @@ and not a tuned threshold; the final runs are the test of it.
 **Decided.** The senior-approval threshold stays at $250 as a documented assumption (basis in phase-3-design.md section 5.1); Support Operations owns the final value.
 
 **Open.** A 7B run to show the decision and rule id on each proposal in the real pipeline (project lead). Must-escalate rules and the compromise flag are stage 3.3.
+
+
+### 3.2 Policy engine
+
+**Built.** `src/agent/policy.py` (pure `evaluate(request, policy)`, validating loader), `config/policy.toml` (three initial rules, auto-execute switch off), a read-only tool `count_refunds`, and the wiring: a `policy` step after `decide` for every proposal, `policy_denied` hand-over reason, senior queue on the note, rule id and outcome in the note, the trace and `run.json` (policy version, sha256, rule ids). `run.py` loads `config/policy.toml` by default (`--policy PATH` to change, `--no-policy` for the Phase 2 behaviour) and refuses to start on a policy it cannot read.
+
+**Verified.** 892 tests pass (833 before; 59 new). 33 mutations of the engine and its wiring were applied; 29 were caught at the first attempt. Of the 4 survivors, two were closed with tests (payment amount in the request; a denied action never worded by the model), and two are equivalent mutants today and are disclosed: the legal flag is always false at a proposal because a legal threat is escalated before any proposal, and the "already refunded" flag is always false for a duplicate because `decide` hands over an already-refunded duplicate first. Both are checked directly in the engine tests, and become reachable when the flag arrives in 3.3 and when the actions server (3.5) calls the engine on its own.
+
+**Result on the development tickets** (oracle reading, template replies): of 48 proposals, 47 get `DEFAULT-APPROVAL` and 1 (T-000149, a duplicate-charge refund of $269.99) gets `APPROVE-REFUND-SENIOR` in the senior queue. No proposal is denied, as expected.
+
+**Run on the development data** (7B, run-20261011-114847-7c713c, 40 tickets): 13 proposals, all with a policy decision, all `DEFAULT-APPROVAL` in the standard queue; policy sha256 `00ab0acc…44513ca` in `run.json` and in every decision; no denials. The senior rule is covered by tests and by a run on T-000149, T-000041 and T-000025 (the three duplicate payments of $250 or more; see the run recorded below).
+
+**Found while checking.** An ids file written by Windows PowerShell's `-Encoding utf8` starts with a byte-order mark, which made the first id unreadable (`ticket_not_found`). `run.py` now reads ids files with `utf-8-sig`; one test added.
+
+**Decided.** The senior-approval threshold stays at $250 as a documented assumption (basis in phase-3-design.md section 5.1); Support Operations owns the final value.
+
+**Open.** A 7B run to show the decision and rule id on each proposal in the real pipeline (project lead). Must-escalate rules and the compromise flag are stage 3.3.
+
+
+### 3.2 Policy engine
+
+**Built.** `src/agent/policy.py` (pure `evaluate(request, policy)`, validating loader), `config/policy.toml` (three initial rules, auto-execute switch off), a read-only tool `count_refunds`, and the wiring: a `policy` step after `decide` for every proposal, `policy_denied` hand-over reason, senior queue on the note, rule id and outcome in the note, the trace and `run.json` (policy version, sha256, rule ids). `run.py` loads `config/policy.toml` by default (`--policy PATH` to change, `--no-policy` for the Phase 2 behaviour) and refuses to start on a policy it cannot read.
+
+**Verified.** 892 tests pass (833 before; 59 new). 33 mutations of the engine and its wiring were applied; 29 were caught at the first attempt. Of the 4 survivors, two were closed with tests (payment amount in the request; a denied action never worded by the model), and two are equivalent mutants today and are disclosed: the legal flag is always false at a proposal because a legal threat is escalated before any proposal, and the "already refunded" flag is always false for a duplicate because `decide` hands over an already-refunded duplicate first. Both are checked directly in the engine tests, and become reachable when the flag arrives in 3.3 and when the actions server (3.5) calls the engine on its own.
+
+**Result on the development tickets** (oracle reading, template replies): in the 150-ticket development data with the oracle reading, 48 proposals: 47 get `DEFAULT-APPROVAL` and 1 (T-000149) gets `APPROVE-REFUND-SENIOR`. No proposal is denied, as expected.
+
+**Run on the development data** (7B, run-20261011-114847-7c713c, 40 tickets): 13 proposals, all with a policy decision, all `DEFAULT-APPROVAL` in the standard queue; policy sha256 `00ab0acc…44513ca` in `run.json` and in every decision; no denials. The senior rule was shown on run-20261011-122849-23824b (policy sha256 `37e223c0…`, the corrected file): T-000149, a duplicate-charge refund of $269.99, was routed by `APPROVE-REFUND-SENIOR` to the senior queue (evidence: the amount used was 26999 cents; the note shows queue senior and the rule id), and T-000029 by `DEFAULT-APPROVAL` to the standard queue. Tickets that are not proposals (T-000041 routed, T-000025 answered) carry no policy block. The evidence field holds the request value each condition used, not the threshold.
+
+**Found while checking.** An ids file written by Windows PowerShell's `-Encoding utf8` starts with a byte-order mark, which made the first id unreadable (`ticket_not_found`). `run.py` now reads ids files with `utf-8-sig`; one test added.
+
+**Decided.** The senior-approval threshold stays at $250 as a documented assumption (basis in phase-3-design.md section 5.1); Support Operations owns the final value.
+
+**Open.** Nothing blocks the stage. Must-escalate rules and the compromise flag are stage 3.3.

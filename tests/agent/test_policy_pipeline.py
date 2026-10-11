@@ -159,3 +159,10 @@ def test_the_policy_request_uses_the_tier_order_age_and_refund_history_from_the_
 def test_a_denied_action_is_never_worded_by_the_model():
     from src.agent.reply import TEMPLATE_ONLY
     assert "policy_denied" in TEMPLATE_ONLY
+
+
+def test_an_ids_file_written_with_a_byte_order_mark_is_read_correctly(world, tmp_path):
+    box, _, _ = world
+    path = tmp_path / "ids.txt"
+    path.write_bytes(b"\xef\xbb\xbfT-000149\r\nT-000029\r\n")                   # what Windows PowerShell's -Encoding utf8 writes
+    assert runner.select_ids(box, 0, path) == ["T-000149", "T-000029"]

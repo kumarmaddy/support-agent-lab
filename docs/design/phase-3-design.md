@@ -37,7 +37,7 @@ Out: real payment processors, real customer data, multi-user authentication for 
 
 #### Senior-approval threshold: basis and status
 - The value is an **assumption**, `25000` cents ($250.00). The charter gives Support Operations ownership of approval thresholds; this value is the project's starting point and must be confirmed by them before any live use.
-- Basis in the development data: the 25 duplicate-charge payments range from $14.99 to $809.97 with a median of $119.99, and 4 of 25 are at or above $250. Across all payments the 50th, 75th and 90th percentiles are $189.97, $319.97 and $484.98. At $250 the senior approver would see roughly one duplicate-charge refund in six, the largest ones, and the standard approver the rest.
+- Basis in the development data: the 25 duplicate-charge payments range from $14.99 to $809.97 with a median of $119.99, and 3 of 25 are at or above $250 (T-000025 at $809.97, T-000041 at $404.98, T-000149 at $269.99). Across all payments the 50th, 75th and 90th percentiles are $189.97, $319.97 and $484.98. At $250 the senior approver would see roughly one duplicate-charge refund in eight, the largest ones, and the standard approver the rest.
 - The data is synthetic, so this shows where the threshold falls in this dataset, not what a real business should choose. The file is the only place the number lives, and a change changes the file's hash, which is recorded with every decision.
 
 ### 5.2 Must-escalate rules (stage 3.3)

@@ -113,7 +113,7 @@ def run_tickets(box: Toolbox, model: ModelClient, read_prompt: Prompt, reply_pro
 
 def select_ids(box: Toolbox, limit: int = 0, ids_file: Optional[Path] = None) -> list:
     if ids_file:
-        return [line.strip() for line in Path(ids_file).read_text(encoding="utf-8").splitlines() if line.strip()]
+        return [line.strip() for line in Path(ids_file).read_text(encoding="utf-8-sig").splitlines() if line.strip()]
     rows = box.conn.execute("SELECT ticket_id FROM tickets ORDER BY ticket_id").fetchall()
     ids = [r[0] for r in rows]
     return ids[:limit] if limit else ids
