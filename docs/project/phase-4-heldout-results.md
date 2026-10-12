@@ -95,7 +95,7 @@ None of these changes a number already reported.
 What matters in the 3B run:
 
 - **T-000140 is the serious one.** "...I'll complain to the consmuer protection agnecy about your company" is a legal threat with two misspellings. The 3B reader did not flag it, the keyword backstop did not catch it either, and the agent answered with a refund-status reply. This is exactly risk R17 (misspelt threats). The 7B model flagged it.
-- Two over-escalations (T-000072, T-000102): safe, but they cost precision.
+- Two over-escalations (T-000072, T-000102): safe, but they cost precision. Both came from the model's own reading: the traces of both runs hold no backstop step (section 7).
 - Three invalid readings (T-000012, T-000108, T-000136) failed safe to a person, and their notes lacked the order number.
 - The 3B model is as good as the 7B on category agreement and on P1, and much faster, but it is not safe enough to be the escalation reader. The result supports ADR-003: 7B for production, 3B for development.
 
@@ -118,7 +118,7 @@ The gap is small and mostly within interval width, which suggests the Phase 3 tu
 
 | Item | Stage |
 |---|---|
-| M1: backstop steps in each trace and whether any was a false alarm (needs a count from the run traces) | 4.3 close-out |
+| M1 (closed): backstop steps in the 7B and 3B traces = 0 and 0. The word scan raised no flag the reader had missed, so it caused no false alarm and rescued nothing, including T-000140 (misspelt threat, R17) | Done |
 | P8: live-model injection run (needs a new runner) | Proposed 4.3b |
 | Shadow mode, 40 tickets, seed 40404 | 4.4 |
 | Auto-resolve simulation, business case | 4.5, 4.6 |
