@@ -1011,3 +1011,16 @@ and not a tuned threshold; the final runs are the test of it.
 **Operational.** `python -m src.security` (about 6 seconds). It writes `results.jsonl` and `summary.json` to a new folder under `data/security/runs/` and exits with code 1 if any attack, control or write check fails. Add `data/security/runs/` to `.gitignore`.
 
 
+
+### 3.9 Phase 3 evaluation report and exit review
+
+**Built (documents only; no code changed).** `docs/project/stage-3.9-acceptance.md` (written before the run), `phase-3-evaluation-report.md` v1.0, `phase-3-exit-review.md`, `risk_register.md` v1.6, design v1.0 (final), evidence files `phase-3-final-run.txt` and `phase-3-security-suite-run.json`.
+
+**Evidence.** One regression run with qwen2.5:7b on the development split (`run-20261012-113105-4f32ba`) because stage 3.8 had changed the pipeline: Set A 119/125, escalation recall and precision 22/22, 0 of 25 other tickets answered, notes 87/87, category agreement 139/150, no `backstop` step in any trace, audit chain OK. All six criteria R1 to R6 were met; the six misses are the six of stage 3.3. 1136 tests pass on Windows.
+
+**Decided.** Phase 3 is closed. The risk register is re-rated: R7 and R9 from 6 to 3 (measured controls; sandbox only; scripted model in the suite), R17 and R19 updated, R20 (single-user local governance design) and R21 (policy thresholds are assumptions) added. The implementation plan's "O7" is the charter's O6; the exit review says so.
+
+**Disclosed.** O1 is not conclusive (49.6%, 41-58%, against 50%). The 3B model was not re-run for the regression (development model; the backstop acts after the read step for both models). The audit log count (533 events) is the cumulative log, not this run alone.
+
+**Next.** Phase 4: tag `phase-3-complete`, write the Phase 4 acceptance criteria, then open the held-out split once.
+

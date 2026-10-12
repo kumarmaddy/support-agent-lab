@@ -1,7 +1,7 @@
 # Phase 3 Design: Governance Hardening
 
-- Version: 0.9 (stages 3.2 to 3.8 built; sections 5.1 to 5.7 describe the code as built)
-- Date: 2026-10-11
+- Version: 1.0 (final; stages 3.2 to 3.9 done; sections 5.1 to 5.7 describe the code as built)
+- Date: 2026-10-12
 - Owner: Kumar Maddipatla, Project Lead
 - Builds on: phase-2-design.md v0.9, ADR-006 (fixed pipeline), ADR-008 (tools in-process, MCP in Phase 3), ADR-010, Phase 2 exit review
 
@@ -99,7 +99,7 @@ Acceptance criteria were written before the first run: `docs/project/stage-3.3-a
 | 3.6 | Approval service | Built: 55 tests incl. a live-socket round trip, 21 mutation checks; the project lead's walk-through on a run is the exit evidence |
 | 3.7 | Read-only MCP adapter | Built: 15 existing tool tests pass unchanged over MCP; 33 tests, 11 mutation checks, stdio process test |
 | 3.8 | Injection and misuse suite and run | Done: 116 cases, 41 new tests, 33 mutation checks; Windows run `security-20261012-111155`: 105/105 attacks, 0 wrong actions, 0 unapproved writes, 11/11 controls |
-| 3.9 | Phase 3 evaluation report and exit review | Reports, ADRs, risk register update |
+| 3.9 | Phase 3 evaluation report and exit review | Done: `phase-3-evaluation-report.md`, `phase-3-exit-review.md`, risk register v1.6; final 7B regression run `run-20261012-113105-4f32ba` with no loss |
 
 ## 7. Safety rules carried over
 Ticket, article and note text are data, not instructions; the model never chooses an action or calls a write tool; policy rules live in configuration; any failure falls back to a person.
@@ -107,7 +107,7 @@ Ticket, article and note text are data, not instructions; the model never choose
 ## 8. Risks touched
 R2 and R3 (a 16 GB laptop and slow runs: the engine and audit are pure code, the MCP SDK is the new dependency to check), R7 (incorrect refund or account action: policy engine, approval, idempotency, sandbox), R9 (prompt injection: suite, run in stage 3.8), R17 (the reader steered by ticket text: backstop for the two escalation flags, ADR-015; misspelt threats remain open), R5/R6 (small samples, single reviewer: the suite is deterministic but written by the project's author).
 
-## 9. Open items
+## 9. Open items (carried to the exit review)
 - Senior-approval refund threshold: rationale recorded in section 5.1 (stage 3.2); the value remains an assumption until Support Operations confirms it.
 - MCP SDK 2.3.0 on Python 3.13 confirmed on Windows and Linux.
 - `return_label` and `exchange` proposals have no write tool.

@@ -1,0 +1,44 @@
+Phase 3 final regression run (development split, 150 tickets). Console output as pasted by the project lead on 2026-10-12.
+Command: python -m src.agent.run --read-prompt v5 --knowledge --knowledge-first --transactions   (qwen2.5:7b, read_ticket.v5)
+Compared with the stage 3.3 run run-20261011-130535-872514. Criteria: docs/project/stage-3.9-acceptance.md.
+
+run run-20261012-113105-4f32ba: 150 tickets, 263 model calls
+actions {'decline_policy': 21, 'escalate_human': 22, 'propose_address_change': 6, 'propose_cancellation': 7, 'propose_exchange': 6, 'propose_refund': 20, 'propose_replacement': 4, 'propose_return_label': 11, 'provide_info': 35, 'request_info': 7, 'route_to_human': 11}
+template fallbacks 3/35 model-drafted replies; rejected drafts {'missing_fact': 10}
+latency per ticket: median 17845 ms, p90 33356 ms, max 54513 ms
+audit log data\audit\audit.jsonl: 533 events, head ccd2e723a1aa7a8ebf36ad0ddf2f7e59839d212338cc92e9934185a18f5cb683
+
+> python -m src.evaluation.score data\runs\run-20261012-113105-4f32ba
+run run-20261012-113105-4f32ba  model qwen2.5:7b  reply mode model  tickets 150
+read step: valid readings 150/150 = 100.0% (98-100%); category agreement 139/150 = 92.7% (87-96%)
+chargeback or legal flag: found 4 of 4 labelled, 0 false alarms []
+account compromise flag: found 5 of 5 labelled, 0 false alarms []
+escalation over all tickets: 22 escalated; recall 22/22 = 100.0% (85-100%); precision 22/22 = 100.0% (85-100%); missed []; not called for by the label []
+Set A, in-slice (125):
+  action 119/125 = 95.2% (90-98%)
+  escalation decision 125/125 = 100.0% (97-100%)
+  article 120/125 = 96.0% (91-98%)
+  facts 124/125 = 99.2% (96-100%)
+  end to end 119/125 = 95.2% (90-98%)
+  answered without a person and correct 62/125 = 49.6% (41-58%); replies by source {'model': 32, 'template': 30}
+Set B, other tickets (25):
+  handed to a person 25/25 = 100.0% (87-100%)
+  answered by the agent (wrong) 0/25 = 0.0% (0-13%)
+  needed escalation but were only routed: 0
+  escalated although the label does not call for it 0/25 = 0.0% (0-13%)
+knowledge answers: 4; cited article exists 4/4 = 100.0% (51-100%); is the labelled one 4/4 = 100.0% (51-100%); answered outside the policy-question set []; transactional tickets answered from the knowledge base []
+hand-over notes: needed 87; present 87/87 = 100.0% (96-100%); name the labelled order 67/67 = 100.0% (95-100%) []
+replies: template fallbacks 3/35; rejected {'missing_fact': 10}
+latency per ticket: {'max': 54513, 'p50': 17845, 'p90': 33356}
+  miss T-000016 S24 expected provide_info got route_to_human (knowledge_not_answered)
+  miss T-000037 S19 expected provide_info got request_info (no_open_orders)
+  miss T-000038 S19 expected provide_info got route_to_human (knowledge_not_answered)
+  miss T-000082 S24 expected decline_policy got route_to_human (request_not_covered)
+  miss T-000091 S06 expected decline_policy got propose_return_label (return_label)
+  miss T-000143 S19 expected provide_info got route_to_human (knowledge_not_answered)
+
+> Select-String -Path data\runs\run-20261012-113105-4f32ba\trace.jsonl -Pattern '"step": "backstop"' | Measure-Object
+Count    : 0
+
+> python -m src.audit --verify
+OK: 533 events, head ccd2e723a1aa7a8ebf36ad0ddf2f7e59839d212338cc92e9934185a18f5cb683
