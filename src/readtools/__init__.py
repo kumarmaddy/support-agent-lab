@@ -1,0 +1,1 @@
+"""Read-only MCP adapter (phase-3-design.md, section 5.6; stage 3.7): the five read tools of the Toolbox, served over MCP."""

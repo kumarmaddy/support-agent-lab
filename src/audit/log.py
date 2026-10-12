@@ -26,7 +26,8 @@ SCHEMA_VERSION = 1
 GENESIS = "0" * 64
 POLICY_DECISION, DECISION, HAND_OVER = "policy_decision", "decision", "hand_over"
 APPROVAL, REJECTION, EDIT, EXECUTION = "approval", "rejection", "edit", "execution"      # written by stages 3.5 and 3.6
-EVENTS = (DECISION, POLICY_DECISION, HAND_OVER, APPROVAL, REJECTION, EDIT, EXECUTION)
+TOOL_READ = "tool_read"                                                                       # stage 3.7: a read through the MCP adapter
+EVENTS = (DECISION, POLICY_DECISION, HAND_OVER, APPROVAL, REJECTION, EDIT, EXECUTION, TOOL_READ)
 LOCK_STALE_SECONDS = 30.0
 _THREAD_LOCK = threading.Lock()
 

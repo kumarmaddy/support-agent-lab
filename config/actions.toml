@@ -9,7 +9,7 @@
 refund = false
 replace = false
 change_address = false
-cancel = true
+cancel = false
 
 [sandbox]
 path = "data/sandbox/support.db"
