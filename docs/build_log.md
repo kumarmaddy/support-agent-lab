@@ -871,3 +871,16 @@ and not a tuned threshold; the final runs are the test of it.
 **Decided.** ADR-011: v5 for the 7B, v6 for the 3B; the miss is recorded as a miss. Knowledge gaps go to the senior queue (FR-10 as the project reads it); Support Operations to confirm.
 
 **Also changed.** The default read prompt in `run.py` is now v5 (the 3B needs `--read-prompt v6`).
+
+
+### 3.4 Audit log and redaction
+
+**Built.** `src/audit/redact.py` (key rules plus patterns for email, card, phone, street address and greeting name, with a broader post-check), `src/audit/log.py` (hash-chained append-only JSONL, lock file, fsync, `verify`, `query`, `record_resolution`), `src/audit/__main__.py` (`--ticket`, `--verify`, `--head`, `--json`). `run.py` gained `--audit PATH` (default `data/audit/audit.jsonl`) and `--no-audit`, and writes `audit_head.json` into the run directory. Each ticket produces `policy_decision` (proposals only), `decision` and `hand_over` (when a note exists).
+
+**Verified.** 959 tests pass (914 before; 45 new). Ten mutations of the new code were applied, nine caught. The survivor removes the sequence-number check in `verify`; it is redundant because a removed line is also caught by the broken `prev` link and the sequence number is inside the hash. Kept as defence in depth.
+
+**Leak test.** Runs the pipeline over all 150 development tickets and requires that no customer email, full name, street line or requested address from the data appears in the audit file, that no greeting carries a first name, and that the broad post-check finds nothing.
+
+**Disclosed limits.** (1) Run traces keep raw synthetic values because the scorer compares them; real data would need a trace redaction layer. (2) The chain does not detect deletion from the end unless the head is noted (`--head`), and it is not proof against a full rewrite. (3) Pattern redaction is tested on the development data only; Phase 4 held-out data is the second test.
+
+**Operational.** Add `data/audit/` to `.gitignore`.

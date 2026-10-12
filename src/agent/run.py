@@ -8,6 +8,7 @@ evaluation harness passes an explicit list). Nothing is sent to a customer. It r
 """
 import argparse
 import hashlib
+import json
 import platform
 import subprocess
 import sys
@@ -16,6 +17,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Callable, Optional
 
+from src.audit.log import AuditLog
 from src.agent.knowledge import DEFAULT_MIN_SCORE, Knowledge
 from src.agent.model import ModelClient, OllamaClient
 from src.agent.pipeline import Resolution, internal_guidance, run_ticket
@@ -100,11 +102,13 @@ def build_meta(model: ModelClient, read_prompt: Prompt, reply_prompt: Prompt, db
 def run_tickets(box: Toolbox, model: ModelClient, read_prompt: Prompt, reply_prompt: Prompt, internal: frozenset,
                 ticket_ids: list, writer: TraceWriter, seed: int = 0, reply_mode: str = "model", knowledge: Optional[Knowledge] = None,
                 transactions: Optional[Transactions] = None, progress: Optional[Callable[[int, int, Resolution], None]] = None,
-                policy: Optional[Policy] = None) -> list:
+                policy: Optional[Policy] = None, audit=None, audit_context: Optional[dict] = None) -> list:
     results = []
     for index, ticket_id in enumerate(ticket_ids, 1):
         resolution = run_ticket(box, model, read_prompt, reply_prompt, internal, ticket_id, seed, reply_mode, knowledge, transactions, policy)
         writer.write(resolution)
+        if audit is not None:                                     # stage 3.4: redacted, hash-chained record of the decision
+            audit.record_resolution(resolution, writer.run_id, audit_context)
         results.append(resolution)
         if progress:
             progress(index, len(ticket_ids), resolution)
@@ -139,6 +143,8 @@ def main(argv=None) -> int:
     p.add_argument("--check-prompt", default="v1", help="version of the knowledge check prompt (v1 default)")
     p.add_argument("--policy", type=Path, default=DEFAULT_POLICY_PATH, help="policy rules for proposed actions (default config/policy.toml)")
     p.add_argument("--no-policy", action="store_true", help="run without the policy engine (the Phase 2 behaviour)")
+    p.add_argument("--audit", type=Path, default=Path("data/audit/audit.jsonl"), help="audit log file, appended to (default data/audit/audit.jsonl)")
+    p.add_argument("--no-audit", action="store_true", help="do not write the audit log")
     p.add_argument("--limit", type=int, default=0, help="first N tickets by id (0 = all)")
     p.add_argument("--ids-file", type=Path, help="text file with one ticket id per line")
     args = p.parse_args(argv)
@@ -165,9 +171,12 @@ def main(argv=None) -> int:
     meta = build_meta(model, read_prompt, reply_prompt, args.db, args.seed, ids, argv if argv is not None else sys.argv[1:], model.digest(), warmup_ms,
                       args.reply_mode, knowledge, args.embed_model if knowledge else "",
                       model_digest(args.embed_model) if knowledge else "", transactions, policy)
+    audit = None if args.no_audit else AuditLog(args.audit)
+    audit_context = {"model": model.model, "read_prompt": read_prompt.label, "policy_sha256": policy.sha256 if policy else ""}
     with TraceWriter(args.out, new_run_id(), meta) as writer:
         run_tickets(box, model, read_prompt, reply_prompt, internal_guidance(articles), ids, writer, args.seed, args.reply_mode, knowledge, transactions,
-                    policy=policy, progress=lambda i, n, r: print(f"[{i}/{n}] {r.ticket_id} {r.action} ({r.reason}) reply by {r.reply_source}", flush=True))
+                    policy=policy, audit=audit, audit_context=audit_context,
+                    progress=lambda i, n, r: print(f"[{i}/{n}] {r.ticket_id} {r.action} ({r.reason}) reply by {r.reply_source}", flush=True))
         summary = writer.close()
     print(f"\nrun {writer.run_id}: {summary['tickets']} tickets, {summary['model_calls']} model calls")
     print(f"actions {summary['actions']}")
@@ -175,6 +184,10 @@ def main(argv=None) -> int:
     lat = summary["latency_ms"]["per_ticket"]
     print(f"latency per ticket: median {lat['p50']} ms, p90 {lat['p90']} ms, max {lat['max']} ms")
     print(f"written to {writer.dir}")
+    if audit is not None:
+        seq, head = audit.head()
+        (writer.dir / "audit_head.json").write_text(json.dumps({"audit_log": str(args.audit), "seq": seq, "head": head}, indent=2) + "\n", encoding="utf-8")
+        print(f"audit log {args.audit}: {seq} events, head {head}")
     return 0
 
 

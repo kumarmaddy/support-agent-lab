@@ -1,6 +1,6 @@
 # Phase 3 Design: Governance Hardening
 
-- Version: 0.4 (stages 3.2 and 3.3 built and measured; sections 5.1 and 5.2 describe the code as built)
+- Version: 0.5 (stages 3.2 to 3.4 built; sections 5.1 to 5.3 describe the code as built)
 - Date: 2026-10-11
 - Owner: Kumar Maddipatla, Project Lead
 - Builds on: phase-2-design.md v0.9, ADR-006 (fixed pipeline), ADR-008 (tools in-process, MCP in Phase 3), ADR-010, Phase 2 exit review
@@ -47,9 +47,14 @@ Acceptance criteria were written before the first run: `docs/project/stage-3.3-a
 - **S25, identity not verified.** A ticket of category `other` that names an order is now looked up (read-only), only to see whether the order belongs to the sender. If it does not, the decision is `escalate_human` / `order_not_owned` / KB-SEC-01, exactly as for an in-scope category. Other out-of-scope categories are not looked up (data minimisation). An unknown order or a missing account is still routed.
 - **Measured (stage-3.3-results.md).** 7B: all ten criteria met; escalation recall 11/22 to 22/22. 3B with prompt v6: four of five gating criteria met, category agreement one ticket short; recall 11/22 to 21/22. The 3B uses a separate prompt family (ADR-011). The scorer now reports the compromise flag (found, missed, false alarms, as for the legal flag) and escalation recall and precision over all tickets, before and after.
 
-### 5.3 Audit log and redaction (stage 3.4)
-- Append-only JSONL, one event per decision (proposal, policy decision, approval, rejection, edit, execution), each with a hash of the previous event so tampering is detectable; queryable by ticket id (`python -m src.audit --ticket T-000070`).
-- Identifiers are redacted before they reach any log or trace: email addresses, street addresses, card digits, phone numbers; order and ticket ids are kept because they are the keys. A test fails if an unredacted pattern reaches a log file.
+### 5.3 Audit log and redaction (stage 3.4, built)
+- **Log.** `src/audit/log.py`: append-only JSONL (`data/audit/audit.jsonl`, not committed). One event per line with `schema, seq, ts, event, ticket_id, run_id, actor, data, prev, hash`; `hash` is the sha256 of the canonical JSON of the other fields and `prev` is the hash of the event before (64 zeros for the first). Event types: `policy_decision`, `decision`, `hand_over` (written now), and `approval`, `rejection`, `edit`, `execution` (reserved for stages 3.5 and 3.6). Writers take an exclusive lock file (`O_EXCL`, stale locks cleared after 30 s) and `fsync`; tested with six concurrent writers.
+- **Query and check.** `python -m src.audit --ticket T-000070` lists the events for a ticket; `python -m src.audit --verify [--head HASH]` walks the chain and names the first bad line (changed content, removed or inserted line, broken link). Each run prints the log head and writes it to `<run dir>/audit_head.json`.
+- **Limit: the chain detects change, not deletion from the end.** Removing the last events leaves a valid shorter chain; it is caught only against a head noted elsewhere (`--head`). The log is also not tamper-proof against someone who rewrites the whole file and recomputes every hash; it makes casual or accidental edits visible, which is what v1 needs. Signing or external anchoring is out of scope.
+- **Redaction.** `src/audit/redact.py`, applied by `AuditLog.append` itself so a caller cannot forget it. By key: address, name and email fields are replaced whole; identifier keys (ticket, order, customer, payment, refund and return ids, tracking numbers, hashes, rule and article ids) are never touched. By pattern: email addresses, card numbers and last-four wording, phone numbers, street addresses, and the name in a reply greeting. A broader post-check (`leftovers`) runs on the result; if anything is still visible the event data is replaced by `{"redaction_failed": [...]}` and not written (fail closed).
+- **Limit: run traces are not redacted.** `resolutions.jsonl` and `trace.jsonl` keep the synthetic values (for example the requested address in `facts`) because the scorer compares them with the labels. The earlier design sentence "redacted before they reach any log or trace" is therefore met for the audit log only. With real customer data a redaction layer on traces (and a change to the scorer) would be required before first use; this is recorded as an open item.
+- **Limit: pattern redaction is not a guarantee.** It is tested against the 150 development tickets (a leak test takes every email, name, street line and requested address from the data and requires that none appears in the audit file). Free text in other forms (a name inside a sentence, a non-US address style) can pass; held-out data in Phase 4 is the second test.
+- **Separate from the database.** The empty `audit_log` table in the frozen development database is untouched (ADR-005).
 
 ### 5.4 Actions server (stage 3.5)
 - Write tools: `refund`, `replace`, `change_address`, `cancel`, all disabled by default in config. A call needs an approved decision for the same action; otherwise it is refused and logged.
@@ -73,7 +78,7 @@ Acceptance criteria were written before the first run: `docs/project/stage-3.3-a
 | 3.1 | This design | Reviewed (approved 2026-10-11) |
 | 3.2 | Policy engine and rules in config; wired in as a decision on every proposal | Built: tests, mutation checks; a run showing the decision and rule id on each proposal is the project lead's next step |
 | 3.3 | Must-escalate rules (S18, S20, S25), read prompt v5 | Done: 7B meets all ten criteria; 3B (prompt v6) meets four of five gating criteria and misses one by one ticket; `docs/project/stage-3.3-results.md`, ADR-011 |
-| 3.4 | Audit log and redaction | Tests; query by ticket |
+| 3.4 | Audit log and redaction | Built: 45 tests, leak test on the dev tickets, mutation checks; a short run and `python -m src.audit --ticket` are the project lead's next step |
 | 3.5 | Actions server, idempotency, sandbox ledger, MCP | Tests with retries; zero writes without approval |
 | 3.6 | Approval service | Tests; walk-through on a run |
 | 3.7 | Read-only MCP adapter | Existing tool tests pass over MCP |
@@ -89,3 +94,4 @@ R2 and R3 (a 16 GB laptop and slow runs: the engine and audit are pure code, the
 ## 9. Open items
 - Senior-approval refund threshold: rationale recorded in section 5.1 (stage 3.2); the value remains an assumption until Support Operations confirms it.
 - MCP SDK compatibility with Python 3.13 on Windows to be confirmed at the start of stage 3.5; if it fails, an in-process interface with the same schemas is kept and the deviation recorded.
+- Traces (`resolutions.jsonl`, `trace.jsonl`) keep raw synthetic values; a redaction layer for them is needed before any real data (section 5.3).
