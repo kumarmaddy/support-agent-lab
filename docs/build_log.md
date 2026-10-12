@@ -1061,3 +1061,17 @@ and not a tuned threshold; the final runs are the test of it.
 
 **Next.** Lead follows the runbook; stage 4.3 analyses the pasted results.
 
+
+## Stage 4.3: held-out results (2026-10-12)
+
+**Scope.** Analysis of the two gated runs. No agent or scorer code changed.
+
+**Runs.** 7B `run-20261012-145613-97bb60`, 3B `run-20261012-154651-e14426`. Freeze verified before and the tree was clean. Test suite on the lead's machine: 1163 passed before the freeze.
+
+**Outcome against pre-registered criteria (7B).** P1 missed (48.8%), P2 missed (2 wrong proposals, both day-30 return-window boundary), P3 to P6 met on the point estimate but not conclusive, P7 not assessable (no priority output), P8 not run (no live injection runner), P9 and P10 reported and met.
+
+**Disclosed gaps in the pre-registration.** P7, P8, and the P5 denominator (see the results document, section 4).
+
+**Evidence.** `docs/evidence/phase-4-heldout-console.txt` (console output verbatim from the lead's paste), plus the lead copies `score.json` and `summary.json` of both runs into `docs/evidence/`.
+
+**Open.** Backstop step counts from both traces (M1). Decision on the live-injection runner (stage 4.3b).

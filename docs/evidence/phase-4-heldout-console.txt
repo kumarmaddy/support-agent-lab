@@ -1,0 +1,89 @@
+Phase 4 held-out runs: console output as pasted by the project lead on 2026-10-12.
+Gate: python -m src.evaluation.heldout (freeze record sha256 daefb87a41cf2c2bad3c532f1df75790748e206b78dfff1b1647a448bd69eadf; tag phase-4-frozen).
+Criteria: docs/project/phase-4-design-and-acceptance.md v1.0. Results: docs/project/phase-4-heldout-results.md.
+
+=== check, 7B run summary, score and audit verify (qwen2.5:7b) ===
+(.venv) PS C:\Users\kumar\source\repos\support-agent-lab> python -m src.evaluation.heldout check
+The freeze holds: 134 files and the held-out database and labels match. record sha256 daefb87a41cf2c2bad3c532f1df75790748e206b78dfff1b1647a448bd69eadf
+run run-20261012-145613-97bb60: 150 tickets, 267 model calls
+actions {'decline_policy': 19, 'escalate_human': 21, 'propose_address_change': 6, 'propose_cancellation': 7, 'propose_exchange': 6, 'propose_refund': 20, 'propose_replacement': 4, 'propose_return_label': 12, 'provide_info': 36, 'request_info': 7, 'route_to_human': 12}
+template fallbacks 4/37 model-drafted replies; rejected drafts {'misplaced_reference': 1, 'missing_fact': 9, 'prompt_leak':1}
+latency per ticket: median 17587 ms, p90 32875 ms, max 51200 ms
+written to data\runs\run-20261012-145613-97bb60
+audit log data\audit\heldout-7b.jsonl: 293 events, head 71e4e4ff10cfd5f7bd17ebc4b5cdc12453499eb6f594f2d27a5b951185f68871
+(.venv) PS C:\Users\kumar\source\repos\support-agent-lab> python -m src.evaluation.heldout score data\runs\run-20261012-145613-97bb60
+run run-20261012-145613-97bb60  model qwen2.5:7b  reply mode model  tickets 150
+read step: valid readings 150/150 = 100.0% (98-100%); category agreement 136/150 = 90.7% (85-94%)
+chargeback or legal flag: found 4 of 4 labelled, 0 false alarms []
+account compromise flag: found 5 of 5 labelled, 0 false alarms []
+escalation over all tickets: 21 escalated; recall 21/22 = 95.5% (78-99%); precision 21/21 = 100.0% (85-100%); missed ['T-000015']; not called for by the label []
+Set A, in-slice (125):
+  action 118/125 = 94.4% (89-97%)
+  escalation decision 125/125 = 100.0% (97-100%)
+  article 120/125 = 96.0% (91-98%)
+  facts 122/125 = 97.6% (93-99%)
+  end to end 118/125 = 94.4% (89-97%)
+  answered without a person and correct 61/125 = 48.8% (40-57%); replies by source {'model': 32, 'template': 29}
+Set B, other tickets (25):
+  handed to a person 25/25 = 100.0% (87-100%)
+  answered by the agent (wrong) 0/25 = 0.0% (0-13%)
+  needed escalation but were only routed: 1
+  escalated although the label does not call for it 0/25 = 0.0% (0-13%)
+knowledge answers: 5; cited article exists 5/5 = 100.0% (57-100%); is the labelled one 5/5 = 100.0% (57-100%); answered outside the policy-question set []; transactional tickets answered from the knowledge base []
+hand-over notes: needed 88; present 88/88 = 100.0% (96-100%); name the labelled order 69/69 = 100.0% (95-100%) []
+replies: template fallbacks 4/37; rejected {'misplaced_reference': 1, 'missing_fact': 9, 'prompt_leak': 1}
+latency per ticket: {'max': 51200, 'p50': 17587, 'p90': 32875}
+  miss T-000005 S24 expected decline_policy got route_to_human (refund_window_closed)
+  miss T-000041 S06 expected decline_policy got propose_return_label (return_label)
+  miss T-000069 S19 expected provide_info got request_info (needs_order_number)
+  miss T-000074 S24 expected provide_info got route_to_human (knowledge_not_answered)
+  miss T-000082 S06 expected decline_policy got propose_return_label (return_label)
+  miss T-000128 S19 expected provide_info got route_to_human (knowledge_not_answered)
+  miss T-000135 S14 expected decline_policy got route_to_human (order_state_not_covered)
+(.venv) PS C:\Users\kumar\source\repos\support-agent-lab> python -m src.audit --log data\audit\heldout-7b.jsonl --verify
+OK: 293 events, head 71e4e4ff10cfd5f7bd17ebc4b5cdc12453499eb6f594f2d27a5b951185f68871
+
+=== 3B run summary and score (llama3.2:3b) ===
+run run-20261012-154651-e14426: 150 tickets, 277 model calls
+actions {'decline_policy': 19, 'escalate_human': 22, 'propose_address_change': 4, 'propose_cancellation': 7, 'propose_exchange': 5, 'propose_refund': 16, 'propose_replacement': 4, 'propose_return_label': 12, 'provide_info': 37, 'request_info': 7, 'route_to_human': 17}
+template fallbacks 12/36 model-drafted replies; rejected drafts {'misplaced_reference': 8, 'missing_fact': 14, 'unsupported_claim': 3, 'unsupported_sentence': 1, 'unsupported_term': 3, 'wrong_date_role': 5}
+latency per ticket: median 8709 ms, p90 17631 ms, max 24727 ms
+written to data\runs\run-20261012-154651-e14426
+audit log data\audit\heldout-3b.jsonl: 285 events, head 40338708351b93380b60ddb6b88b8bd5aded6bb20840b961d2cad0236c8aa819
+(.venv) PS C:\Users\kumar\source\repos\support-agent-lab> python -m src.evaluation.heldout score data\runs\run-20261012-154651-e14426
+run run-20261012-154651-e14426  model llama3.2:3b  reply mode model  tickets 150
+read step: valid readings 147/150 = 98.0% (94-99%); category agreement 136/150 = 90.7% (85-94%)
+chargeback or legal flag: found 3 of 4 labelled, 1 false alarms ['T-000102']
+account compromise flag: found 5 of 5 labelled, 1 false alarms ['T-000072']
+escalation over all tickets: 22 escalated; recall 20/22 = 90.9% (72-97%); precision 20/22 = 90.9% (72-97%); missed ['T-000015', 'T-000140']; not called for by the label ['T-000072', 'T-000102']
+Set A, in-slice (125):
+  action 111/125 = 88.8% (82-93%)
+  escalation decision 124/125 = 99.2% (96-100%)
+  article 114/125 = 91.2% (85-95%)
+  facts 113/125 = 90.4% (84-94%)
+  end to end 111/125 = 88.8% (82-93%)
+  answered without a person and correct 61/125 = 48.8% (40-57%); replies by source {'model': 24, 'template': 37}
+Set B, other tickets (25):
+  handed to a person 24/25 = 96.0% (80-99%)
+  answered by the agent (wrong) 1/25 = 4.0% (1-20%)
+  needed escalation but were only routed: 2
+  escalated although the label does not call for it 1/25 = 4.0% (1-20%)
+knowledge answers: 6; cited article exists 6/6 = 100.0% (61-100%); is the labelled one 6/6 = 100.0% (61-100%); answered outside the policy-question set []; transactional tickets answered from the knowledge base []
+hand-over notes: needed 87; present 87/87 = 100.0% (96-100%); name the labelled order 65/68 = 95.6% (88-98%) ['T-000012', 'T-000108', 'T-000136']
+replies: template fallbacks 12/36; rejected {'misplaced_reference': 8, 'missing_fact': 14, 'unsupported_claim': 3, 'unsupported_sentence': 1, 'unsupported_term': 3, 'wrong_date_role': 5}
+latency per ticket: {'max': 24727, 'p50': 8709, 'p90': 17631}
+  miss T-000005 S24 expected decline_policy got route_to_human (no_refund_on_record)
+  miss T-000006 S24 expected provide_info got route_to_human (out_of_slice)
+  miss T-000012 S15 expected propose_address_change got route_to_human (reading_failed)
+  miss T-000013 S08 expected propose_exchange got request_info (size_missing)
+  miss T-000041 S06 expected decline_policy got propose_return_label (return_label)
+  miss T-000070 S23 expected propose_refund got route_to_human (request_not_covered)
+  miss T-000074 S24 expected provide_info got route_to_human (knowledge_not_answered)
+  miss T-000082 S06 expected decline_policy got propose_return_label (return_label)
+  miss T-000102 S26 expected propose_refund got escalate_human (chargeback_or_legal_threat)
+  miss T-000108 S16 expected decline_policy got route_to_human (reading_failed)
+  miss T-000126 S23 expected propose_refund got route_to_human (no_refund_on_record)
+  miss T-000128 S19 expected provide_info got route_to_human (knowledge_not_answered)
+  miss T-000134 S23 expected propose_refund got route_to_human (no_refund_on_record)
+  miss T-000136 S15 expected propose_address_change got route_to_human (reading_failed)
+  miss T-000140 S21 expected escalate_human got provide_info (refund_pending)

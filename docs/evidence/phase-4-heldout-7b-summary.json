@@ -1,0 +1,138 @@
+{
+  "actions": {
+    "decline_policy": 19,
+    "escalate_human": 21,
+    "propose_address_change": 6,
+    "propose_cancellation": 7,
+    "propose_exchange": 6,
+    "propose_refund": 20,
+    "propose_replacement": 4,
+    "propose_return_label": 12,
+    "provide_info": 36,
+    "request_info": 7,
+    "route_to_human": 12
+  },
+  "drafts_by_model": 37,
+  "latency_ms": {
+    "per_step": {
+      "decide": {
+        "max": 15,
+        "p50": 0,
+        "p90": 0
+      },
+      "draft_reply": {
+        "max": 39484,
+        "p50": 0,
+        "p90": 18474
+      },
+      "extract_address": {
+        "max": 15897,
+        "p50": 7056,
+        "p90": 15897
+      },
+      "get_payment_records": {
+        "max": 15,
+        "p50": 0,
+        "p90": 0
+      },
+      "get_payment_records_for_summary": {
+        "max": 0,
+        "p50": 0,
+        "p90": 0
+      },
+      "get_ticket": {
+        "max": 0,
+        "p50": 0,
+        "p90": 0
+      },
+      "identify": {
+        "max": 16,
+        "p50": 1,
+        "p90": 1
+      },
+      "identify_for_summary": {
+        "max": 1,
+        "p50": 1,
+        "p90": 1
+      },
+      "knowledge": {
+        "max": 18710,
+        "p50": 11659,
+        "p90": 14757
+      },
+      "policy": {
+        "max": 2,
+        "p50": 0,
+        "p90": 1
+      },
+      "read_refund": {
+        "max": 16661,
+        "p50": 4964,
+        "p90": 6328
+      },
+      "read_request": {
+        "max": 23911,
+        "p50": 7586,
+        "p90": 8163
+      },
+      "read_ticket": {
+        "max": 15145,
+        "p50": 10892,
+        "p90": 11891
+      }
+    },
+    "per_ticket": {
+      "max": 51200,
+      "p50": 17587,
+      "p90": 32875
+    }
+  },
+  "model_calls": 267,
+  "read_outcomes": {
+    "ok": 150
+  },
+  "reasons": {
+    "account_compromise_suspected": 5,
+    "address_change_after_dispatch": 4,
+    "address_change_before_dispatch": 6,
+    "cancellation_after_dispatch": 6,
+    "cancellation_before_dispatch": 7,
+    "chargeback_or_legal_threat": 4,
+    "delivery_deadline_cannot_be_guaranteed": 4,
+    "duplicate_charge": 16,
+    "exchange_within_window": 6,
+    "item_refund_within_window": 4,
+    "knowledge_answer": 5,
+    "knowledge_not_answered": 2,
+    "knowledge_not_found": 5,
+    "needs_order_number": 7,
+    "order_not_owned": 3,
+    "order_processing": 5,
+    "order_state_not_covered": 1,
+    "out_of_slice": 8,
+    "refund_pending": 4,
+    "refund_processed": 2,
+    "refund_window_closed": 1,
+    "replacement_within_window": 4,
+    "return_final_sale": 5,
+    "return_label": 12,
+    "return_window_closed": 4,
+    "shipped_late": 9,
+    "shipped_on_time": 11
+  },
+  "rejected_draft_codes": {
+    "misplaced_reference": 1,
+    "missing_fact": 9,
+    "prompt_leak": 1
+  },
+  "reply_sources": {
+    "model": 33,
+    "template": 117
+  },
+  "schema": 1,
+  "template_fallback_share": 0.10810810810810811,
+  "template_fallbacks": 4,
+  "tickets": 150,
+  "tokens_in": 168330,
+  "tokens_out": 9674
+}
