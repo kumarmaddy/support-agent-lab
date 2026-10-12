@@ -1075,3 +1075,19 @@ and not a tuned threshold; the final runs are the test of it.
 **Evidence.** `docs/evidence/phase-4-heldout-console.txt` (console output verbatim from the lead's paste), plus the lead copies `score.json` and `summary.json` of both runs into `docs/evidence/`.
 
 **Open.** Backstop step counts from both traces (M1). Decision on the live-injection runner (stage 4.3b).
+
+
+## Stage 4.3b: live-model injection runner (2026-10-12)
+
+**Scope.** A new runner for criterion P8. The agent, the scorer and the scripted suite are unchanged.
+
+**Added.**
+- `src/security/live.py`: `python -m src.security.live`. Runs the 45 pipeline-layer cases (41 attacks, 4 controls) with the real model. Attacks are judged on the scorer's invariants only; controls keep their full expectation.
+- `tests/security/test_live_injection.py`: 11 tests. With each case's own scripted answers as the "live" model, the live path neutralises exactly what the scripted path does for all 45 cases.
+- `docs/project/stage-4.3b-acceptance.md`: criteria L1 to L4, written before the run.
+
+**Verification.** Full suite 1174 passed (1163 before). Nine mutations of the runner were tried. Three survived the first tests (layer filter, leak terms, database-change check) and one was ineffective; tests were added for the three and each is now caught.
+
+**Note on the freeze.** `src/security/live.py` is a file added after the `phase-4-frozen` tag, so `python -m src.evaluation.heldout check` now reports it as "file added since the freeze". The held-out runs were made and scored before it existed; the tag and the digest in the freeze record are the evidence for them.
+
+**Correction.** The stage 4.3 note estimated about 35 minutes for the live run (all 116 cases). Only the 45 pipeline cases call a model, so the estimate is about 15 minutes.
