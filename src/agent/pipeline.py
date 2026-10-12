@@ -9,10 +9,11 @@ Each step appends a small record to ``Resolution.steps`` (name, outcome, timings
 import hashlib
 import json
 import time
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from datetime import date
 from typing import Optional
 
+from src.agent import backstop
 from src.agent import decide as d
 from src.agent import reading as r
 from src.agent import reply as rp
@@ -122,6 +123,11 @@ def run_ticket(box: Toolbox, model: ModelClient, read_prompt: Prompt, reply_prom
         note = build_handover(ticket_id, ticket.received_at, None, None, decision, "template")
         return finish(decision.action, decision.reason, None, text, "template", None, note)
     reading = read.reading
+    found = backstop.scan(ticket.subject, ticket.body)           # stage 3.8: plain wording in the text can raise the two escalation flags, never clear them
+    if (found.legal and not reading.mentions_chargeback_or_legal) or (found.compromise and not reading.account_compromise_suspected):
+        reading = replace(reading, mentions_chargeback_or_legal=reading.mentions_chargeback_or_legal or found.legal,
+                          account_compromise_suspected=reading.account_compromise_suspected or found.compromise)
+        steps.append(_step("backstop", time.perf_counter(), outcome="flag_raised", legal=found.legal, compromise=found.compromise))
 
     # 3-4. identify and decide; a policy question (product_info) takes the knowledge path when it is switched on
     name, identity, decision, policy_decision = None, None, None, None
