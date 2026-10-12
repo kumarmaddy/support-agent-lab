@@ -1037,3 +1037,27 @@ and not a tuned threshold; the final runs are the test of it.
 
 **Carry-forward.** Confirm the $250 threshold and the knowledge-gap queue with Support Operations; redact traces and the edits file and add approver login before any real data.
 
+
+## Stage 4.2: freeze record and held-out run kit (2026-10-12)
+
+**Scope.** Tooling and procedure only. The held-out split was not opened, run or scored. Criteria are those of `phase-4-design-and-acceptance.md` v1.0, approved the same day (decisions D1 to D6 as recommended).
+
+**Added.**
+- `src/evaluation/heldout.py`: `create`, `check`, `run --tag 7b|3b`, `score`.
+- `tests/evaluation/test_heldout_gate.py`: 27 tests on a fake project tree (the real held-out files are never read).
+- `docs/project/phase-4-heldout-runbook.md`: PowerShell steps, interruption handling.
+- `docs/adr/ADR-016-heldout-access-gate.md`.
+
+**Unchanged on purpose.** `src/agent/run.py` and `src/evaluation/score.py` (the freeze covers them). Tests confirm they still refuse the held-out split.
+
+**Verification.** Full suite 1163 passed (1136 before). Nine mutations of the gate (guard not restored, freeze check skipped, repeat check removed, database hash check removed, rollback removed, marker check removed, line-ending fold removed, create-after-open check removed, held-out label check removed) were each caught. The label-split mutation initially survived; a test was added and it is now caught.
+
+**Decisions made in the design.**
+- The freeze hashes text with LF folding (an earlier stage failed on CRLF).
+- The registry sits under the git-ignored `data/audit/`, because run.json records whether the tree is dirty.
+- The held-out audit logs are separate from the development log: `data/audit/heldout-7b.jsonl`, `heldout-3b.jsonl`.
+
+**Not covered.** Whether the lead looked at held-out data; whether the machine was idle. Stated in the runbook.
+
+**Next.** Lead follows the runbook; stage 4.3 analyses the pasted results.
+
