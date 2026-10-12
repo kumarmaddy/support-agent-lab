@@ -1024,3 +1024,16 @@ and not a tuned threshold; the final runs are the test of it.
 
 **Next.** Phase 4: tag `phase-3-complete`, write the Phase 4 acceptance criteria, then open the held-out split once.
 
+
+## Stage 4.1: Phase 4 design and acceptance criteria (2026-10-12)
+
+**Scope.** Design only. No code was changed and the held-out split was not opened. The only held-out facts used are the file layout and the label line count (150), which are metadata.
+
+**Produced.** `docs/project/phase-4-design-and-acceptance.md` v1.0: freeze and run rules, 11 pre-registered criteria (P1 to P11) with 5 further measurements (M1 to M5), the shadow-mode method, the auto-resolve eligibility and decision rule, and the business-case method with its assumptions and exclusions.
+
+**Decisions pending.** D1 to D6 in section 11 of the design document.
+
+**Not done, by design.** Freeze record, tag `phase-4-frozen`, and the held-out run (stage 4.2 and 4.3).
+
+**Carry-forward.** Confirm the $250 threshold and the knowledge-gap queue with Support Operations; redact traces and the edits file and add approver login before any real data.
+
