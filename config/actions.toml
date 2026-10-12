@@ -1,0 +1,15 @@
+
+# Write actions (docs/design/phase-3-design.md, section 5.4).
+#
+# Every write tool is DISABLED by default. A tool runs only when it is switched on here AND the call carries an approval that a person
+# granted for exactly that ticket, action, order and amount/address. The file is read when the server starts; an unknown key or a value
+# that is not true/false stops the server (fail closed). Writes go to the sandbox copy of the database, never to the frozen development data.
+
+[actions]
+refund = false
+replace = false
+change_address = false
+cancel = false
+
+[sandbox]
+path = "data/sandbox/support.db"

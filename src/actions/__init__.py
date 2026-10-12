@@ -1,0 +1,1 @@
+"""Actions server (phase-3-design.md, section 5.4; stage 3.5): the only write path, approval-gated, idempotent, sandbox-only."""

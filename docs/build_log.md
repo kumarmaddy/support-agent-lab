@@ -884,3 +884,18 @@ and not a tuned threshold; the final runs are the test of it.
 **Disclosed limits.** (1) Run traces keep raw synthetic values because the scorer compares them; real data would need a trace redaction layer. (2) The chain does not detect deletion from the end unless the head is noted (`--head`), and it is not proof against a full rewrite. (3) Pattern redaction is tested on the development data only; Phase 4 held-out data is the second test.
 
 **Operational.** Add `data/audit/` to `.gitignore`.
+
+
+### 3.5 Actions server
+
+**Built.** `src/actions/` (config, sandbox, approvals, service, MCP server, `python -m src.actions init|ledger`), `config/actions.toml` (all tools off), ADR-012. Four write tools (`cancel`, `change_address`, `refund`, `replace`), each behind: switch on, matching approved approval, state check, policy rules again, idempotency key and ledger in one transaction. Every attempt is an `execution` audit event; approvals and rejections are `approval` / `rejection` events.
+
+**Verified.** 1007 tests pass (959 before; 48 new, of which 5 skip without the MCP SDK). 19 mutations of the new code were applied; the first run left 4 survivors (refunded status ignored, no service lock, partial refund marks payment refunded, MCP tool ignores the approval id). Four tests were added and all 19 are now caught. The frozen development database has the same sha256 before and after every test that writes.
+
+**Found on Windows.** The first Windows run (Python 3.13, MCP SDK 2.3.0) passed all MCP tests; one test failed because Windows refuses to delete a database file that a connection still has open. The test now closes the connection first, and `create_sandbox --force` reports "in use by another process" instead of a raw PermissionError.
+
+**Found by testing.** The MCP SDK runs synchronous tools in a worker thread; a SQLite connection created in the main thread raised `ProgrammingError`. The sandbox connection now allows cross-thread use and the service serialises it with a lock.
+
+**Disclosed limits.** No approver authentication yet (3.6 is a local single-user page); addresses must read `street, city 12345`; `return_label` and `exchange` have no write tool; the sandbox records intended effects only; Windows confirmation of MCP SDK 2.x rests on the project lead's run.
+
+**Operational.** `pip install mcp`; `data/sandbox/` is generated, add it to `.gitignore`.

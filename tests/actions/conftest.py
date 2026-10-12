@@ -1,0 +1,1 @@
+from tests.baseline.conftest import articles, dev_dataset      # noqa: F401  (shared fixtures: the development split built once)

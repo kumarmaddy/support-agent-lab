@@ -1,6 +1,6 @@
 # Phase 3 Design: Governance Hardening
 
-- Version: 0.5 (stages 3.2 to 3.4 built; sections 5.1 to 5.3 describe the code as built)
+- Version: 0.6 (stages 3.2 to 3.5 built; sections 5.1 to 5.4 describe the code as built)
 - Date: 2026-10-11
 - Owner: Kumar Maddipatla, Project Lead
 - Builds on: phase-2-design.md v0.9, ADR-006 (fixed pipeline), ADR-008 (tools in-process, MCP in Phase 3), ADR-010, Phase 2 exit review
@@ -56,10 +56,13 @@ Acceptance criteria were written before the first run: `docs/project/stage-3.3-a
 - **Limit: pattern redaction is not a guarantee.** It is tested against the 150 development tickets (a leak test takes every email, name, street line and requested address from the data and requires that none appears in the audit file). Free text in other forms (a name inside a sentence, a non-US address style) can pass; held-out data in Phase 4 is the second test.
 - **Separate from the database.** The empty `audit_log` table in the frozen development database is untouched (ADR-005).
 
-### 5.4 Actions server (stage 3.5)
-- Write tools: `refund`, `replace`, `change_address`, `cancel`, all disabled by default in config. A call needs an approved decision for the same action; otherwise it is refused and logged.
-- Idempotency key = hash of ticket, action, order, amount and approval id. A repeat call returns the first result and writes nothing. Tested with retries and concurrent calls.
-- Exposed over MCP using the official Python SDK (to be verified for Python 3.13 on Windows in this stage), and callable in-process with the same checks.
+### 5.4 Actions server (stage 3.5, built)
+- **Write tools** `cancel`, `change_address`, `refund`, `replace` (`src/actions/service.py`), each switched on or off in `config/actions.toml`; all four ship **off**. An unknown key or a non-boolean value stops the server. Proposals with no write tool (`return_label`, `exchange`) stay with a person; this is a scope limit, not an omission.
+- **Order of checks.** Arguments well formed; tool switched on; an approval exists, is `approved`, and matches the call exactly (ticket, action, order, payment, amount, address); then, inside one `BEGIN IMMEDIATE` transaction: replay check, state check (cancel and address change only on a `processing` order; refund only for a payment of that order, not above the payment amount, not already refunded; replacement only for a delivered order with no earlier replacement), and the policy rules applied again to the state now. Any failure refuses the call with a code and writes nothing; every call, refused or not, becomes an `execution` event in the audit log. Approvals and rejections are `approval` / `rejection` events.
+- **Idempotency.** Key = sha256 of ticket, action, order, payment, amount, address and approval id. A repeat of an executed call returns the first result (`replayed`) and writes nothing. The check and the write share one transaction, so concurrent callers cannot both execute (tested with eight threads on separate connections and eight threads on one service).
+- **Sandbox.** `python -m src.actions init` copies the development database (read-only backup) to `data/sandbox/support.db` and adds `sandbox_meta`, `approvals`, `action_ledger` and `replacements`. `open_sandbox` refuses any database without the marker table, so the frozen file cannot be opened for writing through this path; the tests check its sha256 before and after. Effects are database rows only: no email is sent and no payment system is called.
+- **MCP.** `src/actions/mcp_server.py` wraps the same service with the official Python SDK (version 2.x, `MCPServer`; `pip install mcp`, needed only for this module). Tests use the SDK's in-memory client. The SDK runs synchronous tools in a worker thread, which exposed a thread-affinity error in the first version; the service now serialises use of its connection.
+- **Limits.** (1) The approver's name is recorded as given; there is no login (the approval page of 3.6 is a local, single-user tool). (2) An address is accepted only in the form `street, city 12345`; anything else is refused for a person to enter. (3) A refund is complete when the amount equals the payment; partial refunds leave the payment status unchanged and a second refund on that payment is refused. (4) The sandbox records an intended effect; real execution against a payment provider or order system is out of scope for v1. (5) Confirmed on Windows, Python 3.13, MCP SDK 2.3.0 (project lead's test run, 2026-10-12).
 
 ### 5.5 Approval service (stage 3.6)
 - Local page lists pending proposals (senior queue first). Approve, edit (amount or address, re-checked by the policy engine) or reject, each with a reason. Decisions go to the audit log; edits are saved as labelled data for evaluation (FR-11).
@@ -79,7 +82,7 @@ Acceptance criteria were written before the first run: `docs/project/stage-3.3-a
 | 3.2 | Policy engine and rules in config; wired in as a decision on every proposal | Built: tests, mutation checks; a run showing the decision and rule id on each proposal is the project lead's next step |
 | 3.3 | Must-escalate rules (S18, S20, S25), read prompt v5 | Done: 7B meets all ten criteria; 3B (prompt v6) meets four of five gating criteria and misses one by one ticket; `docs/project/stage-3.3-results.md`, ADR-011 |
 | 3.4 | Audit log and redaction | Built: 45 tests, leak test on the dev tickets, mutation checks; a short run and `python -m src.audit --ticket` are the project lead's next step |
-| 3.5 | Actions server, idempotency, sandbox ledger, MCP | Tests with retries; zero writes without approval |
+| 3.5 | Actions server, idempotency, sandbox ledger, MCP | Built: 48 tests incl. concurrency and MCP, 19 mutation checks; the project lead runs the suite on Windows with `mcp` installed |
 | 3.6 | Approval service | Tests; walk-through on a run |
 | 3.7 | Read-only MCP adapter | Existing tool tests pass over MCP |
 | 3.8 | Injection and misuse suite and run | O7 100% target, O2 and unapproved writes 0 |
@@ -93,5 +96,6 @@ R2 and R3 (a 16 GB laptop and slow runs: the engine and audit are pure code, the
 
 ## 9. Open items
 - Senior-approval refund threshold: rationale recorded in section 5.1 (stage 3.2); the value remains an assumption until Support Operations confirms it.
-- MCP SDK compatibility with Python 3.13 on Windows to be confirmed at the start of stage 3.5; if it fails, an in-process interface with the same schemas is kept and the deviation recorded.
+- MCP SDK 2.3.0 on Python 3.13 confirmed on Windows and Linux.
+- `return_label` and `exchange` proposals have no write tool.
 - Traces (`resolutions.jsonl`, `trace.jsonl`) keep raw synthetic values; a redaction layer for them is needed before any real data (section 5.3).
