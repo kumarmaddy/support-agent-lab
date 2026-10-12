@@ -1,0 +1,22 @@
+{
+  "entries": [
+    {
+      "tag": "7b",
+      "model": "qwen2.5:7b",
+      "status": "complete",
+      "run_id": "run-20261012-145613-97bb60",
+      "freeze_record_sha256": "daefb87a41cf2c2bad3c532f1df75790748e206b78dfff1b1647a448bd69eadf",
+      "started": "2026-10-12",
+      "rerun_reason": null
+    },
+    {
+      "tag": "3b",
+      "model": "llama3.2:3b",
+      "status": "complete",
+      "run_id": "run-20261012-154651-e14426",
+      "freeze_record_sha256": "daefb87a41cf2c2bad3c532f1df75790748e206b78dfff1b1647a448bd69eadf",
+      "started": "2026-10-12",
+      "rerun_reason": null
+    }
+  ]
+}
