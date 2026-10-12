@@ -93,7 +93,7 @@ Acceptance criteria were written before the first run: `docs/project/stage-3.3-a
 | 3.4 | Audit log and redaction | Built: 45 tests, leak test on the dev tickets, mutation checks; a short run and `python -m src.audit --ticket` are the project lead's next step |
 | 3.5 | Actions server, idempotency, sandbox ledger, MCP | Built: 48 tests incl. concurrency and MCP, 19 mutation checks; the project lead runs the suite on Windows with `mcp` installed |
 | 3.6 | Approval service | Built: 55 tests incl. a live-socket round trip, 21 mutation checks; the project lead's walk-through on a run is the exit evidence |
-| 3.7 | Read-only MCP adapter | Built: 15 existing tool tests pass unchanged over MCP; 32 tests, 11 mutation checks, stdio process test |
+| 3.7 | Read-only MCP adapter | Built: 15 existing tool tests pass unchanged over MCP; 33 tests, 11 mutation checks, stdio process test |
 | 3.8 | Injection and misuse suite and run | O7 100% target, O2 and unapproved writes 0 |
 | 3.9 | Phase 3 evaluation report and exit review | Reports, ADRs, risk register update |
 

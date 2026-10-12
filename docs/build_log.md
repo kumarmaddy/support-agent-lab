@@ -940,3 +940,18 @@ and not a tuned threshold; the final runs are the test of it.
 **Disclosed limits.** The tools return the sender's email and the customer's name to any connected host; stdio only, no authentication; the development database only.
 
 **Operational.** None (the `mcp` package is already required for the actions server).
+
+
+### 3.7 Read-only MCP adapter
+
+**Built.** `src/readtools/` (adapter and `python -m src.readtools` over stdio), a `tool_read` event type in the audit log, ADR-014. The adapter publishes `get_ticket`, `find_customer`, `list_open_orders`, `get_order` and `get_payment_records` using the schemas and the `call` method of `Toolbox`; `count_refunds` and any other name return `unknown_tool`. Reads can be audited (tool, identifiers, status; never the result).
+
+**Verified.** 1095 tests pass (1062 before; 33 new). 15 tests of `tests/agent/test_tools.py` run UNCHANGED through an MCP client and a real MCP server. 11 mutations of the adapter were applied and all were caught. A separate test starts the command as its own process and talks to it over stdio.
+
+**Decided.** The low-level `Server` rather than the decorator API, so that argument checking stays the Toolbox's (ADR-014). One assertion of the existing tests differs in kind over MCP: a non-object `arguments` is refused by the protocol layer, not by the Toolbox (design 5.6).
+
+**Found on Windows.** Started by hand, the server waits silently for a host, and Ctrl+C printed a long traceback. Ctrl+C now stops it with a one-line "stopped".
+
+**Disclosed limits.** The tools return the sender's email and the customer's name to any connected host; stdio only, no authentication; the development database only.
+
+**Operational.** None (the `mcp` package is already required for the actions server).

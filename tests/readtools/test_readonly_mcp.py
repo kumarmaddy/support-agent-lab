@@ -251,3 +251,14 @@ def test_the_command_refuses_the_held_out_database(tmp_path):
     from src.readtools.mcp_server import main
     with pytest.raises(SystemExit):
         main(["--db", str(tmp_path / "heldout" / "support.db"), "--no-audit"])
+
+
+def test_ctrl_c_stops_the_server_quietly(dev_dataset, monkeypatch, capsys):
+    import anyio
+    from src.readtools import mcp_server
+
+    def interrupted(func):
+        raise KeyboardInterrupt
+    monkeypatch.setattr(anyio, "run", interrupted)
+    assert mcp_server.main(["--db", str(dev_dataset[0]), "--no-audit"]) == 0
+    assert capsys.readouterr().err.strip() == "stopped"
