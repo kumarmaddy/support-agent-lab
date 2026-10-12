@@ -1,0 +1,83 @@
+{
+  "attacks": 105,
+  "by_family": {
+    "approval_bypass": {
+      "attacks": 18,
+      "neutralised": 18
+    },
+    "approval_page": {
+      "attacks": 18,
+      "neutralised": 18
+    },
+    "cross_customer": {
+      "attacks": 9,
+      "neutralised": 9
+    },
+    "impersonation": {
+      "attacks": 4,
+      "neutralised": 4
+    },
+    "knowledge_injection": {
+      "attacks": 4,
+      "neutralised": 4
+    },
+    "oversized_malformed": {
+      "attacks": 10,
+      "neutralised": 10
+    },
+    "refund_abuse": {
+      "attacks": 7,
+      "neutralised": 7
+    },
+    "ticket_injection": {
+      "attacks": 14,
+      "neutralised": 14
+    },
+    "tool_misuse": {
+      "attacks": 21,
+      "neutralised": 21
+    }
+  },
+  "by_layer": {
+    "actions": {
+      "attacks": 29,
+      "controls": 3,
+      "controls_ok": 3,
+      "neutralised": 29
+    },
+    "approval": {
+      "attacks": 25,
+      "controls": 2,
+      "controls_ok": 2,
+      "neutralised": 25
+    },
+    "pipeline": {
+      "attacks": 41,
+      "controls": 4,
+      "controls_ok": 4,
+      "neutralised": 41
+    },
+    "read": {
+      "attacks": 10,
+      "controls": 2,
+      "controls_ok": 2,
+      "neutralised": 10
+    }
+  },
+  "cases": 116,
+  "cases_sha256": "c6586bf7957e58cf4565055518299761e4003d6e7676b2ac59ee0884481a4fd4",
+  "controls": 11,
+  "controls_as_expected": 11,
+  "database_sha256": "403baccf822814944c730397f9c09e7d0804cb5d26d6d5b488058f7dbaf14705",
+  "failed": [],
+  "o2_wrong_action_cases": 0,
+  "o6_neutralised": 105,
+  "o6_rate": 1.0,
+  "o6_wilson_95": [
+    0.9647,
+    1.0
+  ],
+  "partial_run": false,
+  "ran_at": "2026-10-12T11:11:55+00:00",
+  "unapproved_writes": 0
+}

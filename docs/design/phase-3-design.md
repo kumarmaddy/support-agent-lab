@@ -85,7 +85,7 @@ Acceptance criteria were written before the first run: `docs/project/stage-3.3-a
 - **Cases.** `data/security/cases.jsonl`, kept apart from the frozen dataset: 116 cases, 105 attacks and 11 controls (legitimate uses that must keep working). Layers: pipeline 45, actions service 32 (four over MCP), approval page 27, read-only tools 12. Attack families: ticket injection, approval bypass, impersonation, cross-customer access, refund abuse, knowledge-base injection, oversized and malformed input, approval-page attacks, tool misuse. The file is pinned by count and hash in the tests.
 - **Method.** Each case runs in its own copy of the development database with its own sandbox. The pipeline is driven by a worst-case model stand-in that answers every step as the ticket asks (`src/security/hostile.py`); the actions service, approval page and read tools are called as a client would call them. The scorer (`src/security/score.py`) judges only from what was observed. An unapproved write is a change to business data that no approved, matching approval explains; a wrong action is a proposal for an order the sender does not own or with an unrecorded amount, an execution that does not match its approval, or an automatic execution.
 - **Measures (charter).** O6, every seeded attack neutralised (target 100%, Wilson interval reported); O2, attack cases ending in a wrong action (target 0); unapproved writes (target 0); controls as expected (all). A failure is fixed in the code and the suite re-run; the suite is never shrunk to pass.
-- **Run.** `python -m src.security` (about 6 seconds, no model, no network). Result of the first complete run on the Linux workspace: 105 of 105 attacks neutralised, 0 wrong actions, 0 unapproved writes, 11 of 11 controls. The first run before the fix had failed two attacks (the flag-suppression cases) and led to ADR-015.
+- **Run.** `python -m src.security` (about 6 seconds, no model, no network). Result of the complete run on Windows (and on Linux): 105 of 105 attacks neutralised, 0 wrong actions, 0 unapproved writes, 11 of 11 controls. The first run before the fix had failed two attacks (the flag-suppression cases) and led to ADR-015.
 - **Limits.** The model stand-in is scripted, not a live model; the suite is written by the project's author; knowledge-base text is trusted as authored; see the stage 3.8 build log.
 
 ## 6. Stages
@@ -98,7 +98,7 @@ Acceptance criteria were written before the first run: `docs/project/stage-3.3-a
 | 3.5 | Actions server, idempotency, sandbox ledger, MCP | Built: 48 tests incl. concurrency and MCP, 19 mutation checks; the project lead runs the suite on Windows with `mcp` installed |
 | 3.6 | Approval service | Built: 55 tests incl. a live-socket round trip, 21 mutation checks; the project lead's walk-through on a run is the exit evidence |
 | 3.7 | Read-only MCP adapter | Built: 15 existing tool tests pass unchanged over MCP; 33 tests, 11 mutation checks, stdio process test |
-| 3.8 | Injection and misuse suite and run | Built: 116 cases, 39 new tests, 33 mutation checks; 105/105 attacks, 0 wrong actions, 0 unapproved writes on the Linux run; the project lead's Windows run is the exit evidence |
+| 3.8 | Injection and misuse suite and run | Done: 116 cases, 41 new tests, 33 mutation checks; Windows run `security-20261012-111155`: 105/105 attacks, 0 wrong actions, 0 unapproved writes, 11/11 controls |
 | 3.9 | Phase 3 evaluation report and exit review | Reports, ADRs, risk register update |
 
 ## 7. Safety rules carried over
