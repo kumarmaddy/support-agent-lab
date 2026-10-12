@@ -899,3 +899,31 @@ and not a tuned threshold; the final runs are the test of it.
 **Disclosed limits.** No approver authentication yet (3.6 is a local single-user page); addresses must read `street, city 12345`; `return_label` and `exchange` have no write tool; the sandbox records intended effects only; Windows confirmation of MCP SDK 2.x rests on the project lead's run.
 
 **Operational.** `pip install mcp`; `data/sandbox/` is generated, add it to `.gitignore`.
+
+
+### 3.6 Approval service
+
+**Built.** `src/approval/` (queue, pages, app, command-line launcher), a one-line extension to `ApprovalStore` (`once=True`: refuse a second decision inside the transaction), ADR-013. A local standard-library page lists a run's proposals (senior first), shows reason, records, ticket text, draft reply, rule and the exact effect, and takes Approve, Approve with my change, Reject (reason required). Execute is a separate step through the actions service. Approvals are re-checked by the policy engine with the entered values; a standard approver cannot decide senior-queue items; edits go to `data/edits/edits.jsonl` and the audit log.
+
+**Verified.** 1054 tests pass (1007 before; 47 new). 20 mutations of the new code were applied; the first run left 2 survivors, both the "senior role not enforced at the top of the decision" check, which was redundant for T-000149 because the re-evaluated policy also says senior. A test where the policy has since changed (recorded queue senior, current policy silent) was added; all 20 are caught. Rendering was inspected in Chromium (light, dark, phone width).
+
+**Found by testing.** Approve must not require the form to echo the proposed amount or address; an absent field now means "as proposed" (an empty amount is still refused).
+
+**Disclosed limits.** No login (name and role fixed at start; single-user local tool); the edits file holds raw values; return-label and exchange proposals are listed as manual; one run per server start.
+
+**Operational.** Add `data/edits/` to `.gitignore`.
+
+
+### 3.6 Approval service
+
+**Built.** `src/approval/` (queue, pages, app, command-line launcher), a one-line extension to `ApprovalStore` (`once=True`: refuse a second decision inside the transaction), ADR-013. A local standard-library page lists a run's proposals (senior first), shows reason, records, ticket text, draft reply, rule and the exact effect, and takes Approve, Approve with my change, Reject (reason required). Execute is a separate step through the actions service. Approvals are re-checked by the policy engine with the entered values; a standard approver cannot decide senior-queue items; edits go to `data/edits/edits.jsonl` and the audit log.
+
+**Verified.** 1062 tests pass (1007 before; 55 new). 21 mutations of the new code were applied; the first run left 2 survivors, both the "senior role not enforced at the top of the decision" check, which was redundant for T-000149 because the re-evaluated policy also says senior. A test where the policy has since changed (recorded queue senior, current policy silent) was added; all 21 are caught. Rendering was inspected in Chromium (light, dark, phone width).
+
+**Found by testing.** Approve must not require the form to echo the proposed amount or address; an absent field now means "as proposed" (an empty amount is still refused).
+
+**Found in the walk-through.** Posting from the editor's built-in browser pane was refused as "another site": the first version compared the Origin header with the page's own address, and an embedded browser can report a different Origin. The check now uses Fetch Metadata (`Sec-Fetch-Site`) when the browser sends it, with the Origin comparison as the fallback, and the refusal page states which values it saw. The per-start token, Host check and loopback binding are unchanged.
+
+**Disclosed limits.** No login (name and role fixed at start; single-user local tool); the edits file holds raw values; return-label and exchange proposals are listed as manual; one run per server start.
+
+**Operational.** Add `data/edits/` to `.gitignore`.

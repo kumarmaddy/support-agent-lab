@@ -1,0 +1,1 @@
+"""Approval service (phase-3-design.md, section 5.5; stage 3.6): a local web page where a person decides on proposed actions."""

@@ -21,6 +21,10 @@ class ApprovalError(Exception):
     pass
 
 
+class AlreadyDecided(ApprovalError):
+    pass
+
+
 @dataclass(frozen=True)
 class Approval:
     approval_id: str
@@ -45,7 +49,7 @@ class ApprovalStore:
     def __init__(self, conn: sqlite3.Connection, audit: Optional[AuditLog] = None, clock=_now):
         self.conn, self.audit, self.clock = conn, audit, clock
 
-    def _record(self, status, ticket_id, action, order_id, approver, payment_id, amount_cents, address, rule_id, note) -> Approval:
+    def _record(self, status, ticket_id, action, order_id, approver, payment_id, amount_cents, address, rule_id, note, once=False) -> Approval:
         if action not in ACTIONS:
             raise ApprovalError(f"unknown action {action!r}")
         if not (isinstance(ticket_id, str) and TICKET_ID.match(ticket_id)) or not (isinstance(order_id, str) and ORDER_ID.match(order_id)):
@@ -59,6 +63,8 @@ class ApprovalStore:
                 raise ApprovalError(f"an address approval needs the address (up to {MAX_ADDRESS} characters)")
         self.conn.execute("BEGIN IMMEDIATE")
         try:
+            if once and self.conn.execute("SELECT 1 FROM approvals WHERE ticket_id=? AND action=? AND order_id=?", (ticket_id, action, order_id)).fetchone():
+                raise AlreadyDecided(f"{ticket_id} / {action} / {order_id} has already been decided")
             n = self.conn.execute("SELECT COUNT(*) FROM approvals").fetchone()[0] + 1
             approval_id = f"AP-{n:06d}"
             row = (approval_id, ticket_id, action, order_id, payment_id or "", amount_cents, (address or "").strip(), status, approver.strip(),
@@ -76,11 +82,12 @@ class ApprovalStore:
                               actor=approval.approver)
         return approval
 
-    def grant(self, ticket_id, action, order_id, approver, *, payment_id="", amount_cents=None, address="", rule_id="", note="") -> Approval:
-        return self._record(APPROVED, ticket_id, action, order_id, approver, payment_id, amount_cents, address, rule_id, note)
+    def grant(self, ticket_id, action, order_id, approver, *, payment_id="", amount_cents=None, address="", rule_id="", note="", once=False) -> Approval:
+        """``once=True`` (the approval page) refuses a second decision on the same ticket, action and order, inside the same transaction."""
+        return self._record(APPROVED, ticket_id, action, order_id, approver, payment_id, amount_cents, address, rule_id, note, once)
 
-    def reject(self, ticket_id, action, order_id, approver, *, rule_id="", note="") -> Approval:
-        return self._record(REJECTED, ticket_id, action, order_id, approver, "", None, "", rule_id, note)
+    def reject(self, ticket_id, action, order_id, approver, *, rule_id="", note="", once=False) -> Approval:
+        return self._record(REJECTED, ticket_id, action, order_id, approver, "", None, "", rule_id, note, once)
 
     def get(self, approval_id: str) -> Optional[Approval]:
         row = self.conn.execute("SELECT * FROM approvals WHERE approval_id = ?", (approval_id,)).fetchone() if isinstance(approval_id, str) else None

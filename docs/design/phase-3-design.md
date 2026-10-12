@@ -1,6 +1,6 @@
 # Phase 3 Design: Governance Hardening
 
-- Version: 0.6 (stages 3.2 to 3.5 built; sections 5.1 to 5.4 describe the code as built)
+- Version: 0.7 (stages 3.2 to 3.6 built; sections 5.1 to 5.5 describe the code as built)
 - Date: 2026-10-11
 - Owner: Kumar Maddipatla, Project Lead
 - Builds on: phase-2-design.md v0.9, ADR-006 (fixed pipeline), ADR-008 (tools in-process, MCP in Phase 3), ADR-010, Phase 2 exit review
@@ -64,9 +64,14 @@ Acceptance criteria were written before the first run: `docs/project/stage-3.3-a
 - **MCP.** `src/actions/mcp_server.py` wraps the same service with the official Python SDK (version 2.x, `MCPServer`; `pip install mcp`, needed only for this module). Tests use the SDK's in-memory client. The SDK runs synchronous tools in a worker thread, which exposed a thread-affinity error in the first version; the service now serialises use of its connection.
 - **Limits.** (1) The approver's name is recorded as given; there is no login (the approval page of 3.6 is a local, single-user tool). (2) An address is accepted only in the form `street, city 12345`; anything else is refused for a person to enter. (3) A refund is complete when the amount equals the payment; partial refunds leave the payment status unchanged and a second refund on that payment is refused. (4) The sandbox records an intended effect; real execution against a payment provider or order system is out of scope for v1. (5) Confirmed on Windows, Python 3.13, MCP SDK 2.3.0 (project lead's test run, 2026-10-12).
 
-### 5.5 Approval service (stage 3.6)
-- Local page lists pending proposals (senior queue first). Approve, edit (amount or address, re-checked by the policy engine) or reject, each with a reason. Decisions go to the audit log; edits are saved as labelled data for evaluation (FR-11).
-- Rendered text is escaped, since ticket text is untrusted; no inline scripts; bound to localhost only.
+### 5.5 Approval service (stage 3.6, built)
+- **What it is.** A local web page (`python -m src.approval --run data/runs/<run> --approver "Name" [--role senior]`), Python standard library only, bound to 127.0.0.1. It lists the proposals of one run (senior queue first) with the reason, the records checked, the ticket text, the draft reply, the policy rule and exactly what the write tool would do.
+- **Decisions.** *Approve* (as proposed), *Approve with my change* (a different refund amount or address) and *Reject*, each with a required reason (up to 300 characters). An item refund proposes no amount, so the approver picks one of the order's payments and sets the amount. Approving only records the decision; a separate *Execute* button calls the actions service, and only when that tool is switched on in `config/actions.toml`. Decision and execution stay separate audit events.
+- **Re-checks.** Every approval is evaluated by the policy engine with the values the approver entered: a deny rule (for example a refund above the payment) refuses it with the rule id; a value that falls in the senior queue needs a senior approver. The queue recorded in the run is also enforced, so a policy edit after the run cannot downgrade a case. A second decision on the same ticket, action and order is refused inside the database transaction (tested with six simultaneous posts).
+- **Roles.** The approver's name and role (`standard` or `senior`) are fixed when the server starts. A standard approver sees senior-queue items but cannot decide them. This is a convention for a single-user local tool, not authentication (see limits).
+- **Edits as labelled data (FR-11).** An edit appends proposed value, final value, reason, approver and approval id to `data/edits/edits.jsonl` and writes an `edit` audit event (addresses redacted there).
+- **Web safety.** Host header must be 127.0.0.1 or localhost on the server's port (blocks DNS rebinding); every POST needs the per-start token and must be a same-origin request (Fetch Metadata `Sec-Fetch-Site`, else the Origin header; an embedded browser may report an unusual Origin, so Fetch Metadata decides when present); ticket text and every dynamic value are HTML-escaped; no script exists on the page and the Content-Security-Policy forbids scripts, inline styles, framing and cross-origin form posts; request bodies are capped at 16 KB; the server never logs request lines.
+- **Limits.** (1) No login: anyone who can use this computer's browser session and reach the loopback port can decide; the name on a decision is whatever was passed at start. Multi-user use needs real authentication and a new ADR. (2) `data/edits/edits.jsonl` holds the raw edited values (synthetic here); with real data it would need the same protection as the traces (section 5.3). (3) Proposals without a write tool (`return_label`, `exchange`) are listed as *manual* and cannot be decided here. (4) The page reads one run folder; it does not poll for new runs. (5) Rendering was checked in Chromium in light and dark themes, not in every browser.
 
 ### 5.6 Read-only MCP adapter (stage 3.7)
 `get_ticket`, `find_customer`, `list_open_orders`, `get_order`, `get_payment_records` served over MCP and required to pass the existing tool tests unchanged (ADR-008).
@@ -83,7 +88,7 @@ Acceptance criteria were written before the first run: `docs/project/stage-3.3-a
 | 3.3 | Must-escalate rules (S18, S20, S25), read prompt v5 | Done: 7B meets all ten criteria; 3B (prompt v6) meets four of five gating criteria and misses one by one ticket; `docs/project/stage-3.3-results.md`, ADR-011 |
 | 3.4 | Audit log and redaction | Built: 45 tests, leak test on the dev tickets, mutation checks; a short run and `python -m src.audit --ticket` are the project lead's next step |
 | 3.5 | Actions server, idempotency, sandbox ledger, MCP | Built: 48 tests incl. concurrency and MCP, 19 mutation checks; the project lead runs the suite on Windows with `mcp` installed |
-| 3.6 | Approval service | Tests; walk-through on a run |
+| 3.6 | Approval service | Built: 55 tests incl. a live-socket round trip, 21 mutation checks; the project lead's walk-through on a run is the exit evidence |
 | 3.7 | Read-only MCP adapter | Existing tool tests pass over MCP |
 | 3.8 | Injection and misuse suite and run | O7 100% target, O2 and unapproved writes 0 |
 | 3.9 | Phase 3 evaluation report and exit review | Reports, ADRs, risk register update |
@@ -99,3 +104,5 @@ R2 and R3 (a 16 GB laptop and slow runs: the engine and audit are pure code, the
 - MCP SDK 2.3.0 on Python 3.13 confirmed on Windows and Linux.
 - `return_label` and `exchange` proposals have no write tool.
 - Traces (`resolutions.jsonl`, `trace.jsonl`) keep raw synthetic values; a redaction layer for them is needed before any real data (section 5.3).
+- The approval page has no authentication (section 5.5); acceptable for a single-user local tool only.
+- `data/edits/edits.jsonl` is raw labelled data; protect it like the traces before any real data.
