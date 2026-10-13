@@ -1,0 +1,712 @@
+{
+  "accepted": 40,
+  "agent": {
+    "action_ok": 37,
+    "category_ok": 38,
+    "escalation_ok": 40
+  },
+  "approved_errors": [
+    "T-000028",
+    "T-000046",
+    "T-000128"
+  ],
+  "disagreements": [
+    "T-000021",
+    "T-000128",
+    "T-000032",
+    "T-000046",
+    "T-000028",
+    "T-000042",
+    "T-000132",
+    "T-000036",
+    "T-000047",
+    "T-000086",
+    "T-000056",
+    "T-000043"
+  ],
+  "final_ok": 37,
+  "gap_hours": [
+    0.7
+  ],
+  "lookups_review": 0,
+  "manual": {
+    "accuracy": {
+      "actions_ok": 0.775,
+      "category_ok": 0.9,
+      "consequential_ok": 0.85,
+      "escalate_ok": 0.925,
+      "kb_ok": 0.65
+    },
+    "by_difficulty": {
+      "adversarial": {
+        "actions_ok": 0.6666666666666666,
+        "max": 122.1,
+        "mean": 90.3,
+        "median": 84.7,
+        "min": 64.1,
+        "n": 3,
+        "p90": 122.1,
+        "total": 270.9
+      },
+      "edge": {
+        "actions_ok": 0.7692307692307693,
+        "max": 175.1,
+        "mean": 91.71538461538461,
+        "median": 80.7,
+        "min": 52.9,
+        "n": 13,
+        "p90": 151.0,
+        "total": 1192.3
+      },
+      "standard": {
+        "actions_ok": 0.7916666666666666,
+        "max": 178.5,
+        "mean": 85.78333333333335,
+        "median": 78.30000000000001,
+        "min": 39.3,
+        "n": 24,
+        "p90": 131.9,
+        "total": 2058.8
+      }
+    },
+    "consequential_relevant": {
+      "correct": 10,
+      "n": 16
+    },
+    "counts": {
+      "actions_ok": {
+        "correct": 31,
+        "n": 40
+      },
+      "category_ok": {
+        "correct": 36,
+        "n": 40
+      },
+      "consequential_ok": {
+        "correct": 34,
+        "n": 40
+      },
+      "escalate_ok": {
+        "correct": 37,
+        "n": 40
+      },
+      "kb_ok": {
+        "correct": 26,
+        "n": 40
+      }
+    },
+    "disagreements": [
+      {
+        "actions_ok": false,
+        "category": "return_exchange",
+        "category_ok": true,
+        "consequential_ok": false,
+        "consequential_relevant": true,
+        "difficulty": "edge",
+        "escalate_ok": true,
+        "expected_actions": [
+          "decline_policy"
+        ],
+        "expected_escalate": false,
+        "handled_actions": [
+          "propose_return_label"
+        ],
+        "handled_category": "return_exchange",
+        "handled_escalate": false,
+        "kb_ok": true,
+        "missing_kb": [],
+        "position": 1,
+        "scenario_id": "S06",
+        "seconds": 175.1,
+        "ticket_id": "T-000021"
+      },
+      {
+        "actions_ok": false,
+        "category": "other",
+        "category_ok": true,
+        "consequential_ok": true,
+        "consequential_relevant": false,
+        "difficulty": "adversarial",
+        "escalate_ok": false,
+        "expected_actions": [
+          "escalate_human"
+        ],
+        "expected_escalate": true,
+        "handled_actions": [
+          "decline_policy"
+        ],
+        "handled_category": "other",
+        "handled_escalate": false,
+        "kb_ok": true,
+        "missing_kb": [],
+        "position": 5,
+        "scenario_id": "S25",
+        "seconds": 84.7,
+        "ticket_id": "T-000032"
+      },
+      {
+        "actions_ok": true,
+        "category": "account",
+        "category_ok": false,
+        "consequential_ok": true,
+        "consequential_relevant": false,
+        "difficulty": "standard",
+        "escalate_ok": true,
+        "expected_actions": [
+          "provide_info"
+        ],
+        "expected_escalate": false,
+        "handled_actions": [
+          "provide_info"
+        ],
+        "handled_category": "product_info",
+        "handled_escalate": false,
+        "kb_ok": true,
+        "missing_kb": [],
+        "position": 6,
+        "scenario_id": "S17",
+        "seconds": 78.4,
+        "ticket_id": "T-000046"
+      },
+      {
+        "actions_ok": true,
+        "category": "order_status",
+        "category_ok": true,
+        "consequential_ok": true,
+        "consequential_relevant": false,
+        "difficulty": "standard",
+        "escalate_ok": true,
+        "expected_actions": [
+          "provide_info"
+        ],
+        "expected_escalate": false,
+        "handled_actions": [
+          "provide_info"
+        ],
+        "handled_category": "order_status",
+        "handled_escalate": false,
+        "kb_ok": false,
+        "missing_kb": [
+          "KB-SHP-01"
+        ],
+        "position": 9,
+        "scenario_id": "S01",
+        "seconds": 78.2,
+        "ticket_id": "T-000059"
+      },
+      {
+        "actions_ok": false,
+        "category": "order_status",
+        "category_ok": true,
+        "consequential_ok": true,
+        "consequential_relevant": false,
+        "difficulty": "edge",
+        "escalate_ok": false,
+        "expected_actions": [
+          "escalate_human"
+        ],
+        "expected_escalate": true,
+        "handled_actions": [
+          "provide_info"
+        ],
+        "handled_category": "order_status",
+        "handled_escalate": false,
+        "kb_ok": false,
+        "missing_kb": [
+          "KB-SHP-03"
+        ],
+        "position": 10,
+        "scenario_id": "S22",
+        "seconds": 79.8,
+        "ticket_id": "T-000042"
+      },
+      {
+        "actions_ok": true,
+        "category": "product_info",
+        "category_ok": false,
+        "consequential_ok": true,
+        "consequential_relevant": false,
+        "difficulty": "standard",
+        "escalate_ok": true,
+        "expected_actions": [
+          "provide_info"
+        ],
+        "expected_escalate": false,
+        "handled_actions": [
+          "provide_info"
+        ],
+        "handled_category": "other",
+        "handled_escalate": false,
+        "kb_ok": true,
+        "missing_kb": [],
+        "position": 11,
+        "scenario_id": "S19",
+        "seconds": 87.0,
+        "ticket_id": "T-000066"
+      },
+      {
+        "actions_ok": false,
+        "category": "return_exchange",
+        "category_ok": true,
+        "consequential_ok": false,
+        "consequential_relevant": true,
+        "difficulty": "standard",
+        "escalate_ok": true,
+        "expected_actions": [
+          "propose_exchange"
+        ],
+        "expected_escalate": false,
+        "handled_actions": [
+          "propose_return_label"
+        ],
+        "handled_category": "return_exchange",
+        "handled_escalate": false,
+        "kb_ok": false,
+        "missing_kb": [
+          "KB-RET-04"
+        ],
+        "position": 12,
+        "scenario_id": "S08",
+        "seconds": 104.0,
+        "ticket_id": "T-000132"
+      },
+      {
+        "actions_ok": true,
+        "category": "cancellation",
+        "category_ok": true,
+        "consequential_ok": true,
+        "consequential_relevant": false,
+        "difficulty": "edge",
+        "escalate_ok": true,
+        "expected_actions": [
+          "decline_policy"
+        ],
+        "expected_escalate": false,
+        "handled_actions": [
+          "decline_policy"
+        ],
+        "handled_category": "cancellation",
+        "handled_escalate": false,
+        "kb_ok": false,
+        "missing_kb": [
+          "KB-SHP-02"
+        ],
+        "position": 13,
+        "scenario_id": "S14",
+        "seconds": 85.5,
+        "ticket_id": "T-000062"
+      },
+      {
+        "actions_ok": true,
+        "category": "order_status",
+        "category_ok": true,
+        "consequential_ok": true,
+        "consequential_relevant": false,
+        "difficulty": "standard",
+        "escalate_ok": true,
+        "expected_actions": [
+          "provide_info"
+        ],
+        "expected_escalate": false,
+        "handled_actions": [
+          "provide_info"
+        ],
+        "handled_category": "order_status",
+        "handled_escalate": false,
+        "kb_ok": false,
+        "missing_kb": [
+          "KB-SHP-01"
+        ],
+        "position": 15,
+        "scenario_id": "S01",
+        "seconds": 84.2,
+        "ticket_id": "T-000035"
+      },
+      {
+        "actions_ok": false,
+        "category": "return_exchange",
+        "category_ok": true,
+        "consequential_ok": false,
+        "consequential_relevant": true,
+        "difficulty": "standard",
+        "escalate_ok": true,
+        "expected_actions": [
+          "propose_return_label"
+        ],
+        "expected_escalate": false,
+        "handled_actions": [
+          "propose_replacement"
+        ],
+        "handled_category": "return_exchange",
+        "handled_escalate": false,
+        "kb_ok": false,
+        "missing_kb": [
+          "KB-RET-01",
+          "KB-RET-02"
+        ],
+        "position": 19,
+        "scenario_id": "S05",
+        "seconds": 111.9,
+        "ticket_id": "T-000036"
+      },
+      {
+        "actions_ok": true,
+        "category": "order_status",
+        "category_ok": true,
+        "consequential_ok": true,
+        "consequential_relevant": false,
+        "difficulty": "standard",
+        "escalate_ok": true,
+        "expected_actions": [
+          "provide_info"
+        ],
+        "expected_escalate": false,
+        "handled_actions": [
+          "provide_info"
+        ],
+        "handled_category": "order_status",
+        "handled_escalate": false,
+        "kb_ok": false,
+        "missing_kb": [
+          "KB-SHP-01"
+        ],
+        "position": 23,
+        "scenario_id": "S01",
+        "seconds": 55.9,
+        "ticket_id": "T-000071"
+      },
+      {
+        "actions_ok": true,
+        "category": "refund",
+        "category_ok": false,
+        "consequential_ok": true,
+        "consequential_relevant": false,
+        "difficulty": "standard",
+        "escalate_ok": true,
+        "expected_actions": [
+          "escalate_human"
+        ],
+        "expected_escalate": true,
+        "handled_actions": [
+          "escalate_human"
+        ],
+        "handled_category": "order_status",
+        "handled_escalate": true,
+        "kb_ok": false,
+        "missing_kb": [
+          "KB-REF-04"
+        ],
+        "position": 25,
+        "scenario_id": "S21",
+        "seconds": 131.9,
+        "ticket_id": "T-000114"
+      },
+      {
+        "actions_ok": false,
+        "category": "return_exchange",
+        "category_ok": true,
+        "consequential_ok": false,
+        "consequential_relevant": true,
+        "difficulty": "standard",
+        "escalate_ok": true,
+        "expected_actions": [
+          "propose_replacement"
+        ],
+        "expected_escalate": false,
+        "handled_actions": [
+          "propose_exchange"
+        ],
+        "handled_category": "return_exchange",
+        "handled_escalate": false,
+        "kb_ok": false,
+        "missing_kb": [
+          "KB-REF-03"
+        ],
+        "position": 26,
+        "scenario_id": "S11",
+        "seconds": 55.2,
+        "ticket_id": "T-000047"
+      },
+      {
+        "actions_ok": true,
+        "category": "order_status",
+        "category_ok": true,
+        "consequential_ok": true,
+        "consequential_relevant": false,
+        "difficulty": "adversarial",
+        "escalate_ok": true,
+        "expected_actions": [
+          "provide_info"
+        ],
+        "expected_escalate": false,
+        "handled_actions": [
+          "provide_info"
+        ],
+        "handled_category": "order_status",
+        "handled_escalate": false,
+        "kb_ok": false,
+        "missing_kb": [
+          "KB-SHP-01"
+        ],
+        "position": 27,
+        "scenario_id": "S24",
+        "seconds": 64.1,
+        "ticket_id": "T-000024"
+      },
+      {
+        "actions_ok": false,
+        "category": "return_exchange",
+        "category_ok": true,
+        "consequential_ok": false,
+        "consequential_relevant": true,
+        "difficulty": "standard",
+        "escalate_ok": true,
+        "expected_actions": [
+          "propose_return_label"
+        ],
+        "expected_escalate": false,
+        "handled_actions": [
+          "propose_replacement"
+        ],
+        "handled_category": "return_exchange",
+        "handled_escalate": false,
+        "kb_ok": false,
+        "missing_kb": [
+          "KB-RET-02"
+        ],
+        "position": 31,
+        "scenario_id": "S05",
+        "seconds": 83.4,
+        "ticket_id": "T-000086"
+      },
+      {
+        "actions_ok": true,
+        "category": "return_exchange",
+        "category_ok": true,
+        "consequential_ok": true,
+        "consequential_relevant": true,
+        "difficulty": "standard",
+        "escalate_ok": true,
+        "expected_actions": [
+          "propose_exchange"
+        ],
+        "expected_escalate": false,
+        "handled_actions": [
+          "propose_exchange"
+        ],
+        "handled_category": "return_exchange",
+        "handled_escalate": false,
+        "kb_ok": false,
+        "missing_kb": [
+          "KB-RET-04"
+        ],
+        "position": 35,
+        "scenario_id": "S08",
+        "seconds": 74.4,
+        "ticket_id": "T-000013"
+      },
+      {
+        "actions_ok": true,
+        "category": "order_status",
+        "category_ok": true,
+        "consequential_ok": true,
+        "consequential_relevant": false,
+        "difficulty": "edge",
+        "escalate_ok": true,
+        "expected_actions": [
+          "request_info"
+        ],
+        "expected_escalate": false,
+        "handled_actions": [
+          "request_info"
+        ],
+        "handled_category": "order_status",
+        "handled_escalate": false,
+        "kb_ok": false,
+        "missing_kb": [
+          "KB-ORD-02"
+        ],
+        "position": 36,
+        "scenario_id": "S04",
+        "seconds": 52.9,
+        "ticket_id": "T-000150"
+      },
+      {
+        "actions_ok": false,
+        "category": "order_status",
+        "category_ok": true,
+        "consequential_ok": true,
+        "consequential_relevant": false,
+        "difficulty": "standard",
+        "escalate_ok": false,
+        "expected_actions": [
+          "provide_info"
+        ],
+        "expected_escalate": false,
+        "handled_actions": [
+          "escalate_human"
+        ],
+        "handled_category": "order_status",
+        "handled_escalate": true,
+        "kb_ok": true,
+        "missing_kb": [],
+        "position": 39,
+        "scenario_id": "S02",
+        "seconds": 115.5,
+        "ticket_id": "T-000056"
+      },
+      {
+        "actions_ok": false,
+        "category": "cancellation",
+        "category_ok": false,
+        "consequential_ok": false,
+        "consequential_relevant": true,
+        "difficulty": "edge",
+        "escalate_ok": true,
+        "expected_actions": [
+          "decline_policy"
+        ],
+        "expected_escalate": false,
+        "handled_actions": [
+          "propose_return_label"
+        ],
+        "handled_category": "return_exchange",
+        "handled_escalate": false,
+        "kb_ok": false,
+        "missing_kb": [
+          "KB-CAN-01"
+        ],
+        "position": 40,
+        "scenario_id": "S14",
+        "seconds": 65.8,
+        "ticket_id": "T-000043"
+      }
+    ],
+    "escalation": {
+      "fn": 2,
+      "fp": 1,
+      "precision": 0.75,
+      "recall": 0.6,
+      "tn": 34,
+      "tp": 3
+    },
+    "learning": {
+      "first_third_mean": 95.69999999999999,
+      "first_third_median": 85.5,
+      "last_third_mean": 67.71538461538461,
+      "last_third_median": 58.8,
+      "third": 13
+    },
+    "misses": [
+      {
+        "scenario_id": "S06",
+        "ticket_id": "T-000021"
+      },
+      {
+        "scenario_id": "S25",
+        "ticket_id": "T-000032"
+      },
+      {
+        "scenario_id": "S17",
+        "ticket_id": "T-000046"
+      },
+      {
+        "scenario_id": "S22",
+        "ticket_id": "T-000042"
+      },
+      {
+        "scenario_id": "S19",
+        "ticket_id": "T-000066"
+      },
+      {
+        "scenario_id": "S08",
+        "ticket_id": "T-000132"
+      },
+      {
+        "scenario_id": "S05",
+        "ticket_id": "T-000036"
+      },
+      {
+        "scenario_id": "S21",
+        "ticket_id": "T-000114"
+      },
+      {
+        "scenario_id": "S11",
+        "ticket_id": "T-000047"
+      },
+      {
+        "scenario_id": "S05",
+        "ticket_id": "T-000086"
+      },
+      {
+        "scenario_id": "S02",
+        "ticket_id": "T-000056"
+      },
+      {
+        "scenario_id": "S14",
+        "ticket_id": "T-000043"
+      }
+    ],
+    "pauses": 0,
+    "tickets": 40,
+    "time": {
+      "max": 178.5,
+      "mean": 88.05,
+      "median": 80.25,
+      "min": 39.3,
+      "n": 40,
+      "p90": 131.9,
+      "total": 3522.0
+    }
+  },
+  "manual_counts": {
+    "actions_ok": {
+      "correct": 31,
+      "n": 40
+    },
+    "category_ok": {
+      "correct": 36,
+      "n": 40
+    },
+    "consequential_ok": {
+      "correct": 34,
+      "n": 40
+    },
+    "escalate_ok": {
+      "correct": 37,
+      "n": 40
+    },
+    "kb_ok": {
+      "correct": 26,
+      "n": 40
+    }
+  },
+  "manual_seconds": {
+    "max": 178.5,
+    "mean": 88.05,
+    "median": 80.25,
+    "min": 39.3,
+    "n": 40,
+    "p90": 131.9,
+    "total": 3522.0
+  },
+  "n": 40,
+  "outcomes": {
+    "accept": 40,
+    "major_edit": 0,
+    "minor_edit": 0,
+    "reject": 0
+  },
+  "overruled_correct": [],
+  "rater": null,
+  "review_seconds": {
+    "max": 10.7,
+    "mean": 2.13,
+    "median": 1.7,
+    "min": 1.4,
+    "n": 40,
+    "p90": 2.8,
+    "total": 85.2
+  },
+  "review_vs_manual_median_ratio": 0.02092866213791852
+}
