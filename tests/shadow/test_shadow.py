@@ -395,3 +395,50 @@ def test_review_order_comes_from_its_own_seeded_shuffle():
     expected = list(s["ticket_ids"])
     random.Random("40404:shadow:review-order").shuffle(expected)
     assert s["review_order"] == expected
+
+
+def test_report_names_the_missing_step_instead_of_failing(tmp_path, dev_db, capsys):
+    root = cli_root(tmp_path, dev_db, ended_hours_ago=30)
+    assert run_cli(tmp_path, root, "report") == 1                       # Step A complete, no review file
+    assert "Step B (review.jsonl) is missing 2 of 2 tickets" in capsys.readouterr().out
+    (tmp_path / "manual.jsonl").write_text("", encoding="utf-8")
+    assert run_cli(tmp_path, root, "report") == 1
+    assert "Step A (manual.jsonl) is missing" in capsys.readouterr().out
+
+
+def test_a_two_second_review_is_flagged_as_not_valid_and_a_real_one_is_not():
+    inputs = report_inputs()
+    ok = rep.summarise_shadow(*inputs)
+    assert ok["review_timing_valid"] is True and "not a valid measurement" not in rep.render(ok, inputs[0], "run-1", "2026-10-20")
+    sample, manual, review, ratings, labels, score = report_inputs()
+    for r in review:
+        r["seconds"] = 2.0
+    bad = rep.summarise_shadow(sample, manual, review, ratings, labels, score)
+    text = rep.render(bad, sample, "run-1", "2026-10-20")
+    assert bad["review_timing_valid"] is False
+    assert "Step B is not a valid measurement" in text and "median review time was 2 s" in text and "must not be quoted as results" in text
+
+
+def test_the_validity_floor_is_on_the_median_not_the_mean():
+    sample, manual, review, ratings, labels, score = report_inputs()
+    for r, secs in zip(review, (2.0, 2.0, 2.0, 600.0)):
+        r["seconds"] = secs                                           # mean 151 s, median 2 s
+    assert rep.summarise_shadow(sample, manual, review, ratings, labels, score)["review_timing_valid"] is False
+    for r, secs in zip(review, (2.0, 30.0, 40.0, 50.0)):
+        r["seconds"] = secs                                           # median 35 s
+    assert rep.summarise_shadow(sample, manual, review, ratings, labels, score)["review_timing_valid"] is True
+
+
+def test_a_gap_shorter_than_planned_is_marked_in_the_report():
+    sample, manual, review, ratings, labels, score = report_inputs()
+    short = [dict(r, gap_hours=0.7) for r in review]
+    text = rep.render(rep.summarise_shadow(sample, manual, short, ratings, labels, score), sample, "run-1", "2026-10-20")
+    assert "0.7 hours (below the planned 24)" in text
+    assert "(below the planned" not in rep.render(rep.summarise_shadow(*report_inputs()), sample, "run-1", "2026-10-20")
+
+
+def test_a_median_exactly_at_the_floor_is_valid():
+    sample, manual, review, ratings, labels, score = report_inputs()
+    for r in review:
+        r["seconds"] = rep.MIN_PLAUSIBLE_REVIEW_MEDIAN_S
+    assert rep.summarise_shadow(sample, manual, review, ratings, labels, score)["review_timing_valid"] is True

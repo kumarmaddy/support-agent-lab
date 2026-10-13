@@ -4,9 +4,9 @@ A proof of concept for resolving customer support tickets with a local, open-wei
 decision layer and a measured evaluation. It runs entirely on one machine (CPU only, 16 GB RAM) at no licensing or API
 cost, on fully synthetic data for a fictional online retailer, NorthPeak Outdoors.
 
-**Status:** Phase 4 of 5 in progress (stage 4.1, design and acceptance criteria, awaiting approval). Phases 0 to 3
-(discovery, thin slice, knowledge and transactions, policy/approvals/audit/security) are closed. See
-[Project status](#project-status).
+**Status:** Phases 0 to 4 are closed (exit review of Phase 4: 2026-10-13); Phase 5 (outcome report and demonstration) is
+next. On unseen tickets the agent kept its safety properties but **missed two of its pre-registered targets** (see
+[Phase 4 results](#phase-4-results-held-out-split-qwen257b)). See [Project status](#project-status).
 
 ## What it does
 
@@ -54,13 +54,35 @@ Design principles:
 | 1 | Thin vertical slice (order-status tickets), tracing, first evaluation | Complete |
 | 2 | Knowledge-base retrieval with citations; returns, refunds, cancellations, address changes (proposals) | Complete |
 | 3 | Policy engine, approvals, audit log, write path, read-only MCP adapter, security testing | Complete (exit review 2026-10-12, risk register v1.6) |
-| 4 | Measurement against the baseline on the held-out set; shadow mode; simulated limited auto-resolve; business case | **In progress**: stage 4.1 (pre-registered criteria) drafted, awaiting approval |
-| 5 | Outcome report, demonstration, README as program brief, handover | Planned |
+| 4 | Measurement against the baseline on the held-out set; shadow mode; simulated limited auto-resolve; business case | Complete (exit review 2026-10-13, risk register v1.7) |
+| 5 | Outcome report, demonstration, README as program brief, handover | Next |
 
-The held-out split (150 tickets) has not been opened. Phase 4 criteria are written before any held-out result exists and
-are not changed afterwards: `docs/project/phase-4-design-and-acceptance.md`.
+The held-out split (150 tickets) was opened once per model, through a gate that refuses a second run (ADR-016). The Phase 4
+criteria were written before any held-out result existed and were not changed afterwards:
+`docs/project/phase-4-design-and-acceptance.md`.
 
-### Evidence so far (development split, qwen2.5:7b, final Phase 3 run)
+### Phase 4 results (held-out split, qwen2.5:7b)
+
+| Criterion | Target | Result | Status |
+|---|---|---|---|
+| P1 Answered without a person and correct | at least 50% | 61/125 = 48.8% (40 to 57%) | **Missed** |
+| P2 Wrong consequential proposals | 0 | 2 of 55 (day-30 return boundary); none executed | **Missed** |
+| P3 / P4 Escalation precision / recall | 85% / 95% | 21/21 / 21/22 | Met, not conclusive |
+| P5 Citation validity | 95% | 120/125 = 96.0% | Met, not conclusive |
+| P6 Category accuracy | 90% | 136/150 = 90.7% | Met, not conclusive |
+| P7 Priority accuracy | 80% | The agent has no priority output | Not assessed |
+| P8 Seeded attacks, live model | 100% | 41/41, 0 wrong actions, 0 unapproved writes | Met |
+| P9 / P10 Time / compute cost | reported / $0 | median 17.6 s per ticket / $0 | Reported / Met |
+| P11 Business case | complete | break-even review share 78%; no review time was measured | Complete, with limits |
+
+Also measured: nothing outside the agent's scope was answered wrongly (0/25), the shadow-mode comparison of handling by hand
+with the agent on 40 held-out tickets, a simulated limited auto-resolve (30 of 150 tickets eligible, 0 wrong, but too few to
+show the error rate is under 5%) and a 3B-model comparison (one misspelt legal threat was missed by the 3B model).
+**The shadow-mode review of the agent's drafts is not a valid measurement** (the drafts were accepted without being read), so
+no review time or acceptance rate is reported. Full results, every miss with its cause, and the deviations from the plan:
+`docs/project/phase-4-evaluation-report.md` and `docs/project/phase-4-exit-review.md`.
+
+### Development-split evidence (qwen2.5:7b, final Phase 3 run)
 
 | Measure | Result | Where |
 |---------|--------|-------|
@@ -72,10 +94,9 @@ are not changed afterwards: `docs/project/phase-4-design-and-acceptance.md`.
 | Answered without a person and correct | 62/125 = 49.6% (41 to 58%): **not conclusive against the 50% target** | same |
 | Latency per ticket | median 17.8 s, p90 33.4 s | `docs/evidence/phase-3-final-run.txt` |
 | Injection suite | 105/105 attacks neutralised, 0 wrong actions, 0 unapproved writes (scripted worst-case model) | `docs/project/phase-3-evaluation-report.md` |
-| Tests | 1,136 passing; mutation checks recorded per stage | `docs/build_log.md` |
+| Tests | 1,249 passing (at the end of Phase 4); mutation checks recorded per stage | `docs/build_log.md` |
 
-These are **development-split** numbers, used for tuning. They are not the final measurement. Held-out results,
-shadow-mode comparison and the business case are produced in Phase 4 and are not reported yet.
+These are **development-split** numbers, used for tuning. They are not the final measurement; the held-out results are above.
 
 ## Quick start
 
@@ -87,7 +108,7 @@ python -m venv .venv
 .venv\Scripts\activate            # Windows PowerShell; on Linux or macOS: source .venv/bin/activate
 pip install pytest
 
-python -m pytest -q               # 1,136 tests, no model needed
+python -m pytest -q               # 1,249 tests, no model needed
 ```
 
 Generate and verify the synthetic data (written outside version control):
@@ -117,7 +138,17 @@ python -m src.security                                                          
 
 Commit before an official run: `run.json` records the git commit and whether the working tree was clean.
 
-The held-out split is opened once, in Phase 4. The runner refuses it until the freeze procedure is done.
+The held-out split was opened once per model in Phase 4. The ordinary run and score tools refuse it; the gate in
+`src/evaluation/heldout.py` is the only way in (procedure: `docs/project/phase-4-heldout-runbook.md`). Re-running it would
+not reproduce a fresh measurement: a second run per model is refused unless a reason is recorded, and a fix must be
+measured on a new split with a fresh seed. The Phase 4 tools that run on stored results are:
+
+```powershell
+python -m src.security.live                                   # live-model injection run (about 15 minutes)
+python -m src.evaluation.autoresolve --run data\runs\<held-out 7B run>       # simulated limited auto-resolve
+python -m src.evaluation.businesscase --run data\runs\<held-out 7B run>      # run-rate business case
+python -m src.shadow prepare | handle | review | rate | report                  # shadow mode (docs/project/phase-4-shadow-runbook.md)
+```
 
 ## Run output
 
@@ -141,12 +172,14 @@ src/
   kb/          knowledge-base article loader and validation
   baseline/    manual handling baseline: timed sessions, scoring with intervals, disagreement review
   agent/       the pipeline (reading, backstop, decide, knowledge, transactions, policy, reply, validate, handover, tracing)
-  evaluation/  scorer and comparison tools; kept separate from the agent, the only code that reads labels
+  evaluation/  scorer, comparison tools, held-out gate, auto-resolve simulation, business case; kept separate from the agent,
+               the only code that reads labels
   actions/     write path: sandbox database, action ledger, approvals, MCP server (write tools off by default)
   approval/    local approval page (stdlib http.server on 127.0.0.1)
   audit/       append-only hash-chained audit log, redaction, verify command
   readtools/   read-only MCP adapter for connecting a host
-  security/    injection suite: cases, hostile model, runner, scorer
+  security/    injection suite: cases, hostile model, runner, scorer; live-model runner (Phase 4)
+  shadow/      shadow mode: sample, timed sessions, second-reviewer rubric, report (Phase 4)
 config/        policy.toml, actions.toml
 scripts/       measurement aids that read labels; kept outside the agent package
 data/
@@ -163,12 +196,13 @@ The agent package cannot reach labels, the dataset generator or the baseline too
 
 - **Charter and objectives** (O1 to O8): `docs/project/charter.md`.
 - **Design documents** (`docs/design/`): Phase 1 to 3 designs and the data design.
-- **Phase 4 design and acceptance criteria**: `docs/project/phase-4-design-and-acceptance.md`.
+- **Phase 4** (`docs/project/`): design and acceptance criteria, held-out runbook and results, shadow-mode runbook and report,
+  auto-resolve and business-case method and results, evaluation report and exit review.
 - **Architecture decisions** (`docs/adr/`): model selection (003), refund thresholds (004), data store (005), fixed pipeline
   (006), knowledge retrieval and routing (009, 010), read prompts (011), write path (012), approval page (013), read-only
-  MCP adapter (014), keyword backstop (015).
+  MCP adapter (014), keyword backstop (015), held-out access gate (016).
 - **Evaluation reports and exit reviews** (`docs/project/`): one per phase.
-- **Risk register** (`docs/project/risk_register.md`, v1.6): risks, mitigations, measured evidence.
+- **Risk register** (`docs/project/risk_register.md`, v1.7): risks, mitigations, measured evidence.
 - **Baseline protocol and report** (`docs/project/`).
 - **Build log** (`docs/build_log.md`): what changed at each stage, why, and the evidence.
 
@@ -179,11 +213,16 @@ The agent package cannot reach labels, the dataset generator or the baseline too
 - Evaluation is performed by the project team; independent external review is not in scope. The manual baseline comes
   from one handler, whose speed improved during the session (first-third median 237 s, last-third median 103 s).
 - Models are limited to about 7B parameters on CPU. Results are expected to be below those of large hosted models.
-- The development split was used for design and tuning. The held-out split is reserved for the final measurement.
-- The injection suite uses a scripted worst-case model; the keyword backstop does not catch misspelt threats (R17).
+- The development split was used for design and tuning. The held-out split is now used; any fix to a defect it exposed must be
+  measured on a new split.
+- The live injection run covers the 45 cases that call a model and is not an independent test; the keyword backstop does not
+  catch misspelt threats (R17).
+- Shadow mode: one handler who is also the author, no second reviewer, and the review of the agent's drafts was not valid
+  (R23). No review time has been measured, so the business case reports a break-even review share, not a saving.
 - The approval page has no approver login, and the read-only MCP tools expose personal data to any connected host. Neither
   is acceptable with real data.
-- The autonomous-resolution rate (49.6%) is not conclusively above the 50% target on the development split.
+- The autonomous-resolution rate is 48.8% on the held-out split (target 50%): missed. The day-30 return-window boundary
+  produced the two wrong proposals (R22).
 
 ## Licence
 

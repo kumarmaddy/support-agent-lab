@@ -134,3 +134,10 @@ def test_payback_is_none_not_a_crash_when_the_saving_is_exactly_zero():
 def test_base_case_table_shows_cents_and_the_share_of_time_saved():
     text = bc.render(case(), "run-x", "2026-10-14")
     assert "| $0.69 | $0.49 | $0.45 | 30% / 35% |" in text          # T = 100 s at $25/h: S0 69c, S1 70 s = 49c, S2 65 s = 45c
+
+
+def test_wording_fixes_from_the_stage_4_7_review():
+    text = bc.render(case(), "run-x", "2026-10-14")
+    assert "break-even review share" in text and "break-even review time" not in text
+    assert "| Time to handle by hand | " in text and "| T | " not in text
+    assert "has to include the time spent correcting and rejecting drafts" in text and "counted, not priced" in text

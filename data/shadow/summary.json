@@ -708,5 +708,6 @@
     "p90": 2.8,
     "total": 85.2
   },
+  "review_timing_valid": false,
   "review_vs_manual_median_ratio": 0.02092866213791852
 }

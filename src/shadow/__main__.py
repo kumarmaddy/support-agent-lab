@@ -125,6 +125,11 @@ def cmd_rate(args, root) -> int:
 def cmd_report(args, root) -> int:
     sample = load_sample(args.sample)
     manual, review, ratings = read_jsonl(args.manual), read_jsonl(args.review), read_jsonl(args.ratings)
+    for name, rows in (("Step A (manual.jsonl)", [r for r in manual if not r["practice"]]), ("Step B (review.jsonl)", review)):
+        missing = [t for t in sample["ticket_ids"] if t not in {r["ticket_id"] for r in rows}]
+        if missing:
+            print(f"{name} is missing {len(missing)} of {len(sample['ticket_ids'])} tickets (first: {', '.join(missing[:5])}). Finish it, then run report again.")
+            return 1
     labels_by_id = {lab["ticket_id"]: lab for lab in label_io.read_labels(root / args.labels)}
     run_dir = agent_run_dir(root)
     score = json.loads((run_dir / "score.json").read_text(encoding="utf-8"))

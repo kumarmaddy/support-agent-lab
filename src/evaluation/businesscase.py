@@ -116,7 +116,7 @@ def render(case: dict, run_id: str, day: str, build_hours=None) -> str:
          f"| Eligible for auto-resolve (e), from the simulation | {sh['eligible']} of {sh['n']} = {sh['e']:.1%} (95% interval {sh['e_interval'][0]:.1%} to {sh['e_interval'][1]:.1%}) |",
          f"| Wrong proposals (not monetised) | {len(sh['wrong_proposals'])} of {sh['proposals']}" + (f" ({', '.join(sh['wrong_proposals'])})" if sh["wrong_proposals"] else "") + " |",
          f"| Escalations missed (not monetised) | {len(sh['missed_escalations'])}" + (f" ({', '.join(sh['missed_escalations'])})" if sh["missed_escalations"] else "") + " |", "",
-         "## 2. The number that matters most: break-even review time", "",
+         "## 2. The number that matters most: break-even review share", "",
          f"Drafting and approving costs the same as handling by hand when a person reviews a draft in **{case['break_even_f']:.0%} of the time** of handling a ticket by hand (1 minus the hand-over share, because hand-overs need the full manual handling as well). Faster than that saves time; slower costs more.", "",
          "**No review time was measured in this project.** The shadow-mode review timings were not valid (median 2 s, below the time needed to read a ticket and its draft). Every saving below depends on the review share f, which is a grid, not a result.", "",
          f"## 3. Base case ({b['f']:.0%} review share, ${b['rate']} per hour, {b['volume']:,} tickets per month)", "",
@@ -138,7 +138,7 @@ def render(case: dict, run_id: str, day: str, build_hours=None) -> str:
         for r in RATES:
             L.append(f"| ${r}/h | " + " | ".join(f"{money(c['monthly'][r][v]['S1'])} / {money(c['monthly'][r][v]['S2'])}" for v in VOLUMES) + " |")
         L.append("")
-    L += ["## 6. Sensitivity of S2 to the eligible share (±10 percentage points)", "", "| T | " + " | ".join(next(iter(case["comparators"].values()))["s2_by_eligible_share"]) + " |",
+    L += ["## 6. Sensitivity of S2 to the eligible share (±10 percentage points)", "", "| Time to handle by hand | " + " | ".join(next(iter(case["comparators"].values()))["s2_by_eligible_share"]) + " |",
           "|---|" + "---|" * 3]
     for c in case["comparators"].values():
         L.append(f"| {c['label']} | " + " | ".join(f"{money(v['monthly_saving'])} per month" for v in c["s2_by_eligible_share"].values()) + " |")
@@ -153,6 +153,8 @@ def render(case: dict, run_id: str, day: str, build_hours=None) -> str:
     L += ["", "## Limits", "",
           "- One handler, who also built the system; synthetic tickets; the learning effect is shown by the three comparators.",
           "- h and e come from one temperature-0 run on 150 tickets; the intervals above are wide.",
+          "- The review share f has to include the time spent correcting and rejecting drafts, not only reading the good ones. Shadow-mode review was a pass of accepting drafts without reading them (median 2 s), so it says nothing about f.",
+          "- Two of the 55 proposals on the held-out run were wrong and one escalation was missed. They are counted, not priced. An approver who does not read the draft would let such errors through.",
           "- The production mix is assumed equal to the held-out mix (25 of 150 tickets outside the agent's scope).",
           "- Labour cost, volume and review time are assumptions to confirm with Finance and Support Operations.",
           "- S2 rests on the stage 4.5 simulation, which is \"not yet acceptable\". It shows what a pilot could save, not that one is approved.", ""]

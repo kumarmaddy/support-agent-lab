@@ -127,3 +127,11 @@ A second person rating 20 drafts (about 30 minutes) is the only independent chec
 ## 9. Pass criteria for the stage itself
 
 The stage is complete when: all 40 tickets are in `manual.jsonl` and `review.jsonl`; the report is generated; the evidence files are committed; and the report's section 5 names every limit above that applied.
+
+## 10. Outcome (added 2026-10-13)
+
+- **Step A** was completed as planned and is valid.
+- **Step B was not valid.** A first pass was recorded at 2 to 3 seconds per ticket, all accepted, and was discarded (kept as `docs/evidence/phase-4-shadow-review-pass1-not-valid.jsonl`). A second pass, started 0.7 hours after Step A ended instead of the planned 24 by the project lead's decision, again had a median of 2 seconds with 40 of 40 accepted as is. Rule 6 (decide as you would in work) was not met in either pass.
+- **No second reviewer took part** (decision D3).
+- The report generator now prints a warning at the top when the median review time is below 10 seconds. The floor was added after both passes were seen, so it is a disclosed addition. The Step B figures in the report must not be quoted; Step A and the comparison of Step A with the agent alone are not affected.
+- A review-time measurement that cannot be passed without reading is a next-version item (risk R23, evaluation report section 13).

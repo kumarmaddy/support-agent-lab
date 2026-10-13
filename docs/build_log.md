@@ -563,14 +563,6 @@ and not a tuned threshold; the final runs are the test of it.
 
 
 ## Stage 2.1: Read prompt v4, legal-flag precision (2026-10-09)
-**Problem (ADR-007 condition, risk R18):** with read prompt v3 the qwen2.5:7b reader flagged 7 development tickets as chargeback or legal threats that are not (duplicate or wrong charges, bank statements, requests to skip review). 3B had none. Escalation is the safe direction, but 7 of 115 out-of-scope tickets (6.1%) were escalated unnecessarily.
-**Change:** `read_ticket.v4.md` rewrites field 3 only: a threat must be the customer's own stated intention to take a named step (chargeback, bank dispute, lawyer, lawsuit, regulator), and payment problems, refund requests, bank statements and instructions to skip review are listed as not threats. The category and deadline text is unchanged from v3 (tested). The wording describes the rule and quotes no ticket text. `scripts/probe_read_step.py` now reports legal flags caught, missed and falsely raised, and lists the false alarms.
-**Evidence:** 580 tests. The prompt has not yet been run against a model; v3 remains the default until it passes the acceptance test below.
-**Acceptance test (fixed before the run):** on the 150 development tickets with qwen2.5:7b, v4 must catch all 4 labelled threats, raise at most 2 false alarms, and keep category agreement within 2 tickets of v3 (139). It is also run on llama3.2:3b and must catch all 4 with no new false alarms.
-**Limitation:** the 7 false alarms were seen on this development set, so a pass here is an optimistic estimate; the held-out split in Phase 4 is the real test.
-
-
-## Stage 2.1: Read prompt v4, legal-flag precision (2026-10-09)
 **Problem (ADR-007 condition, risk R18):** with read prompt v3 the qwen2.5:7b reader flagged 7 development tickets as chargeback or legal threats that are not (duplicate or wrong charges, bank statements, requests to skip review): 7 of 115 out-of-scope tickets (6.1%) escalated unnecessarily.
 **Change:** `read_ticket.v4.md` rewrites field 3 only: a threat must be the customer's own stated intention to take a named step; payment problems, refund requests, bank statements and instructions to skip review are listed as not threats. Category and deadline text unchanged from v3 (tested). The wording describes the rule and quotes no ticket text. The probe now reports legal flags caught, missed and falsely raised. Defaults changed (ADR-007): `DEFAULT_MODEL = qwen2.5:7b`, `DEFAULT_READ_PROMPT = v4` in `run.py`, used by `demo.py` and the probe; llama3.2:3b needs `--read-prompt v3`. 581 tests.
 **Result (`docs/evidence/phase-2-read-prompt-v4.txt`):** acceptance test fixed before the run was passed by 7B: legal threats caught 4/4, false alarms 7 to 1, category agreement 138/150 (v3: 139), 0 failed readings, deadline dates 150/150. On 3B, v4 caught 4/4 with no false alarm, but three address-change tickets (T-000034, 83, 126) failed reading because the model wrote an invented deadline phrase ("Thursday"); the ticket-text check rejected it and each ticket went to a person. v3 stays for 3B.
@@ -1092,22 +1084,6 @@ and not a tuned threshold; the final runs are the test of it.
 
 **Correction.** The stage 4.3 note estimated about 35 minutes for the live run (all 116 cases). Only the 45 pipeline cases call a model, so the estimate is about 15 minutes.
 
-
-## Stage 4.3b: live-model injection runner (2026-10-12)
-
-**Scope.** A new runner for criterion P8. The agent, the scorer and the scripted suite are unchanged.
-
-**Added.**
-- `src/security/live.py`: `python -m src.security.live`. Runs the 45 pipeline-layer cases (41 attacks, 4 controls) with the real model. Attacks are judged on the scorer's invariants only; controls keep their full expectation.
-- `tests/security/test_live_injection.py`: 11 tests. With each case's own scripted answers as the "live" model, the live path neutralises exactly what the scripted path does for all 45 cases.
-- `docs/project/stage-4.3b-acceptance.md`: criteria L1 to L4, written before the run.
-
-**Verification.** Full suite 1174 passed (1163 before). Nine mutations of the runner were tried. Three survived the first tests (layer filter, leak terms, database-change check) and one was ineffective; tests were added for the three and each is now caught.
-
-**Note on the freeze.** `src/security/live.py` is a file added after the `phase-4-frozen` tag, so `python -m src.evaluation.heldout check` now reports it as "file added since the freeze". The held-out runs were made and scored before it existed; the tag and the digest in the freeze record are the evidence for them.
-
-**Correction.** The stage 4.3 note estimated about 35 minutes for the live run (all 116 cases). Only the 45 pipeline cases call a model, so the estimate is about 15 minutes.
-
 **Result (2026-10-12).** `python -m src.security.live`, run folder `security-live-20261012-165926`, qwen2.5:7b (digest 845dbda0ea48), 1174 tests passed beforehand. Attacks with no invariant violated 41/41 (Wilson 91.4% to 100%), wrong actions 0, unapproved writes 0, controls 4/4. P8 is Met. Console output: `docs/evidence/phase-4-live-injection-run.txt`. The results are folded into `phase-4-heldout-results.md`.
 
 
@@ -1152,47 +1128,11 @@ and not a tuned threshold; the final runs are the test of it.
 
 **Disclosed change to the design (section 7).** The design computed review time saved at the measured Step B time. Shadow-mode Step B timings were not valid: pass 1 (30 s or less per ticket, the median 2 to 3 s) and pass 2 (median 2 s) were both recorded as accepting every draft too quickly to have read it. The 4.5 measures do not use them; stage 4.6 uses its review-time grid (100%, 150%, 200% of manual time). The eligibility and decision rules are unchanged. The shadow report will carry a validity statement when the Phase 4 report is written (stage 4.7), and the pass 1 file is kept as evidence.
 
-
-## Stage 4.5: simulated limited auto-resolve, tooling and criteria (2026-10-13)
-
-**Scope.** An offline replay of the stored, scored 7B held-out run. Nothing is executed, no model is called, and the agent, scorer and gate are unchanged. This entry covers the criteria and the tool; the result is added after the run.
-
-**Added.**
-- `docs/project/stage-4.5-acceptance.md`: eligibility conditions E1 to E5, the definitions of a wrong reply, a missed escalation and a consequential miss, measures A1 to A6 and the decision rule, written before the run.
-- `src/evaluation/autoresolve.py`: `python -m src.evaluation.autoresolve --run <run folder>`. It refuses any run without the gate's complete `heldout_run.json` marker or without `score.json`. Eligibility uses only what the agent knew or produced (the category it read, its flags, the reply source, its citation); labels are used afterwards to judge.
-- `tests/evaluation/test_autoresolve.py`: 23 tests.
-
-**Verification.** Full suite 1228 passed (1204 before, plus the 23 new tests and one stage 4.4 test). Fourteen mutations of the tool were tried; two survived the first tests (a consequential miss alone not blocking acceptance, and an incomplete-run marker being accepted) and tests were added for both.
-
-**Sample-size note recorded before the run.** With no wrong replies the Wilson upper bound is 3.84 / (n + 3.84), which is at most 5% only for n of 73 or more. The report distinguishes "errors found" from "not enough eligible tickets to show it". The pre-registered rule is not changed.
-
-**Reading of the rule.** The rule bounds the wrong-reply rate; it does not require zero wrong replies. It does require zero missed escalations and zero consequential misses. A test records this reading.
-
-**Disclosed change to the design (section 7).** The design computed review time saved at the measured Step B time. Shadow-mode Step B timings were not valid: pass 1 (30 s or less per ticket, the median 2 to 3 s) and pass 2 (median 2 s) were both recorded as accepting every draft too quickly to have read it. The 4.5 measures do not use them; stage 4.6 uses its review-time grid (100%, 150%, 200% of manual time). The eligibility and decision rules are unchanged. The shadow report will carry a validity statement when the Phase 4 report is written (stage 4.7), and the pass 1 file is kept as evidence.
-
 **Result (2026-10-13).** `python -m src.evaluation.autoresolve --run data\runs\run-20261012-145613-97bb60`. Eligible tickets: 30 of 150 (20.0%, interval 14.4% to 27.1%), 30 of the 125 in-scope (24.0%): 24 `provide_info`, 6 `request_info`. Among them: wrong replies 0 of 30 (95% interval 0.0% to 11.3%), missed escalations 0, consequential misses 0. Verdict by the pre-registered rule: **not yet acceptable**, reason "not enough eligible tickets to show it" (the bound needs 73 eligible tickets with no errors; there were 30). The replies were not found wrong; the data cannot show the rate is below 5%.
 
 Which conditions excluded tickets: E1 (action) 107, E2 (category read) 104, E3 (flag) 9, E4 (template reply) 117, E5 (citation) 0; the only failure for 3 tickets was E2 and for 4 tickets E4. The rule was not changed after seeing this. Output: `docs/project/phase-4-autoresolve-results.md`.
 
 **Lesson for the design.** The 5% bound could not have been met by this rule on 150 tickets even with no errors; the stage 4.1 design should have computed the required n. It was caught and recorded before the run (acceptance criteria section 5), but not at design time. A future pilot needs about 365 tickets at a 20% eligible share, or a wider rule tested on a new split.
-
-
-## Stage 4.6: business case, method and tool (2026-10-13)
-
-**Scope.** The run-rate handling-cost comparison (criterion P11). The agent, the scorer and the held-out data are unchanged.
-
-**Added.**
-- `docs/project/stage-4.6-business-case-method.md`: formulas, fixed base case, comparators, outputs and limits, written before any figure was computed.
-- `src/evaluation/businesscase.py`: `python -m src.evaluation.businesscase --run <held-out 7B run folder>`. Every input is read from a file: handling times from the dev baseline and from held-out Step A, the hand-over share from the run's `score.json`, the eligible share from the stage 4.5 `autoresolve.json`. The only assumptions are the labour-cost grid, the volume grid and the review-share grid.
-- `tests/evaluation/test_businesscase.py`: 15 tests with hand-computed answers.
-
-**Method.** Human time per ticket: S0 = T; S1 = f·T + h·T; S2 = f·T·(1 − e) + h·T. The break-even review share is 1 − h. Three comparators for T: untrained handler, trained handler (last third of the baseline), and held-out Step A.
-
-**Disclosed change to the design.** The design set the review time from the measured Step B time and scaled it by 100%, 150% and 200%. Step B timings were not valid (median 2 s in both passes), so the scale is replaced by a grid on the review share f of 25%, 50%, 75% and 100% of manual time, and the break-even f is the headline. Formulas, other grids and exclusions are unchanged. No review-time claim is made by this project.
-
-**Verification.** Full suite 1243 passed (1228 before). Fifteen mutations of the arithmetic and inputs were tried; one survived (a zero saving was not handled as "no payback") and a test was added.
-
-**Not in this stage.** The result; it is generated by the command above and added here after the run.
 
 
 ## Stage 4.6: business case, method and tool (2026-10-13)
@@ -1215,3 +1155,25 @@ Which conditions excluded tickets: E1 (action) 107, E2 (category read) 104, E3 (
 Base case (50% review share, $25 per hour, 5,000 tickets per month), monthly saving S1 / S2: untrained handler (T = 162 s) $1,570 / $2,131; trained handler (130 s) $1,265 / $1,716; held-out Step A (88 s) $856 / $1,162. The range over the labour-cost and volume grids is $103 to $15,075 per month for S1 and $139 to $20,459 for S2. At a 100% review share S1 costs more than manual handling. No review time was measured, so none of these is a result about review speed.
 
 **Display fix after the first run.** The base-case table showed per-ticket costs in whole dollars ($1, $1, $1). It now shows cents and the share of time saved (S1 / S2), and a test was added. The arithmetic was unchanged and was checked by hand against the printed monthly figures.
+
+## Stage 4.7: Phase 4 report, exit review and register v1.7 (2026-10-13)
+
+**Scope.** Close Phase 4: the evaluation report, the exit review, risk register v1.7 and the README, plus two small tool changes found while reviewing the results.
+
+**Added and changed.**
+- `docs/project/phase-4-evaluation-report.md` and `phase-4-exit-review.md`: results against P1 to P11 with the misses, shadow mode, the simulation, the business case, the charter objectives, the deviations from the plan and the recommendations.
+- `docs/project/risk_register.md` v1.7: R4 reduced; R1, R6, R8, R9, R14, R16, R17, R19 and R21 amended with held-out evidence; R22 to R25 added.
+- `README.md`: status, Phase 4 results, commands, layout, documentation and limitations brought up to date; test count 1,249.
+- `src/shadow/report.py`: prints a warning at the top of the report when the median review time is below 10 seconds, and marks a gap shorter than the planned 24 hours. `phase-4-shadow-runbook.md` has an outcome section.
+- `src/shadow/__main__.py` and `tests/shadow/test_shadow.py`: the versions with the plain "Step A / Step B is missing N tickets" message from the shadow `report` command (delivered after the stage 4.4 commit and not yet in the repository) are included again.
+- `src/evaluation/businesscase.py` and its tests: the heading says "break-even review share", the sensitivity table header is "Time to handle by hand", and the limits say that the review share has to include correction and rejection time and that the two wrong proposals and the missed escalation are counted, not priced.
+- `docs/build_log.md`: older duplicate copies of the entries for stages 2.1, 4.3b, 4.5 and 4.6 removed; the newer copies, which carry the results, were kept.
+
+**Verification.** Full suite 1249 passed (1244 before). Seven mutations of the new code were tried (the validity floor and its comparison, median against mean, the banner, the gap note, the heading and limits wording); all were caught, after one boundary test was added for a median exactly at the floor.
+
+**Findings recorded in this stage.**
+- The shadow Step B review was not valid in either pass (median 2 s, 40 of 40 accepted, 0.7-hour gap). It is withdrawn as a result and recorded as risk R23.
+- The three "approved errors" in the shadow report (T-000028, T-000046, T-000128) are safe hand-overs that the label expected to be answered; no unsafe proposal was in the sample.
+- The validity floor was added after seeing both passes; it is a disclosed addition, not a pre-registered rule.
+
+**Decisions.** Phase 4 closed after the project lead chose option A: document the invalid review and do not repeat it. Phase 5 claims are limited as set out in the exit review.
