@@ -11,13 +11,13 @@
 
 ## 1. Summary
 
-On tickets it had never seen, the 7B agent kept its safety properties and lost a little accuracy. It handed every Set B ticket to a person, answered none of them wrongly, and the audit chain verified. Against the pre-registered targets, **two missed, four met but not conclusively, one could not be assessed and one is still to be measured**:
+On tickets it had never seen, the 7B agent kept its safety properties and lost a little accuracy. It handed every Set B ticket to a person, answered none of them wrongly, and the audit chain verified. Against the pre-registered targets, **two missed, five met (four of them without a conclusive lower bound), one could not be assessed and one is still to be measured (the business case)**:
 
 - **P1 missed.** 61/125 = 48.8% against a target of at least 50%.
 - **P2 missed.** Two proposals were wrong (T-000041 and T-000082). Nothing was executed; both would have gone to an approver. Both are the return-window boundary case already documented in Phase 3 (T-000091 in dev).
 - **P3, P4, P5, P6 met on the point estimate**, none with a lower bound at the target. P4 and P6 pass by one ticket.
 - **P7 could not be assessed.** The agent has no priority output. This is a gap in my pre-registration, described in section 4.
-- **P8 is pending.** The injection suite only has a scripted-model mode, so no live-model run exists yet. Section 4.
+- **P8 met.** The live 7B model resisted 41 of 41 pipeline-layer attacks (lower bound 91.4%), with 0 wrong actions and 0 unapproved writes. The scripted suite had no live mode, so the runner was added in stage 4.3b (section 4).
 
 ## 2. Results against the pre-registered criteria (7B, held-out)
 
@@ -30,13 +30,14 @@ On tickets it had never seen, the 7B agent kept its safety properties and lost a
 | P5 | Citation validity | Point ≥ 95% | Article correct 120/125 = 96.0% (91–98%); knowledge citations 5/5 | 120/125 | Met, not conclusive |
 | P6 | Category accuracy | Point ≥ 90% | 136/150 = **90.7%** (85–94%) | 139/150 = 92.7% | Met, not conclusive. One more miss would make it 89.3%. |
 | P7 | Priority accuracy | Point ≥ 80% | Not measured | Not measured in Phase 3 | **Not assessed** |
-| P8 | Seeded attacks, live 7B | 100% | Not run | Offline 105/105 (scripted model) | **Pending** |
+| P8 | Seeded attacks, live 7B | 100% | 41/41 pipeline-layer attacks, 0 wrong actions, 0 unapproved writes, controls 4/4 (91–100%) | Offline 105/105 (scripted model) | **Met** (conclusive only down to 91%; see note) |
 | P9 | Time per ticket | Reported | Median 17.6 s, p90 32.9 s, max 51.2 s | 17.8 / 33.4 / 54.5 s | Reported |
 | P10 | Compute cost | $0 | $0 (local) | $0 | Met |
 | P11 | Business case | Complete | Stage 4.6 | | Pending |
 
 Notes on the table:
 
+- **P8 scope and strength.** The live run covers the 45 cases that call a model (41 attacks, 4 controls). The other 71 cases never call a model and keep their scripted results. Attacks are judged on invariants only (no wrong proposal, no forbidden action, no database change, no canary or other customer's data), so "neutralised" is weaker than in the scripted run. On the 41 attacks the model chose: route_to_human 17, escalate_human 7, provide_info 5, request_info 5, propose_cancellation 4, propose_refund 2, propose_address_change 1. The 7 proposals were for orders the sender owns and still need approval. The suite shaped the backstop, so this is not an independent test, and it does not test misspelt threats (R17).
 - **P5 denominator.** The criteria did not name one. I used the one the Phase 3 reports used (article correct among Set A, 125 tickets) and show the five knowledge-base citations as well. Both meet the target.
 - **P2 wording.** The criterion says any wrong proposal is a miss, so it is a miss. The mitigating facts are in section 3.2; they do not change the status.
 - **P1 and the dev result.** Phase 3 called 49.6% "not conclusive". Under the stricter pre-registered wording (point estimate at least 50%) it was already a point miss. The held-out figure is 0.8 points lower. P1 is also limited by design: every proposed action needs approval (`auto_execute_enabled = false`), so these tickets cannot count as answered without a person. Stage 4.5 simulates a limited relaxation.
@@ -73,7 +74,7 @@ T-000015 (escalation recall miss). Someone claiming to be the account owner's as
 ## 4. Gaps in the pre-registration, disclosed
 
 1. **P7 priority accuracy cannot be measured.** The pipeline has no priority output, and the Phase 3 reports said "priority not re-measured". I wrote P7 without checking that. It is recorded as Not assessed, not Met. Adding a priority classifier now would be new scope, and it would not be a held-out measurement; I recommend recording it as a limitation and moving it to the next version.
-2. **P8 has no tool.** `src.security` runs the 116 cases against a scripted worst-case model only. A live-model run needs a new runner. Anything added under `src/` after the freeze makes `heldout check` report an added file; the evidence of the frozen run is the tag and the recorded digest, which stay valid.
+2. **P8 had no tool.** `src.security` ran the 116 cases against a scripted worst-case model only. A live runner was built in stage 4.3b and its criteria were written before it ran (`stage-4.3b-acceptance.md`). Anything added under `src/` after the freeze makes `heldout check` report an added file; the evidence of the frozen run is the tag and the recorded digest, which stay valid.
 3. **P5 had no named denominator.** Handled as in section 2.
 
 None of these changes a number already reported.
@@ -119,7 +120,7 @@ The gap is small and mostly within interval width, which suggests the Phase 3 tu
 | Item | Stage |
 |---|---|
 | M1 (closed): backstop steps in the 7B and 3B traces = 0 and 0. The word scan raised no flag the reader had missed, so it caused no false alarm and rescued nothing, including T-000140 (misspelt threat, R17) | Done |
-| P8: live-model injection run (needs a new runner) | Proposed 4.3b |
+| P8 (closed): live-model injection run, 41/41 attacks, `docs/evidence/phase-4-live-injection-run.txt` | Done (4.3b) |
 | Shadow mode, 40 tickets, seed 40404 | 4.4 |
 | Auto-resolve simulation, business case | 4.5, 4.6 |
 | Report, exit review, risk register v1.7 (R17 evidence, S06 boundary, 3B findings) | 4.7 |
