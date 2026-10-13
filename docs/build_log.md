@@ -1151,3 +1151,67 @@ and not a tuned threshold; the final runs are the test of it.
 **Reading of the rule.** The rule bounds the wrong-reply rate; it does not require zero wrong replies. It does require zero missed escalations and zero consequential misses. A test records this reading.
 
 **Disclosed change to the design (section 7).** The design computed review time saved at the measured Step B time. Shadow-mode Step B timings were not valid: pass 1 (30 s or less per ticket, the median 2 to 3 s) and pass 2 (median 2 s) were both recorded as accepting every draft too quickly to have read it. The 4.5 measures do not use them; stage 4.6 uses its review-time grid (100%, 150%, 200% of manual time). The eligibility and decision rules are unchanged. The shadow report will carry a validity statement when the Phase 4 report is written (stage 4.7), and the pass 1 file is kept as evidence.
+
+
+## Stage 4.5: simulated limited auto-resolve, tooling and criteria (2026-10-13)
+
+**Scope.** An offline replay of the stored, scored 7B held-out run. Nothing is executed, no model is called, and the agent, scorer and gate are unchanged. This entry covers the criteria and the tool; the result is added after the run.
+
+**Added.**
+- `docs/project/stage-4.5-acceptance.md`: eligibility conditions E1 to E5, the definitions of a wrong reply, a missed escalation and a consequential miss, measures A1 to A6 and the decision rule, written before the run.
+- `src/evaluation/autoresolve.py`: `python -m src.evaluation.autoresolve --run <run folder>`. It refuses any run without the gate's complete `heldout_run.json` marker or without `score.json`. Eligibility uses only what the agent knew or produced (the category it read, its flags, the reply source, its citation); labels are used afterwards to judge.
+- `tests/evaluation/test_autoresolve.py`: 23 tests.
+
+**Verification.** Full suite 1228 passed (1204 before, plus the 23 new tests and one stage 4.4 test). Fourteen mutations of the tool were tried; two survived the first tests (a consequential miss alone not blocking acceptance, and an incomplete-run marker being accepted) and tests were added for both.
+
+**Sample-size note recorded before the run.** With no wrong replies the Wilson upper bound is 3.84 / (n + 3.84), which is at most 5% only for n of 73 or more. The report distinguishes "errors found" from "not enough eligible tickets to show it". The pre-registered rule is not changed.
+
+**Reading of the rule.** The rule bounds the wrong-reply rate; it does not require zero wrong replies. It does require zero missed escalations and zero consequential misses. A test records this reading.
+
+**Disclosed change to the design (section 7).** The design computed review time saved at the measured Step B time. Shadow-mode Step B timings were not valid: pass 1 (30 s or less per ticket, the median 2 to 3 s) and pass 2 (median 2 s) were both recorded as accepting every draft too quickly to have read it. The 4.5 measures do not use them; stage 4.6 uses its review-time grid (100%, 150%, 200% of manual time). The eligibility and decision rules are unchanged. The shadow report will carry a validity statement when the Phase 4 report is written (stage 4.7), and the pass 1 file is kept as evidence.
+
+**Result (2026-10-13).** `python -m src.evaluation.autoresolve --run data\runs\run-20261012-145613-97bb60`. Eligible tickets: 30 of 150 (20.0%, interval 14.4% to 27.1%), 30 of the 125 in-scope (24.0%): 24 `provide_info`, 6 `request_info`. Among them: wrong replies 0 of 30 (95% interval 0.0% to 11.3%), missed escalations 0, consequential misses 0. Verdict by the pre-registered rule: **not yet acceptable**, reason "not enough eligible tickets to show it" (the bound needs 73 eligible tickets with no errors; there were 30). The replies were not found wrong; the data cannot show the rate is below 5%.
+
+Which conditions excluded tickets: E1 (action) 107, E2 (category read) 104, E3 (flag) 9, E4 (template reply) 117, E5 (citation) 0; the only failure for 3 tickets was E2 and for 4 tickets E4. The rule was not changed after seeing this. Output: `docs/project/phase-4-autoresolve-results.md`.
+
+**Lesson for the design.** The 5% bound could not have been met by this rule on 150 tickets even with no errors; the stage 4.1 design should have computed the required n. It was caught and recorded before the run (acceptance criteria section 5), but not at design time. A future pilot needs about 365 tickets at a 20% eligible share, or a wider rule tested on a new split.
+
+
+## Stage 4.6: business case, method and tool (2026-10-13)
+
+**Scope.** The run-rate handling-cost comparison (criterion P11). The agent, the scorer and the held-out data are unchanged.
+
+**Added.**
+- `docs/project/stage-4.6-business-case-method.md`: formulas, fixed base case, comparators, outputs and limits, written before any figure was computed.
+- `src/evaluation/businesscase.py`: `python -m src.evaluation.businesscase --run <held-out 7B run folder>`. Every input is read from a file: handling times from the dev baseline and from held-out Step A, the hand-over share from the run's `score.json`, the eligible share from the stage 4.5 `autoresolve.json`. The only assumptions are the labour-cost grid, the volume grid and the review-share grid.
+- `tests/evaluation/test_businesscase.py`: 15 tests with hand-computed answers.
+
+**Method.** Human time per ticket: S0 = T; S1 = f·T + h·T; S2 = f·T·(1 − e) + h·T. The break-even review share is 1 − h. Three comparators for T: untrained handler, trained handler (last third of the baseline), and held-out Step A.
+
+**Disclosed change to the design.** The design set the review time from the measured Step B time and scaled it by 100%, 150% and 200%. Step B timings were not valid (median 2 s in both passes), so the scale is replaced by a grid on the review share f of 25%, 50%, 75% and 100% of manual time, and the break-even f is the headline. Formulas, other grids and exclusions are unchanged. No review-time claim is made by this project.
+
+**Verification.** Full suite 1243 passed (1228 before). Fifteen mutations of the arithmetic and inputs were tried; one survived (a zero saving was not handled as "no payback") and a test was added.
+
+**Not in this stage.** The result; it is generated by the command above and added here after the run.
+
+
+## Stage 4.6: business case, method and tool (2026-10-13)
+
+**Scope.** The run-rate handling-cost comparison (criterion P11). The agent, the scorer and the held-out data are unchanged.
+
+**Added.**
+- `docs/project/stage-4.6-business-case-method.md`: formulas, fixed base case, comparators, outputs and limits, written before any figure was computed.
+- `src/evaluation/businesscase.py`: `python -m src.evaluation.businesscase --run <held-out 7B run folder>`. Every input is read from a file: handling times from the dev baseline and from held-out Step A, the hand-over share from the run's `score.json`, the eligible share from the stage 4.5 `autoresolve.json`. The only assumptions are the labour-cost grid, the volume grid and the review-share grid.
+- `tests/evaluation/test_businesscase.py`: 16 tests with hand-computed answers.
+
+**Method.** Human time per ticket: S0 = T; S1 = f·T + h·T; S2 = f·T·(1 − e) + h·T. The break-even review share is 1 − h. Three comparators for T: untrained handler, trained handler (last third of the baseline), and held-out Step A.
+
+**Disclosed change to the design.** The design set the review time from the measured Step B time and scaled it by 100%, 150% and 200%. Step B timings were not valid (median 2 s in both passes), so the scale is replaced by a grid on the review share f of 25%, 50%, 75% and 100% of manual time, and the break-even f is the headline. Formulas, other grids and exclusions are unchanged. No review-time claim is made by this project.
+
+**Verification.** Full suite 1244 passed (1228 before). Fifteen mutations of the arithmetic and inputs were tried; one survived (a zero saving was not handled as "no payback") and a test was added.
+
+**Result (2026-10-13).** `python -m src.evaluation.businesscase --run data\runs\run-20261012-145613-97bb60`. Hand-over share h = 33 of 150 (22.0%, interval 16.1% to 29.3%); eligible share e = 30 of 150 (20.0%); wrong proposals 2 of 55 (T-000041, T-000082); escalation missed 1 (T-000015). **Break-even review share: 78%** of the manual handling time.
+
+Base case (50% review share, $25 per hour, 5,000 tickets per month), monthly saving S1 / S2: untrained handler (T = 162 s) $1,570 / $2,131; trained handler (130 s) $1,265 / $1,716; held-out Step A (88 s) $856 / $1,162. The range over the labour-cost and volume grids is $103 to $15,075 per month for S1 and $139 to $20,459 for S2. At a 100% review share S1 costs more than manual handling. No review time was measured, so none of these is a result about review speed.
+
+**Display fix after the first run.** The base-case table showed per-ticket costs in whole dollars ($1, $1, $1). It now shows cents and the share of time saved (S1 / S2), and a test was added. The arithmetic was unchanged and was checked by hand against the printed monthly figures.
